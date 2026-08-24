@@ -9,7 +9,7 @@ This is **not** a news aggregator. The system is built to eventually distinguish
 | Phase | Status |
 |---|---|
 | 1. Foundation: project, config, database, models, migrations, CLI skeleton | ✅ done |
-| 2. Source registry + seed import | not started |
+| 2. Source registry + seed import | ✅ done |
 | 3. RSS collector + extraction + dedup (single publication) | not started |
 | 4. Multi-publication ingestion + resilience | not started |
 | 5. YouTube ingestion + transcripts | not started |
@@ -83,18 +83,22 @@ Working today:
 
 ```bash
 uv run culture db init    # apply migrations
+uv run culture seed       # import seeds/sources.yaml (idempotent, matches by name)
+uv run culture sources    # list all sources with tier/active/feed state
 uv run culture status     # system health: sources, content, backlog
 ```
 
 Arriving in later phases (currently exit with a clear message):
 
 ```bash
-uv run culture seed            # Phase 2: import seeds/sources.yaml
-uv run culture sources         # Phase 2: list sources
 uv run culture ingest          # Phase 3/5: collect new content
 uv run culture analyze         # Phase 6: AI analysis
 uv run culture report --days 7 # Phase 7: weekly report -> reports/2026-W35.md
 ```
+
+### Seed file
+
+[seeds/sources.yaml](seeds/sources.yaml) holds the seed universe: 13 publications, 7 YouTube channels, 19 Instagram accounts/discovery candidates. Every feed URL and YouTube channel ID in it was verified against a live response before being written down — sources where no feed could be verified (SSENSE Editorial, 032c, Throwing Fits) have blank collection fields and an explanatory note instead of invented configuration. Re-running `culture seed` updates seed-owned fields only; operational state (last checked, etc.) is never touched.
 
 ## Migrations
 

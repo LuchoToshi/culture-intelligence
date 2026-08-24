@@ -61,6 +61,7 @@ def status() -> None:
                 select(func.count(Source.id)).where(
                     Source.active.is_(True),
                     Source.platform.in_([Platform.WEB.value, Platform.YOUTUBE.value]),
+                    Source.feed_url.is_not(None),
                 )
             ) or 0
             last_ingestion = session.scalar(select(func.max(Source.last_checked_at)))
@@ -123,15 +124,67 @@ def _not_yet(phase: str) -> None:
 
 
 @app.command()
-def seed() -> None:
-    """Import seed sources from seeds/sources.yaml."""
-    _not_yet("Phase 2 (source registry)")
+def seed(
+    file: Path = typer.Option(
+        PROJECT_ROOT / "seeds" / "sources.yaml", "--file", help="Seed YAML file."
+    ),
+) -> None:
+    """Import seed sources. Idempotent: matches by name, updates seed-owned fields only."""
+    from culture.database import get_engine, session_scope
+    from culture.services.seeding import import_seeds, load_seed_records
+
+    try:
+        records = load_seed_records(file)
+    except (FileNotFoundError, ValueError) as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(1) from exc
+
+    with session_scope(get_engine()) as session:
+        result = import_seeds(session, records)
+
+    console.print(
+        f"Seed import: [green]{len(result.created)} created[/green], "
+        f"{len(result.updated)} updated, {len(result.unchanged)} unchanged."
+    )
+    if result.errors:
+        console.print(f"[red]{len(result.errors)} invalid record(s) skipped:[/red]")
+        for error in result.errors:
+            console.print(f"  [red]- {error}[/red]")
+        raise typer.Exit(1)
 
 
 @app.command()
 def sources() -> None:
     """List monitored sources."""
-    _not_yet("Phase 2 (source registry)")
+    from culture.database import get_engine, session_scope
+    from culture.repositories.sources import SourceRepository
+
+    def fmt(value) -> str:
+        return value.strftime("%Y-%m-%d %H:%M") if value else "—"
+
+    with session_scope(get_engine()) as session:
+        rows = SourceRepository(session).list_with_latest_item()
+        table = Table(title=f"Sources ({len(rows)})")
+        table.add_column("Name")
+        table.add_column("Platform")
+        table.add_column("Tier")
+        table.add_column("Active")
+        table.add_column("Feed")
+        table.add_column("Last checked")
+        table.add_column("Last success")
+        table.add_column("Latest item")
+        for source, latest_item in rows:
+            table.add_row(
+                source.name,
+                source.platform,
+                source.tier,
+                "yes" if source.active else "no",
+                "yes" if source.feed_url else "—",
+                fmt(source.last_checked_at),
+                fmt(source.last_successful_check_at),
+                fmt(latest_item),
+            )
+        console.print(table)
 
 
 @app.command()

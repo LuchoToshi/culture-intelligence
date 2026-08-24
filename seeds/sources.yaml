@@ -1,0 +1,527 @@
+# Seed source universe for the cultural intelligence platform.
+#
+# Feed URLs and YouTube channel IDs below were verified against live responses
+# on 2026-08-24 (automated probe: feed fetched and confirmed as RSS/Atom;
+# YouTube channel IDs resolved from the channel page and feed titles checked
+# against the expected channel name). Sources with no verified feed have blank
+# collection fields and an explanatory note — configuration is never invented.
+#
+# Instagram sources are stored for future phases only. No Instagram collector
+# exists in V0 and none of them are active.
+
+sources:
+  # ── Publications (RSS verified) ──────────────────────────────────────────
+  - name: Highsnobiety
+    platform: web
+    source_type: publication
+    url: https://www.highsnobiety.com
+    feed_url: https://www.highsnobiety.com/feeds/rss
+    country: Germany
+    city: Berlin
+    region: Europe
+    language: en
+    categories: [fashion, streetwear, sneakers, culture]
+    intelligence_layers: [fast_radar, editorial]
+    tier: core
+    active: true
+    collection_method: rss
+
+  - name: Business of Fashion
+    platform: web
+    source_type: publication
+    url: https://www.businessoffashion.com
+    feed_url: https://www.businessoffashion.com/arc/outboundfeeds/rss/
+    country: United Kingdom
+    city: London
+    region: UK
+    language: en
+    categories: [fashion business, luxury, retail, brand strategy]
+    intelligence_layers: [industry_structure, editorial]
+    tier: core
+    active: true
+    collection_method: rss
+    notes: Many articles are paywalled; expect partial extraction.
+
+  - name: Hypebeast
+    platform: web
+    source_type: publication
+    url: https://hypebeast.com
+    feed_url: https://hypebeast.com/feed
+    country: Hong Kong
+    region: Asia
+    language: en
+    categories: [streetwear, sneakers, fashion, culture]
+    intelligence_layers: [fast_radar]
+    tier: core
+    active: true
+    collection_method: rss
+
+  - name: Dazed
+    platform: web
+    source_type: publication
+    url: https://www.dazeddigital.com
+    feed_url: https://www.dazeddigital.com/rss
+    country: United Kingdom
+    city: London
+    region: UK
+    language: en
+    categories: [youth culture, fashion, art, music]
+    intelligence_layers: [editorial, scene_subculture]
+    tier: core
+    active: true
+    collection_method: rss
+
+  - name: i-D
+    platform: web
+    source_type: publication
+    url: https://i-d.co
+    feed_url: https://i-d.co/feed/
+    country: United Kingdom
+    city: London
+    region: UK
+    language: en
+    categories: [fashion, youth culture, photography]
+    intelligence_layers: [editorial, scene_subculture]
+    tier: core
+    active: true
+    collection_method: rss
+
+  - name: SSENSE Editorial
+    platform: web
+    source_type: retailer_editorial
+    url: https://www.ssense.com/en-us/editorial
+    country: Canada
+    city: Montreal
+    language: en
+    categories: [fashion, luxury, culture]
+    intelligence_layers: [editorial]
+    tier: core
+    active: true
+    notes: >-
+      No RSS feed found during automated verification on 2026-08-24
+      (checked advertised link tags and common feed paths). Needs a custom
+      collector or manual feed discovery before ingestion can start.
+
+  - name: 032c
+    platform: web
+    source_type: publication
+    url: https://032c.com
+    country: Germany
+    city: Berlin
+    region: Europe
+    language: en
+    categories: [fashion, art, culture]
+    intelligence_layers: [editorial, scene_subculture]
+    tier: core
+    active: true
+    notes: >-
+      No RSS feed found during automated verification on 2026-08-24.
+      Needs a custom collector or manual feed discovery before ingestion.
+
+  - name: Sabukaru
+    platform: web
+    source_type: publication
+    url: https://sabukaru.online
+    feed_url: https://sabukaru.online/articles?format=rss
+    country: Japan
+    city: Tokyo
+    region: Japan
+    language: en
+    categories: [fashion, youth culture, subculture, streetwear]
+    intelligence_layers: [scene_subculture, editorial]
+    tier: core
+    active: true
+    collection_method: rss
+    notes: Squarespace feed; verified with 20 entries on 2026-08-24.
+
+  - name: CULTED
+    platform: web
+    source_type: publication
+    url: https://culted.com
+    feed_url: https://culted.com/rss.xml
+    country: United Kingdom
+    city: London
+    region: UK
+    language: en
+    categories: [streetwear, fashion, culture]
+    intelligence_layers: [fast_radar]
+    tier: core
+    active: true
+    collection_method: rss
+
+  - name: Office Magazine
+    platform: web
+    source_type: publication
+    url: https://officemagazine.net
+    feed_url: https://officemagazine.net/rss.xml
+    country: United States
+    city: New York
+    region: US
+    language: en
+    categories: [fashion, art, culture]
+    intelligence_layers: [editorial, scene_subculture]
+    tier: core
+    active: true
+    collection_method: rss
+
+  - name: Fucking Young!
+    platform: web
+    source_type: publication
+    url: https://fuckingyoung.es
+    feed_url: https://fuckingyoung.es/feed/
+    country: Spain
+    city: Madrid
+    region: Europe
+    language: en
+    categories: [fashion, menswear, emerging designers]
+    intelligence_layers: [fast_radar, editorial]
+    tier: core
+    active: true
+    collection_method: rss
+
+  - name: Fashion Is Psychology
+    platform: web
+    source_type: publication
+    url: https://fashionispsychology.com
+    feed_url: https://fashionispsychology.com/feed/
+    language: en
+    categories: [consumer psychology, fashion, identity]
+    intelligence_layers: [psychology]
+    tier: core
+    active: true
+    collection_method: rss
+
+  - name: Throwing Fits
+    platform: web
+    source_type: podcast
+    url: https://www.throwingfits.com
+    country: United States
+    city: New York
+    region: US
+    language: en
+    categories: [menswear, fashion, culture]
+    intelligence_layers: [social_codes, scene_subculture]
+    tier: core
+    active: true
+    notes: >-
+      Primarily a podcast; the website exposed no RSS feed during automated
+      verification on 2026-08-24. Podcast collection is a future phase.
+
+  # ── YouTube channels (channel IDs + feeds verified) ──────────────────────
+  - name: Business of Fashion (YouTube)
+    platform: youtube
+    source_type: publication_channel
+    url: https://www.youtube.com/@businessoffashion
+    external_identifier: UCe1qICvWRDbdH7-Fixvj7Bg
+    feed_url: https://www.youtube.com/feeds/videos.xml?channel_id=UCe1qICvWRDbdH7-Fixvj7Bg
+    country: United Kingdom
+    city: London
+    region: UK
+    language: en
+    categories: [fashion business, luxury]
+    intelligence_layers: [industry_structure, editorial]
+    tier: core
+    active: true
+    collection_method: rss
+
+  - name: Drew Joiner
+    platform: youtube
+    source_type: creator
+    url: https://www.youtube.com/@DrewJoiner
+    external_identifier: UCc0-cA0mThWPk7_PGjT8oFA
+    feed_url: https://www.youtube.com/feeds/videos.xml?channel_id=UCc0-cA0mThWPk7_PGjT8oFA
+    country: United States
+    city: New York
+    region: US
+    language: en
+    categories: [menswear, fashion, sneakers]
+    intelligence_layers: [fast_radar, urban_archetype]
+    tier: core
+    active: true
+    collection_method: rss
+
+  - name: wrong trousers
+    platform: youtube
+    source_type: creator
+    url: https://www.youtube.com/@wrong_trousers
+    external_identifier: UC4jnH5awmTtipD226USVkVQ
+    feed_url: https://www.youtube.com/feeds/videos.xml?channel_id=UC4jnH5awmTtipD226USVkVQ
+    language: en
+    categories: [menswear, fashion, culture]
+    intelligence_layers: [editorial, scene_subculture]
+    tier: core
+    active: true
+    collection_method: rss
+
+  - name: Tim Dessaint
+    platform: youtube
+    source_type: creator
+    url: https://www.youtube.com/@TimDessaint
+    external_identifier: UCfJrdVVcWZMHLC--a4ovLLQ
+    feed_url: https://www.youtube.com/feeds/videos.xml?channel_id=UCfJrdVVcWZMHLC--a4ovLLQ
+    country: United Kingdom
+    city: London
+    region: UK
+    language: en
+    categories: [menswear, fashion]
+    intelligence_layers: [fast_radar, personal_application]
+    tier: core
+    active: true
+    collection_method: rss
+
+  - name: Frugal Aesthetic
+    platform: youtube
+    source_type: creator
+    url: https://www.youtube.com/@FrugalAesthetic
+    external_identifier: UCyL0RJe41itDFjd70KKZIZQ
+    feed_url: https://www.youtube.com/feeds/videos.xml?channel_id=UCyL0RJe41itDFjd70KKZIZQ
+    language: en
+    categories: [menswear, streetwear, fashion]
+    intelligence_layers: [fast_radar, personal_application]
+    tier: watch
+    active: true
+    collection_method: rss
+
+  - name: Katie Robinson
+    platform: youtube
+    source_type: creator
+    url: https://www.youtube.com/@katierobinson
+    external_identifier: UCX5P2dzUPNvqbJv7DtTGrYg
+    feed_url: https://www.youtube.com/feeds/videos.xml?channel_id=UCX5P2dzUPNvqbJv7DtTGrYg
+    language: en
+    categories: [fashion, womenswear, culture]
+    intelligence_layers: [editorial, urban_archetype]
+    tier: watch
+    active: true
+    collection_method: rss
+
+  - name: James Leung
+    platform: youtube
+    source_type: creator
+    url: https://www.youtube.com/@JamesLeung
+    external_identifier: UCRureU8F0KeJW_HTPOSF8Qg
+    feed_url: https://www.youtube.com/feeds/videos.xml?channel_id=UCRureU8F0KeJW_HTPOSF8Qg
+    language: en
+    categories: [fashion, menswear, culture]
+    intelligence_layers: [editorial, scene_subculture]
+    tier: watch
+    active: true
+    collection_method: rss
+
+  # ── Instagram (future phases; no collector in V0, all inactive) ──────────
+  - name: Fashion Is Psychology (Instagram)
+    platform: instagram
+    source_type: publication_account
+    url: https://www.instagram.com/fashionispsychology
+    categories: [consumer psychology, fashion]
+    intelligence_layers: [psychology]
+    tier: watch
+    active: false
+    notes: No Instagram collector in V0; stored for future phases.
+
+  - name: Throwing Fits (Instagram)
+    platform: instagram
+    source_type: podcast_account
+    url: https://www.instagram.com/throwingfits
+    country: United States
+    city: New York
+    categories: [menswear, memes, culture]
+    intelligence_layers: [social_codes]
+    tier: watch
+    active: false
+    notes: No Instagram collector in V0; stored for future phases.
+
+  - name: Soy Vilnius
+    platform: instagram
+    source_type: meme_account
+    url: https://www.instagram.com/soy.vilnius
+    categories: [memes, internet culture, fashion]
+    intelligence_layers: [social_codes, urban_archetype]
+    tier: watch
+    active: false
+    notes: No Instagram collector in V0; stored for future phases.
+
+  - name: Oat Milk Élite
+    platform: instagram
+    source_type: meme_account
+    url: https://www.instagram.com/havermelkelite
+    country: Netherlands
+    city: Amsterdam
+    categories: [memes, lifestyle, class, urban culture]
+    intelligence_layers: [social_codes, urban_archetype]
+    tier: watch
+    active: false
+    notes: No Instagram collector in V0; stored for future phases.
+
+  - name: Saints & Stars Locker Room
+    platform: instagram
+    source_type: meme_account
+    url: https://www.instagram.com/saintsandstarslockerroom
+    country: Netherlands
+    city: Amsterdam
+    categories: [memes, fitness, lifestyle]
+    intelligence_layers: [social_codes, urban_archetype]
+    tier: watch
+    active: false
+    notes: No Instagram collector in V0; stored for future phases.
+
+  - name: Socks House Meeting
+    platform: instagram
+    source_type: meme_account
+    url: https://www.instagram.com/socks_house_meeting
+    country: United Kingdom
+    city: London
+    categories: [memes, nightlife, urban culture]
+    intelligence_layers: [social_codes, scene_subculture]
+    tier: watch
+    active: false
+    notes: No Instagram collector in V0; stored for future phases.
+
+  - name: Real Housewives of Clapton
+    platform: instagram
+    source_type: meme_account
+    url: https://www.instagram.com/real_housewives_of_clapton
+    country: United Kingdom
+    city: London
+    categories: [memes, class, urban culture]
+    intelligence_layers: [social_codes, urban_archetype]
+    tier: watch
+    active: false
+    notes: No Instagram collector in V0; stored for future phases.
+
+  - name: Nolita Dirtbag
+    platform: instagram
+    source_type: meme_account
+    url: https://www.instagram.com/nolitadirtbag
+    country: United States
+    city: New York
+    categories: [memes, fashion, class, urban culture]
+    intelligence_layers: [social_codes, urban_archetype]
+    tier: watch
+    active: false
+    notes: No Instagram collector in V0; stored for future phases.
+
+  - name: Témalapaire
+    platform: instagram
+    source_type: meme_account
+    url: https://www.instagram.com/temalapaire
+    country: France
+    categories: [memes, sneakers, fashion]
+    intelligence_layers: [social_codes]
+    tier: watch
+    active: false
+    notes: No Instagram collector in V0; stored for future phases.
+
+  - name: Pathetic Fashion
+    platform: instagram
+    source_type: meme_account
+    url: https://www.instagram.com/patheticfashion
+    categories: [memes, fashion]
+    intelligence_layers: [social_codes]
+    tier: watch
+    active: false
+    notes: No Instagram collector in V0; stored for future phases.
+
+  - name: Tote Bag Fan Account
+    platform: instagram
+    source_type: meme_account
+    url: https://www.instagram.com/totebagfanaccount
+    categories: [memes, fashion, lifestyle]
+    intelligence_layers: [social_codes]
+    tier: watch
+    active: false
+    notes: No Instagram collector in V0; stored for future phases.
+
+  - name: The Fake Rothko
+    platform: instagram
+    source_type: meme_account
+    url: https://www.instagram.com/thefakerothko
+    categories: [memes, art, class]
+    intelligence_layers: [social_codes]
+    tier: watch
+    active: false
+    notes: No Instagram collector in V0; stored for future phases.
+
+  - name: Berlin Club Memes
+    platform: instagram
+    source_type: meme_account
+    url: https://www.instagram.com/berlinclubmemes
+    country: Germany
+    city: Berlin
+    categories: [memes, nightlife, electronic music]
+    intelligence_layers: [social_codes, scene_subculture]
+    tier: watch
+    active: false
+    notes: No Instagram collector in V0; stored for future phases.
+
+  - name: Dansaert Vlamingen
+    platform: instagram
+    source_type: meme_account
+    url: https://www.instagram.com/dansaertvlamingen
+    country: Belgium
+    city: Brussels
+    categories: [memes, class, urban culture]
+    intelligence_layers: [social_codes, urban_archetype]
+    tier: watch
+    active: false
+    notes: No Instagram collector in V0; stored for future phases.
+
+  - name: Freeze Magazine
+    platform: instagram
+    source_type: meme_account
+    url: https://www.instagram.com/freeze_magazine
+    country: France
+    categories: [memes, fashion, internet culture]
+    intelligence_layers: [social_codes]
+    tier: watch
+    active: false
+    notes: No Instagram collector in V0; stored for future phases.
+
+  - name: Soho House Memes
+    platform: instagram
+    source_type: meme_account
+    url: https://www.instagram.com/sohohousememes
+    categories: [memes, class, creative industries]
+    intelligence_layers: [social_codes, urban_archetype]
+    tier: watch
+    active: false
+    notes: No Instagram collector in V0; stored for future phases.
+
+  - name: Yugnat999
+    platform: instagram
+    source_type: meme_account
+    url: https://www.instagram.com/yugnat999
+    country: France
+    city: Paris
+    categories: [memes, internet culture]
+    intelligence_layers: [social_codes]
+    tier: watch
+    active: false
+    notes: No Instagram collector in V0; stored for future phases.
+
+  # ── Discovery candidates (handles not verified — no URL on purpose) ──────
+  - name: Dalston Superstoned
+    platform: instagram
+    source_type: meme_account
+    country: United Kingdom
+    city: London
+    categories: [memes, urban culture]
+    intelligence_layers: [social_codes]
+    tier: candidate
+    active: false
+    notes: >-
+      Discovery candidate from the spec. Handle/URL not verified — do not
+      assume the account URL. Verify before promoting to watch.
+
+  - name: West LA Memes
+    platform: instagram
+    source_type: meme_account
+    country: United States
+    city: Los Angeles
+    categories: [memes, urban culture]
+    intelligence_layers: [social_codes]
+    tier: candidate
+    active: false
+    notes: >-
+      Discovery candidate from the spec. Handle/URL not verified — do not
+      assume the account URL. Verify before promoting to watch.
