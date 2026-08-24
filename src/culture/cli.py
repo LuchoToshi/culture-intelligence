@@ -221,12 +221,14 @@ def ingest(
     console.print(f"Articles extracted: {stats.total_extracted}")
     console.print(f"Partial extractions: {stats.total_partial}")
     console.print(f"Extraction failures: {stats.total_extraction_failed}")
-    if stats.total_new_videos or stats.total_transcripts_available:
+    if stats.total_new_videos or stats.total_transcripts_available or stats.total_transcripts_recovered:
         console.print()
         console.print("YouTube transcripts:")
         console.print(f"Available: {stats.total_transcripts_available}")
         console.print(f"Unavailable: {stats.total_transcripts_unavailable}")
         console.print(f"Failed: {stats.total_transcripts_failed}")
+        if stats.total_transcripts_recovered:
+            console.print(f"Recovered from earlier failures: {stats.total_transcripts_recovered}")
 
 
 @app.command()

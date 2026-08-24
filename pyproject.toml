@@ -15,6 +15,8 @@ dependencies = [
     "httpx>=0.28.1",
     "feedparser>=6.0.14",
     "trafilatura>=2.2.0",
+    "yt-dlp>=2026.8.19",
+    "youtube-transcript-api>=1.2.4",
 ]
 
 [dependency-groups]

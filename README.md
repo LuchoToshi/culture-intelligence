@@ -12,7 +12,7 @@ This is **not** a news aggregator. The system is built to eventually distinguish
 | 2. Source registry + seed import | ✅ done |
 | 3. RSS collector + extraction + dedup (single publication) | ✅ done |
 | 4. Multi-publication ingestion + resilience | ✅ done |
-| 5. YouTube ingestion + transcripts | not started |
+| 5. YouTube ingestion + transcripts | ✅ done |
 | 6. AI provider abstraction + item analysis | not started |
 | 7. Weekly report (roundup + synthesis) | not started |
 | 8. Quality pass | not started |
@@ -86,11 +86,13 @@ uv run culture db init    # apply migrations
 uv run culture seed       # import seeds/sources.yaml (idempotent, matches by name)
 uv run culture sources    # list all sources with tier/active/feed state
 uv run culture status     # system health: sources, content, backlog
-uv run culture ingest     # collect new content from all active sources (RSS)
+uv run culture ingest     # collect new content from all active sources (RSS + YouTube)
 uv run culture ingest --source "Sabukaru"   # single source
 ```
 
 Ingestion normalizes URLs (tracking params, fragments, trailing slashes), extracts article text with trafilatura, records extraction status per item, and skips duplicates via DB-enforced constraints plus canonical-URL matching. A failing source never stops the run; sources without a verified feed are skipped visibly. Page fetches are rate-limited (0.5s between requests per run).
+
+**YouTube**: channels are collected via their public Atom feeds (video ID, title, publication date, feed description). Each new video is enriched with yt-dlp metadata (duration, chapters, view count, full description) and a transcript via youtube-transcript-api, preferring English but accepting any language. Transcript availability is stored explicitly per video (`available` / `unavailable` / `failed`) — a transcript or metadata failure never blocks storing the video, and analysis will never pretend to know what an untranscribed video says. Videos dedup by video ID, so the same video arriving as `/shorts/<id>` and `watch?v=<id>` stores once.
 
 **Boilerplate handling**: stored `raw_text` is exactly what the extractor produced — never modified. Site furniture that repeats across a source's articles (paywall prompts, newsletter upsells, "latest posts" widgets, affiliate disclaimers) is detected per source by cross-document paragraph frequency and stripped at consumption time (`services/boilerplate.py`), so detection improves as the corpus grows and stored data can never be corrupted by a cleaning bug.
 
@@ -124,7 +126,8 @@ Unit tests run against in-memory SQLite (JSONB columns degrade to JSON via a typ
 
 ## Known limitations
 
-- No ingestion, analysis, or reporting yet — Phase 1 is foundation only.
+- **YouTube rate-limits transcript fetching aggressively.** A large first-run backlog will trip an IP block partway through; affected videos are stored with `transcript_status: failed` and every subsequent `culture ingest` retries them (4s spacing, circuit breaker after 3 consecutive failures). The backlog recovers over a few runs once the block lifts.
+- Business of Fashion is paywalled — extraction yields ~500-char teasers, honest but thin. Analysis must treat BoF items as headline-level evidence.
 - Enum-like fields are stored as plain strings by design (vocabulary can evolve without migrations); invalid values are caught at the application layer, not by the database.
 - Instagram/TikTok/X/Substack/Reddit/podcast sources are stored as records only; no collectors exist for them in V0 by design.
 
