@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Culture Intelligence{% endblock %}</title>
+<style>
+  :root {
+    --paper: #faf8f4; --ink: #1b1917; --muted: #6d675f; --line: #e4ded4;
+    --accent: #8a4b2d; --card: #ffffff;
+    --emerging: #2f6f4f; --strengthening: #1f5fa8; --mainstream: #6b6b6b;
+    --saturated: #b3541e; --declining: #7a2e2e; --unknown: #999489;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  header {
+    border-bottom: 1px solid var(--line); background: var(--paper);
+    position: sticky; top: 0; z-index: 5;
+  }
+  .nav {
+    max-width: 1100px; margin: 0 auto; padding: 0.7rem 1.2rem;
+    display: flex; gap: 1.4rem; align-items: baseline; flex-wrap: wrap;
+  }
+  .brand { font-family: Georgia, "Times New Roman", serif; font-size: 1.15rem; font-weight: 700; letter-spacing: 0.01em; }
+  .brand a { color: var(--ink); text-decoration: none; }
+  nav a { color: var(--muted); text-decoration: none; font-size: 0.95rem; }
+  nav a:hover, nav a:focus-visible { color: var(--accent); }
+  nav a[aria-current="page"] { color: var(--ink); font-weight: 600; }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+  main { max-width: 1100px; margin: 0 auto; padding: 1.6rem 1.2rem 4rem; }
+  h1 { font-family: Georgia, "Times New Roman", serif; font-size: 1.7rem; margin: 0.4rem 0 1.1rem; }
+  h2 { font-family: Georgia, serif; font-size: 1.25rem; margin-top: 2rem; }
+  .sub { color: var(--muted); font-size: 0.92rem; }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; background: var(--card);
+          border: 1px solid var(--line); font-size: 0.95rem; }
+  th, td { text-align: left; padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+  tr:hover td { background: #f6f2ea; }
+  td a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--line); }
+  td a:hover { color: var(--accent); border-color: var(--accent); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .badge {
+    display: inline-block; padding: 0.1rem 0.5rem; border-radius: 99px;
+    font-size: 0.75rem; font-weight: 600; color: #fff; white-space: nowrap;
+  }
+  .badge.emerging { background: var(--emerging); } .badge.strengthening { background: var(--strengthening); }
+  .badge.mainstream { background: var(--mainstream); } .badge.saturated { background: var(--saturated); }
+  .badge.declining { background: var(--declining); } .badge.unknown { background: var(--unknown); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.8rem; margin: 1rem 0 1.6rem; }
+  .card { background: var(--card); border: 1px solid var(--line); padding: 0.8rem 1rem; }
+  .card .big { font-size: 1.7rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .card .label { color: var(--muted); font-size: 0.82rem; }
+  .delta { color: var(--emerging); font-weight: 600; }
+  .filters { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.4rem; }
+  .filters a { font-size: 0.85rem; color: var(--muted); text-decoration: none; border: 1px solid var(--line);
+               padding: 0.15rem 0.6rem; border-radius: 99px; background: var(--card); }
+  .filters a[aria-current="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .prose { background: var(--card); border: 1px solid var(--line); padding: 2rem 2.4rem; max-width: 860px; }
+  .prose h1, .prose h2, .prose h3 { font-family: Georgia, serif; }
+  .prose table { display: block; overflow-x: auto; }
+  .prose a { color: var(--accent); }
+  .evidence { background: var(--card); border: 1px solid var(--line); padding: 0.9rem 1.1rem; margin-bottom: 0.7rem; }
+  .evidence .meta { color: var(--muted); font-size: 0.85rem; }
+  .scorebar { display: flex; gap: 0.35rem; align-items: center; }
+  .dots { letter-spacing: 0.15em; color: var(--accent); }
+  .empty { color: var(--muted); font-style: italic; }
+</style>
+</head>
+<body>
+<header>
+  <div class="nav">
+    <span class="brand"><a href="/">Culture Intelligence</a></span>
+    <nav aria-label="Main">
+      <a href="/signals" {% if active_nav == "signals" %}aria-current="page"{% endif %}>Signals</a>
+      <a href="/stream" {% if active_nav == "stream" %}aria-current="page"{% endif %}>Stream</a>
+      <a href="/reports" {% if active_nav == "reports" %}aria-current="page"{% endif %}>Reports</a>
+      <a href="/sources" {% if active_nav == "sources" %}aria-current="page"{% endif %}>Sources</a>
+    </nav>
+  </div>
+</header>
+<main>
+{% block content %}{% endblock %}
+</main>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Stream — Culture Intelligence{% endblock %}
+{% block content %}
+<h1>Source Stream <span class="sub">latest 60 items</span></h1>
+{% for r in rows %}
+<article class="evidence">
+  <div class="meta">{{ r.source.name if r.source else "?" }} · {{ r.item.content_type }} ·
+    {{ r.when.date().isoformat() if r.when else "?" }}
+    {% if r.item.processing_status != "analyzed" %} · <em>{{ r.item.processing_status }}</em>{% endif %}</div>
+  <strong><a href="{{ r.item.url }}" rel="noopener">{{ r.item.title or r.item.url }}</a></strong>
+  {% if r.summary %}<p>{{ r.summary }}</p>{% endif %}
+</article>
+{% else %}
+<p class="empty">No content yet.</p>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Sources — Culture Intelligence{% endblock %}
+{% block content %}
+<h1>Sources</h1>
+<table>
+  <thead><tr>
+    <th scope="col">Name</th><th scope="col">Platform</th><th scope="col">Tier</th>
+    <th scope="col">Active</th><th scope="col">Place</th>
+    <th scope="col" class="num">Items</th><th scope="col">Last success</th>
+  </tr></thead>
+  <tbody>
+  {% for s in sources %}
+    <tr>
+      <td>{% if s.url %}<a href="{{ s.url }}" rel="noopener">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}</td>
+      <td>{{ s.platform }}</td>
+      <td>{{ s.tier }}</td>
+      <td>{{ "yes" if s.active else "no" }}</td>
+      <td>{{ [s.city, s.country] | select | join(", ") }}</td>
+      <td class="num">{{ item_counts.get(s.id, 0) }}</td>
+      <td>{{ s.last_successful_check_at.date().isoformat() if s.last_successful_check_at else "—" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

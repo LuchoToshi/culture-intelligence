@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{{ signal.name }} — Culture Intelligence{% endblock %}
+{% block content %}
+<p class="sub"><a href="/signals">← Signal Registry</a></p>
+<h1>{{ signal.name }}</h1>
+<p>
+  <span class="badge {{ signal.lifecycle_stage }}">{{ signal.lifecycle_stage }}</span>
+  &nbsp; {{ signal.evidence_count }} evidence items · {{ signal.source_count }} sources
+  {% if signal.first_detected_at %} · first seen {{ signal.first_detected_at.date().isoformat() }}{% endif %}
+  {% if signal.last_evidence_at %} · last evidence {{ signal.last_evidence_at.date().isoformat() }}{% endif %}
+</p>
+{% if signal.description %}<p>{{ signal.description }}</p>{% endif %}
+{% if signal.cities %}<p class="sub">Cities: {{ signal.cities | join(", ") }}</p>{% endif %}
+{% if signal.categories %}<p class="sub">Topics: {{ signal.categories | join(", ") }}</p>{% endif %}
+
+<h2>Score profile <span class="sub">(averaged from evidence, 1–5)</span></h2>
+<table style="max-width: 480px">
+  <tbody>
+  {% for label, value in scores %}
+    <tr><td>{{ label }}</td>
+      <td class="num">{% if value %}<span class="dots" aria-label="{{ value }} of 5">{{ "●" * value }}{{ "○" * (5 - value) }}</span>{% else %}<span class="sub">no evidence</span>{% endif %}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2>Evidence <span class="sub">(newest first)</span></h2>
+{% for e in evidence %}
+<article class="evidence">
+  <div class="meta">{{ e.source.name }} · {{ e.item.content_type }} ·
+    {{ e.when.date().isoformat() if e.when else "?" }}</div>
+  <strong><a href="{{ e.item.url }}" rel="noopener">{{ e.item.title or e.item.url }}</a></strong>
+  {% if e.note %}<div class="sub">Why it's evidence: {{ e.note }}</div>{% endif %}
+  {% if e.summary %}<p>{{ e.summary }}</p>{% endif %}
+</article>
+{% else %}
+<p class="empty">No evidence linked.</p>
+{% endfor %}
+{% endblock %}

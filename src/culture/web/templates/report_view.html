@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}{{ name }} — Culture Intelligence{% endblock %}
+{% block content %}
+<p class="sub"><a href="/reports">← Reports</a></p>
+<div class="prose">{{ content | safe }}</div>
+{% endblock %}

@@ -321,6 +321,21 @@ def analyze(
             console.print(f"  [green]+ {name}[/green]")
 
 
+@app.command()
+def web(
+    port: int = typer.Option(8765, "--port", help="Port to serve on."),
+) -> None:
+    """Serve the local read-only web interface (localhost only)."""
+    import uvicorn
+
+    from culture.web.app import create_app
+
+    console.print(
+        f"Culture Intelligence UI: [bold]http://127.0.0.1:{port}[/bold]  (Ctrl+C to stop)"
+    )
+    uvicorn.run(create_app(), host="127.0.0.1", port=port, log_level="warning")
+
+
 signals_app = typer.Typer(help="Persistent signal registry.", no_args_is_help=True)
 app.add_typer(signals_app, name="signals")
 

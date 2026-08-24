@@ -4,7 +4,7 @@ A fashion-first urban taste intelligence system: the intelligence layer between 
 
 This is **not** a news aggregator or a trend dashboard. The system distinguishes editorial attention from social attention, social attention from real-world adoption, and adoption from commercial success — and tracks how signals form, who adopts them, where they emerge, how they spread between cities, and when they saturate.
 
-## Current scope (V0, Phase 1 complete)
+## Current scope (V0 complete + signal layer + web UI)
 
 | Phase | Status |
 |---|---|
@@ -13,9 +13,9 @@ This is **not** a news aggregator or a trend dashboard. The system distinguishes
 | 3. RSS collector + extraction + dedup (single publication) | ✅ done |
 | 4. Multi-publication ingestion + resilience | ✅ done |
 | 5. YouTube ingestion + transcripts | ✅ done |
-| 6. AI provider abstraction + item analysis | ✅ done (awaiting API key for live run) |
+| 6. AI provider abstraction + item analysis | ✅ done |
 | 7. Weekly report (roundup + synthesis) | ✅ done |
-| 8. Quality pass | not started |
+| 8. Quality pass | ✅ done |
 
 ## Architecture
 
@@ -104,6 +104,7 @@ uv run culture analyze --limit 10  # bounded batch
 Analysis uses structured outputs (`client.messages.parse` with a Pydantic schema), stores one `content_analyses` row per run stamped with provider/model/version, keeps source facts separate from system interpretations, and marks failures for automatic retry on the next run. Set `ANTHROPIC_API_KEY` in `.env`; model defaults to `claude-opus-5`, override with `AI_MODEL`.
 
 ```bash
+uv run culture web               # local read-only web UI at http://127.0.0.1:8765
 uv run culture signals list      # persistent signal registry
 uv run culture signals update    # evaluate analyzed items against the registry
 uv run culture report --days 7   # weekly report -> reports/<year>-W<week>.md

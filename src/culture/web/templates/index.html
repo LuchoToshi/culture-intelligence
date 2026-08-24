@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Overview</h1>
+<div class="cards">
+  <div class="card"><div class="big">{{ counts.signals }}</div><div class="label">Active signals</div></div>
+  <div class="card"><div class="big">{{ counts.sources }}</div><div class="label">Active sources</div></div>
+  <div class="card"><div class="big">{{ counts.content_items }}</div><div class="label">Content items</div></div>
+  <div class="card"><div class="big">{{ counts.analyzed }}</div><div class="label">Analyzed</div></div>
+  <div class="card"><div class="big">{{ counts.pending }}</div><div class="label">Pending analysis</div></div>
+</div>
+
+{% if latest_report %}
+<p>Latest report: <a href="/reports/{{ latest_report }}">{{ latest_report }}</a></p>
+{% endif %}
+
+<h2>Signals moving this week</h2>
+<table>
+  <thead><tr><th scope="col">Signal</th><th scope="col">Stage</th>
+    <th scope="col" class="num">Evidence</th><th scope="col" class="num">Sources</th>
+    <th scope="col" class="num">+7d</th></tr></thead>
+  <tbody>
+  {% for signal, delta in movers %}
+    <tr>
+      <td><a href="/signals/{{ signal.id }}">{{ signal.name }}</a></td>
+      <td><span class="badge {{ signal.lifecycle_stage }}">{{ signal.lifecycle_stage }}</span></td>
+      <td class="num">{{ signal.evidence_count }}</td>
+      <td class="num">{{ signal.source_count }}</td>
+      <td class="num">{% if delta %}<span class="delta">+{{ delta }}</span>{% else %}—{% endif %}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="5" class="empty">No signals yet — run the pipeline first.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
