@@ -10,7 +10,7 @@ This is **not** a news aggregator. The system is built to eventually distinguish
 |---|---|
 | 1. Foundation: project, config, database, models, migrations, CLI skeleton | ✅ done |
 | 2. Source registry + seed import | ✅ done |
-| 3. RSS collector + extraction + dedup (single publication) | not started |
+| 3. RSS collector + extraction + dedup (single publication) | ✅ done |
 | 4. Multi-publication ingestion + resilience | not started |
 | 5. YouTube ingestion + transcripts | not started |
 | 6. AI provider abstraction + item analysis | not started |
@@ -86,12 +86,15 @@ uv run culture db init    # apply migrations
 uv run culture seed       # import seeds/sources.yaml (idempotent, matches by name)
 uv run culture sources    # list all sources with tier/active/feed state
 uv run culture status     # system health: sources, content, backlog
+uv run culture ingest     # collect new content from all active sources (RSS)
+uv run culture ingest --source "Sabukaru"   # single source
 ```
+
+Ingestion normalizes URLs (tracking params, fragments, trailing slashes), extracts article text with trafilatura, records extraction status per item, and skips duplicates via DB-enforced constraints plus canonical-URL matching. A failing source never stops the run; sources without a verified feed are skipped visibly.
 
 Arriving in later phases (currently exit with a clear message):
 
 ```bash
-uv run culture ingest          # Phase 3/5: collect new content
 uv run culture analyze         # Phase 6: AI analysis
 uv run culture report --days 7 # Phase 7: weekly report -> reports/2026-W35.md
 ```

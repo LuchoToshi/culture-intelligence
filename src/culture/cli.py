@@ -192,7 +192,41 @@ def ingest(
     source: str | None = typer.Option(None, "--source", help="Ingest a single source by name."),
 ) -> None:
     """Check all active supported sources and store new content."""
-    _not_yet("Phase 3 (RSS) / Phase 5 (YouTube)")
+    from culture.database import get_engine, session_scope
+    from culture.services.ingestion import IngestionService
+
+    with session_scope(get_engine()) as session:
+        service = IngestionService(session)
+        try:
+            stats = service.ingest(source_name=source)
+        except ValueError as exc:
+            console.print(f"[red]{exc}[/red]")
+            raise typer.Exit(1) from exc
+
+    console.print()
+    console.print(f"Sources checked: {stats.checked}")
+    console.print(f"Successful: {stats.successful}")
+    console.print(f"Failed: {len(stats.failed)}")
+    for failure in stats.failed:
+        console.print(f"  [red]- {failure.source_name}: {failure.error}[/red]")
+    if stats.skipped:
+        console.print(f"Skipped: {len(stats.skipped)}")
+        for skip in stats.skipped:
+            console.print(f"  [dim]- {skip.source_name}: {skip.skipped_reason}[/dim]")
+    console.print()
+    console.print(f"New articles: {stats.total_new_articles}")
+    console.print(f"New videos: {stats.total_new_videos}")
+    console.print(f"Duplicates skipped: {stats.total_duplicates}")
+    console.print()
+    console.print(f"Articles extracted: {stats.total_extracted}")
+    console.print(f"Partial extractions: {stats.total_partial}")
+    console.print(f"Extraction failures: {stats.total_extraction_failed}")
+    if stats.total_new_videos or stats.total_transcripts_available:
+        console.print()
+        console.print("YouTube transcripts:")
+        console.print(f"Available: {stats.total_transcripts_available}")
+        console.print(f"Unavailable: {stats.total_transcripts_unavailable}")
+        console.print(f"Failed: {stats.total_transcripts_failed}")
 
 
 @app.command()

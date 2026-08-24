@@ -12,6 +12,9 @@ dependencies = [
     "typer>=0.12",
     "rich>=13.7",
     "pyyaml>=6.0.3",
+    "httpx>=0.28.1",
+    "feedparser>=6.0.14",
+    "trafilatura>=2.2.0",
 ]
 
 [dependency-groups]
