@@ -255,3 +255,29 @@ def test_provider_factory_unknown_provider():
     settings = Settings(_env_file=None, ai_provider="tarot")
     with pytest.raises(ProviderError, match="Unknown AI_PROVIDER"):
         get_provider(settings)
+
+
+def test_stale_backlog_items_skipped_not_analyzed(session):
+    from datetime import timedelta
+
+    from culture.analysis.item_analyzer import ANALYSIS_MAX_AGE_DAYS
+    from culture.utils.dates import now_utc
+
+    make_item(session, title="Fresh Item")
+    make_item(
+        session,
+        title="Ancient Episode",
+        published_at=now_utc() - timedelta(days=ANALYSIS_MAX_AGE_DAYS + 100),
+    )
+    provider = FakeProvider()
+    stats = ItemAnalyzer(session, provider).analyze_pending()
+
+    assert stats.stale_skipped == 1
+    assert stats.analyzed == 1
+    ancient = session.query(ContentItem).filter_by(title="Ancient Episode").one()
+    assert ancient.processing_status == "skipped"
+    assert session.query(ContentAnalysis).count() == 1
+    # a skipped item is reversible and never re-enters the queue on its own
+    stats2 = ItemAnalyzer(session, FakeProvider()).analyze_pending()
+    assert stats2.stale_skipped == 0
+    assert stats2.analyzed == 0

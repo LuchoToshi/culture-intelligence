@@ -295,6 +295,10 @@ def analyze(
         remaining = len(analyzer.pending_items())
 
     console.print()
+    if stats.stale_skipped:
+        console.print(
+            f"Skipped {stats.stale_skipped} back-catalog item(s) older than the analysis window."
+        )
     console.print(f"Analyzed: {stats.analyzed}")
     console.print(f"Failed: {stats.failed}")
     for failure in stats.failures[:10]:

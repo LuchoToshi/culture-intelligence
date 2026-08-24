@@ -32,6 +32,8 @@ class TranscriptStatus(StrEnum):
 class ProcessingStatus(StrEnum):
     NEW = "new"
     READY = "ready"
+    # Deliberately excluded from analysis (e.g. deep back-catalog items); explicit, not silent.
+    SKIPPED = "skipped"
     ANALYZING = "analyzing"
     ANALYZED = "analyzed"
     FAILED = "failed"

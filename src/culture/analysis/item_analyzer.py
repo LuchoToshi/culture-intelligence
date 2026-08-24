@@ -17,6 +17,12 @@ log = get_logger("culture.analysis")
 
 ANALYSIS_VERSION = "1"
 
+# Items published further back than this are marked skipped instead of analyzed.
+# New sources can expose deep back-catalogs (podcast archives of hundreds of
+# episodes); analyzing years-old content costs real money and adds noise, while
+# the items themselves stay stored and reversible (set status back to 'ready').
+ANALYSIS_MAX_AGE_DAYS = 90
+
 # Direct 1:1 list fields between the LLM response and the ContentAnalysis row.
 # Entity columns are filled separately by fanning out the typed entities array.
 _LIST_FIELDS = (
@@ -32,6 +38,7 @@ _LIST_FIELDS = (
 class AnalyzeStats:
     analyzed: int = 0
     failed: int = 0
+    stale_skipped: int = 0
     failures: list[str] = field(default_factory=list)
 
 
@@ -55,8 +62,27 @@ class ItemAnalyzer:
             query = query.limit(limit)
         return list(self.session.scalars(query))
 
+    def skip_stale_items(self) -> int:
+        """Mark pending items older than ANALYSIS_MAX_AGE_DAYS as skipped."""
+        from datetime import timedelta
+
+        from culture.utils.dates import ensure_utc
+
+        cutoff = now_utc() - timedelta(days=ANALYSIS_MAX_AGE_DAYS)
+        skipped = 0
+        for item in self.pending_items():
+            when = ensure_utc(item.published_at or item.discovered_at)
+            if when and when < cutoff:
+                item.processing_status = ProcessingStatus.SKIPPED.value
+                skipped += 1
+        if skipped:
+            self.session.commit()
+            log.info("skipped %d items older than %d days", skipped, ANALYSIS_MAX_AGE_DAYS)
+        return skipped
+
     def analyze_pending(self, limit: int | None = None) -> AnalyzeStats:
         stats = AnalyzeStats()
+        stats.stale_skipped = self.skip_stale_items()
         items = self.pending_items(limit)
         log.info("analysis started: %d items pending", len(items))
         for item in items:

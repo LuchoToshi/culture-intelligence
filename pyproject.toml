@@ -18,6 +18,7 @@ dependencies = [
     "yt-dlp>=2026.8.19",
     "youtube-transcript-api>=1.2.4",
     "anthropic>=1.0.0",
+    "brotli>=1.2.0",
 ]
 
 [dependency-groups]

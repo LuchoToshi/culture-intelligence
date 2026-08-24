@@ -227,7 +227,9 @@ def test_podcast_ingestion_stores_show_notes_without_pretending(session):
     service = IngestionService(
         session,
         collectors={"podcast": PodcastCollector()},
-        page_fetcher=lambda url: (_ for _ in ()).throw(AssertionError("no page fetch for podcasts")),
+        page_fetcher=lambda url: (_ for _ in ()).throw(
+            AssertionError("no page fetch for podcasts")
+        ),
     )
     stats = service.ingest()
 
@@ -239,4 +241,3 @@ def test_podcast_ingestion_stores_show_notes_without_pretending(session):
     assert item.raw_text is None
     assert "Show notes" in item.description
     assert item.processing_status == "ready"
-
