@@ -14,7 +14,7 @@ This is **not** a news aggregator. The system is built to eventually distinguish
 | 4. Multi-publication ingestion + resilience | ✅ done |
 | 5. YouTube ingestion + transcripts | ✅ done |
 | 6. AI provider abstraction + item analysis | ✅ done (awaiting API key for live run) |
-| 7. Weekly report (roundup + synthesis) | not started |
+| 7. Weekly report (roundup + synthesis) | ✅ done |
 | 8. Quality pass | not started |
 
 ## Architecture
@@ -103,11 +103,11 @@ uv run culture analyze --limit 10  # bounded batch
 
 Analysis uses structured outputs (`client.messages.parse` with a Pydantic schema), stores one `content_analyses` row per run stamped with provider/model/version, keeps source facts separate from system interpretations, and marks failures for automatic retry on the next run. Set `ANTHROPIC_API_KEY` in `.env`; model defaults to `claude-opus-5`, override with `AI_MODEL`.
 
-Arriving in later phases (currently exit with a clear message):
-
 ```bash
-uv run culture report --days 7 # Phase 7: weekly report -> reports/2026-W35.md
+uv run culture report --days 7   # weekly report -> reports/<year>-W<week>.md
 ```
+
+The report has two parts. **Part 1** is a deterministic roundup rendered straight from the database: every active source appears (silent ones say "No new content found during this period"), each item with its full analysis, entities, signals, lifecycle, and any extraction/transcript limitation. **Part 2** is cross-source synthesis by the LLM — executive brief, emerging/strengthening signals, cross-source patterns, watch lists, city intelligence, saturation radar, commercial reality check, contradictions, week-over-week changes (the previous report is fed back in), and falsifiable hypotheses. Synthesis runs on `AI_SYNTHESIS_MODEL` (default `claude-opus-5`), separate from the per-item model.
 
 ### Seed file
 

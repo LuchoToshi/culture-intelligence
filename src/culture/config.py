@@ -10,6 +10,9 @@ class Settings(BaseSettings):
 
     ai_provider: str = "anthropic"
     ai_model: str = ""
+    # Weekly synthesis is one call a week where judgment quality is the product;
+    # it defaults to a stronger model than per-item analysis.
+    ai_synthesis_model: str = ""
     anthropic_api_key: str = ""
     openai_api_key: str = ""
 

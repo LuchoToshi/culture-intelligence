@@ -272,8 +272,39 @@ def analyze(
 def report(
     days: int = typer.Option(7, "--days", help="Reporting window in days."),
 ) -> None:
-    """Generate the weekly intelligence report."""
-    _not_yet("Phase 7 (weekly report)")
+    """Generate the weekly intelligence report (roundup + cross-source synthesis)."""
+    from culture.analysis.provider import (
+        DEFAULT_SYNTHESIS_MODEL,
+        ProviderError,
+        get_provider,
+    )
+    from culture.database import get_engine, session_scope
+    from culture.services.reporting import generate_report
+
+    settings = get_settings()
+    try:
+        provider = get_provider(
+            settings, model=settings.ai_synthesis_model or DEFAULT_SYNTHESIS_MODEL
+        )
+    except ProviderError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(1) from exc
+
+    with session_scope(get_engine()) as session:
+        result = generate_report(
+            session, provider, days=days, reports_dir=PROJECT_ROOT / "reports"
+        )
+
+    console.print()
+    console.print(f"Sources monitored: {result.sources_covered}")
+    console.print(f"Content items in window: {result.items_covered}")
+    if result.items_unanalyzed:
+        console.print(
+            f"[yellow]{result.items_unanalyzed} item(s) not yet analyzed — "
+            "run `culture analyze` and regenerate for full coverage.[/yellow]"
+        )
+    console.print()
+    console.print(f"Weekly report generated:\n[bold]{result.path}[/bold]")
 
 
 if __name__ == "__main__":

@@ -9,6 +9,7 @@ from culture.logging import get_logger
 log = get_logger("culture.analysis.provider")
 
 DEFAULT_ANTHROPIC_MODEL = "claude-opus-5"
+DEFAULT_SYNTHESIS_MODEL = "claude-opus-5"
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -65,7 +66,7 @@ class AnthropicProvider:
         return "".join(block.text for block in response.content if block.type == "text")
 
 
-def get_provider(settings: Settings) -> AIProvider:
+def get_provider(settings: Settings, model: str | None = None) -> AIProvider:
     if settings.ai_provider == "anthropic":
         api_key = settings.anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY", "")
         if not api_key and not os.environ.get("ANTHROPIC_AUTH_TOKEN"):
@@ -73,7 +74,7 @@ def get_provider(settings: Settings) -> AIProvider:
                 "No Anthropic credentials found. Add ANTHROPIC_API_KEY=<your key> to the "
                 "project .env file (never commit it)."
             )
-        model = settings.ai_model or DEFAULT_ANTHROPIC_MODEL
+        model = model or settings.ai_model or DEFAULT_ANTHROPIC_MODEL
         log.debug("using anthropic provider with model %s", model)
         return AnthropicProvider(model=model, api_key=api_key or None)
     if settings.ai_provider == "openai":
