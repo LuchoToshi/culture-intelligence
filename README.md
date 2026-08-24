@@ -13,7 +13,7 @@ This is **not** a news aggregator. The system is built to eventually distinguish
 | 3. RSS collector + extraction + dedup (single publication) | ✅ done |
 | 4. Multi-publication ingestion + resilience | ✅ done |
 | 5. YouTube ingestion + transcripts | ✅ done |
-| 6. AI provider abstraction + item analysis | not started |
+| 6. AI provider abstraction + item analysis | ✅ done (awaiting API key for live run) |
 | 7. Weekly report (roundup + synthesis) | not started |
 | 8. Quality pass | not started |
 
@@ -96,10 +96,16 @@ Ingestion normalizes URLs (tracking params, fragments, trailing slashes), extrac
 
 **Boilerplate handling**: stored `raw_text` is exactly what the extractor produced — never modified. Site furniture that repeats across a source's articles (paywall prompts, newsletter upsells, "latest posts" widgets, affiliate disclaimers) is detected per source by cross-document paragraph frequency and stripped at consumption time (`services/boilerplate.py`), so detection improves as the corpus grows and stored data can never be corrupted by a cleaning bug.
 
+```bash
+uv run culture analyze             # AI analysis of all pending items
+uv run culture analyze --limit 10  # bounded batch
+```
+
+Analysis uses structured outputs (`client.messages.parse` with a Pydantic schema), stores one `content_analyses` row per run stamped with provider/model/version, keeps source facts separate from system interpretations, and marks failures for automatic retry on the next run. Set `ANTHROPIC_API_KEY` in `.env`; model defaults to `claude-opus-5`, override with `AI_MODEL`.
+
 Arriving in later phases (currently exit with a clear message):
 
 ```bash
-uv run culture analyze         # Phase 6: AI analysis
 uv run culture report --days 7 # Phase 7: weekly report -> reports/2026-W35.md
 ```
 

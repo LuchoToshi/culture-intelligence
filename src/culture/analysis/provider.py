@@ -1,0 +1,84 @@
+import os
+from typing import Protocol, TypeVar
+
+from pydantic import BaseModel
+
+from culture.config import Settings
+from culture.logging import get_logger
+
+log = get_logger("culture.analysis.provider")
+
+DEFAULT_ANTHROPIC_MODEL = "claude-opus-5"
+
+T = TypeVar("T", bound=BaseModel)
+
+
+class ProviderError(Exception):
+    """Provider-level failure (configuration, refusal, transport exhaustion)."""
+
+
+class AIProvider(Protocol):
+    """Transport abstraction. Prompts and business logic never live here, so
+    providers are swappable without touching analysis code."""
+
+    name: str
+    model: str
+
+    def generate_structured(self, system: str, user: str, output_format: type[T]) -> T: ...
+
+    def generate_text(self, system: str, user: str, max_tokens: int = 16000) -> str: ...
+
+
+class AnthropicProvider:
+    name = "anthropic"
+
+    def __init__(self, model: str, api_key: str | None = None) -> None:
+        import anthropic
+
+        self.model = model
+        self.client = anthropic.Anthropic(api_key=api_key or None)
+
+    def generate_structured(self, system: str, user: str, output_format: type[T]) -> T:
+        response = self.client.messages.parse(
+            model=self.model,
+            max_tokens=16000,
+            system=system,
+            messages=[{"role": "user", "content": user}],
+            output_format=output_format,
+        )
+        if response.stop_reason == "refusal":
+            raise ProviderError(f"Model refused the request: {response.stop_details}")
+        if response.parsed_output is None:
+            raise ProviderError(f"No parsable output (stop_reason={response.stop_reason})")
+        return response.parsed_output
+
+    def generate_text(self, system: str, user: str, max_tokens: int = 16000) -> str:
+        with self.client.messages.stream(
+            model=self.model,
+            max_tokens=max_tokens,
+            system=system,
+            messages=[{"role": "user", "content": user}],
+        ) as stream:
+            response = stream.get_final_message()
+        if response.stop_reason == "refusal":
+            raise ProviderError(f"Model refused the request: {response.stop_details}")
+        return "".join(block.text for block in response.content if block.type == "text")
+
+
+def get_provider(settings: Settings) -> AIProvider:
+    if settings.ai_provider == "anthropic":
+        api_key = settings.anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY", "")
+        if not api_key and not os.environ.get("ANTHROPIC_AUTH_TOKEN"):
+            raise ProviderError(
+                "No Anthropic credentials found. Add ANTHROPIC_API_KEY=<your key> to the "
+                "project .env file (never commit it)."
+            )
+        model = settings.ai_model or DEFAULT_ANTHROPIC_MODEL
+        log.debug("using anthropic provider with model %s", model)
+        return AnthropicProvider(model=model, api_key=api_key or None)
+    if settings.ai_provider == "openai":
+        raise ProviderError(
+            "The OpenAI provider is not implemented yet. Set AI_PROVIDER=anthropic, or ask "
+            "for an OpenAIProvider — the AIProvider interface makes it a one-class addition."
+        )
+    raise ProviderError(f"Unknown AI_PROVIDER: {settings.ai_provider!r}")

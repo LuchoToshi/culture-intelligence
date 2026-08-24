@@ -235,8 +235,37 @@ def ingest(
 def analyze(
     limit: int | None = typer.Option(None, "--limit", help="Analyze at most N items."),
 ) -> None:
-    """Run AI analysis on unprocessed content."""
-    _not_yet("Phase 6 (AI analysis)")
+    """Run AI analysis on unprocessed content (retries earlier failures)."""
+    from culture.analysis.item_analyzer import ItemAnalyzer
+    from culture.analysis.provider import ProviderError, get_provider
+    from culture.database import get_engine, session_scope
+
+    try:
+        provider = get_provider(get_settings())
+    except ProviderError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(1) from exc
+
+    with session_scope(get_engine()) as session:
+        analyzer = ItemAnalyzer(session, provider)
+        pending = len(analyzer.pending_items())
+        if pending == 0:
+            console.print("Nothing to analyze — all content is processed.")
+            return
+        todo = min(pending, limit) if limit else pending
+        console.print(
+            f"Analyzing {todo} of {pending} pending items with "
+            f"{provider.name}/{provider.model}..."
+        )
+        stats = analyzer.analyze_pending(limit)
+        remaining = len(analyzer.pending_items())
+
+    console.print()
+    console.print(f"Analyzed: {stats.analyzed}")
+    console.print(f"Failed: {stats.failed}")
+    for failure in stats.failures[:10]:
+        console.print(f"  [red]- {failure}[/red]")
+    console.print(f"Remaining unanalyzed: {remaining}")
 
 
 @app.command()
