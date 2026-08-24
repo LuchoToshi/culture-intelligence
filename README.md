@@ -11,7 +11,7 @@ This is **not** a news aggregator. The system is built to eventually distinguish
 | 1. Foundation: project, config, database, models, migrations, CLI skeleton | ✅ done |
 | 2. Source registry + seed import | ✅ done |
 | 3. RSS collector + extraction + dedup (single publication) | ✅ done |
-| 4. Multi-publication ingestion + resilience | not started |
+| 4. Multi-publication ingestion + resilience | ✅ done |
 | 5. YouTube ingestion + transcripts | not started |
 | 6. AI provider abstraction + item analysis | not started |
 | 7. Weekly report (roundup + synthesis) | not started |
@@ -90,7 +90,9 @@ uv run culture ingest     # collect new content from all active sources (RSS)
 uv run culture ingest --source "Sabukaru"   # single source
 ```
 
-Ingestion normalizes URLs (tracking params, fragments, trailing slashes), extracts article text with trafilatura, records extraction status per item, and skips duplicates via DB-enforced constraints plus canonical-URL matching. A failing source never stops the run; sources without a verified feed are skipped visibly.
+Ingestion normalizes URLs (tracking params, fragments, trailing slashes), extracts article text with trafilatura, records extraction status per item, and skips duplicates via DB-enforced constraints plus canonical-URL matching. A failing source never stops the run; sources without a verified feed are skipped visibly. Page fetches are rate-limited (0.5s between requests per run).
+
+**Boilerplate handling**: stored `raw_text` is exactly what the extractor produced — never modified. Site furniture that repeats across a source's articles (paywall prompts, newsletter upsells, "latest posts" widgets, affiliate disclaimers) is detected per source by cross-document paragraph frequency and stripped at consumption time (`services/boilerplate.py`), so detection improves as the corpus grows and stored data can never be corrupted by a cleaning bug.
 
 Arriving in later phases (currently exit with a clear message):
 

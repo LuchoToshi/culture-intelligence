@@ -1,3 +1,4 @@
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
@@ -21,6 +22,17 @@ from culture.utils.urls import normalize_url
 log = get_logger("culture.ingestion")
 
 PageFetcher = Callable[[str], str]
+
+# Pause between article page fetches so a large backlog never hammers a site.
+FETCH_DELAY_SECONDS = 0.5
+
+
+def _polite_fetcher(client: httpx.Client) -> PageFetcher:
+    def fetch(url: str) -> str:
+        time.sleep(FETCH_DELAY_SECONDS)
+        return get_with_retries(client, url).text
+
+    return fetch
 
 
 @dataclass
@@ -87,7 +99,7 @@ class IngestionService:
         if collectors is None or page_fetcher is None:
             client = create_client()
             collectors = collectors or {Platform.WEB.value: RSSCollector(client)}
-            page_fetcher = page_fetcher or (lambda url: get_with_retries(client, url).text)
+            page_fetcher = page_fetcher or _polite_fetcher(client)
         self.collectors = collectors
         self.page_fetcher = page_fetcher
 
