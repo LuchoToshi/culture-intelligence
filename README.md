@@ -1,8 +1,8 @@
 # Culture Intelligence
 
-An intelligence platform that monitors fashion, culture, lifestyle and urban taste sources, analyzes what they publish, and produces weekly cultural intelligence reports.
+A fashion-first urban taste intelligence system: the intelligence layer between fashion scenes and fashion markets (see [POSITIONING.md](POSITIONING.md) — the verbatim north star). It continuously collects fashion, culture and lifestyle signals, analyzes them, accumulates them into **persistent cultural signals**, and produces weekly intelligence reports.
 
-This is **not** a news aggregator. The system is built to eventually distinguish editorial attention from social attention, social attention from real-world adoption, and adoption from commercial success — and to track how cultural signals move from subculture to mainstream across cities.
+This is **not** a news aggregator or a trend dashboard. The system distinguishes editorial attention from social attention, social attention from real-world adoption, and adoption from commercial success — and tracks how signals form, who adopts them, where they emerge, how they spread between cities, and when they saturate.
 
 ## Current scope (V0, Phase 1 complete)
 
@@ -104,8 +104,12 @@ uv run culture analyze --limit 10  # bounded batch
 Analysis uses structured outputs (`client.messages.parse` with a Pydantic schema), stores one `content_analyses` row per run stamped with provider/model/version, keeps source facts separate from system interpretations, and marks failures for automatic retry on the next run. Set `ANTHROPIC_API_KEY` in `.env`; model defaults to `claude-opus-5`, override with `AI_MODEL`.
 
 ```bash
+uv run culture signals list      # persistent signal registry
+uv run culture signals update    # evaluate analyzed items against the registry
 uv run culture report --days 7   # weekly report -> reports/<year>-W<week>.md
 ```
+
+**The signal layer** is the core asset: items come and go weekly, signals persist. Each analyzed item is evaluated (LLM-assisted, high bar, fashion-anchored) against the registry — it either becomes evidence for an existing signal or founds a new one. Signal aggregates (evidence count, distinct sources, cities, score averages) are recomputed deterministically from evidence, and lifecycle stages come from a transparent heuristic (`compute_lifecycle`), never from weekly re-assertion. `culture analyze` runs signal matching automatically after item analysis.
 
 The report has two parts. **Part 1** is a deterministic roundup rendered straight from the database: every active source appears (silent ones say "No new content found during this period"), each item with its full analysis, entities, signals, lifecycle, and any extraction/transcript limitation. **Part 2** is cross-source synthesis by the LLM — executive brief, emerging/strengthening signals, cross-source patterns, watch lists, city intelligence, saturation radar, commercial reality check, contradictions, week-over-week changes (the previous report is fed back in), and falsifiable hypotheses. Synthesis runs on `AI_SYNTHESIS_MODEL` (default `claude-opus-5`), separate from the per-item model.
 

@@ -203,6 +203,61 @@ def build_digest(
     return "\n\n".join(entries)
 
 
+def build_signal_registry_digest(session: Session, since) -> tuple[str, list]:
+    """Registry lines for the synthesis prompt + rows for the report appendix."""
+    from culture.models.signal import Signal, SignalEvidence, SignalState
+
+    signals = list(
+        session.scalars(
+            select(Signal).where(Signal.state == SignalState.ACTIVE.value)
+        )
+    )
+    if not signals:
+        return "", []
+    new_evidence: dict[int, int] = {}
+    for signal in signals:
+        new_evidence[signal.id] = (
+            session.query(SignalEvidence)
+            .filter(
+                SignalEvidence.signal_id == signal.id, SignalEvidence.created_at >= since
+            )
+            .count()
+        )
+    rows = sorted(
+        signals, key=lambda s: (new_evidence.get(s.id, 0), s.evidence_count), reverse=True
+    )
+    lines = []
+    for s in rows:
+        delta = new_evidence.get(s.id, 0)
+        first = s.first_detected_at.date().isoformat() if s.first_detected_at else "?"
+        lines.append(
+            f"- {s.name} · stage: {s.lifecycle_stage} · evidence: {s.evidence_count} items "
+            f"from {s.source_count} sources (+{delta} this window) · first seen {first}"
+            + (f" · cities: {', '.join(s.cities[:5])}" if s.cities else "")
+            + (f"\n  {s.description}" if s.description else "")
+        )
+    return "\n".join(lines), [(s, new_evidence.get(s.id, 0)) for s in rows]
+
+
+def render_signal_appendix(rows: list) -> list[str]:
+    lines = [
+        "# Part 3 — Signal Registry",
+        "",
+        "_Persistent signals with accumulated evidence. Stages are computed from"
+        " evidence (sources, time span, scores), not asserted weekly._",
+        "",
+        "| Signal | Stage | Evidence | Sources | +This window | Cities | First seen |",
+        "|---|---|---|---|---|---|---|",
+    ]
+    for signal, delta in rows:
+        first = signal.first_detected_at.date().isoformat() if signal.first_detected_at else "—"
+        lines.append(
+            f"| {signal.name} | {signal.lifecycle_stage} | {signal.evidence_count} "
+            f"| {signal.source_count} | +{delta} | {', '.join(signal.cities[:3]) or '—'} | {first} |"
+        )
+    return lines
+
+
 def previous_synthesis(reports_dir: Path, current_filename: str) -> str | None:
     candidates = sorted(
         p for p in reports_dir.glob("*-W*.md") if p.name != current_filename
@@ -256,10 +311,11 @@ def generate_report(
     )
 
     digest = build_digest(sources, items_by_source, analyses)
+    registry_digest, registry_rows = build_signal_registry_digest(session, since)
     prior = previous_synthesis(reports_dir, filename)
     synthesis = provider.generate_text(
         WEEKLY_SYSTEM_PROMPT,
-        build_weekly_prompt(digest, prior, days),
+        build_weekly_prompt(digest, prior, days, signal_registry=registry_digest or None),
         max_tokens=32000,
     )
 
@@ -278,8 +334,9 @@ def generate_report(
         for source in sources
     ]
     part2 = ["# Part 2 — Weekly Cultural Intelligence", "", synthesis, ""]
+    part3 = render_signal_appendix(registry_rows) if registry_rows else []
 
-    path.write_text("\n".join(header + part1 + [""] + part2), encoding="utf-8")
+    path.write_text("\n".join(header + part1 + [""] + part2 + part3), encoding="utf-8")
     log.info("weekly report created: %s", path)
     return ReportResult(
         path=path,

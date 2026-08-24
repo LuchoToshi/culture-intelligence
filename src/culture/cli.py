@@ -267,6 +267,79 @@ def analyze(
         console.print(f"  [red]- {failure}[/red]")
     console.print(f"Remaining unanalyzed: {remaining}")
 
+    # Newly analyzed items feed the signal registry in the same run.
+    from culture.services.signals import SignalService
+
+    with session_scope(get_engine()) as session:
+        signal_stats = SignalService(session, provider).update_signals()
+    if signal_stats.items_processed:
+        console.print()
+        console.print(
+            f"Signal registry: {signal_stats.items_processed} items evaluated, "
+            f"{signal_stats.links_created} evidence links, "
+            f"{signal_stats.signals_created} new signals."
+        )
+        for name in signal_stats.new_signal_names[:15]:
+            console.print(f"  [green]+ {name}[/green]")
+
+
+signals_app = typer.Typer(help="Persistent signal registry.", no_args_is_help=True)
+app.add_typer(signals_app, name="signals")
+
+
+@signals_app.command("list")
+def signals_list() -> None:
+    """Show the signal registry."""
+    from culture.database import get_engine, session_scope
+    from culture.services.signals import SignalService
+
+    with session_scope(get_engine()) as session:
+        signals = SignalService(session).active_signals()
+        table = Table(title=f"Signal Registry ({len(signals)})")
+        table.add_column("Signal", max_width=50)
+        table.add_column("Stage")
+        table.add_column("Items", justify="right")
+        table.add_column("Sources", justify="right")
+        table.add_column("Cities", max_width=30)
+        table.add_column("First seen")
+        table.add_column("Last evidence")
+        for s in sorted(signals, key=lambda s: (s.evidence_count, s.id), reverse=True):
+            table.add_row(
+                s.name,
+                s.lifecycle_stage,
+                str(s.evidence_count),
+                str(s.source_count),
+                ", ".join(s.cities[:3]),
+                s.first_detected_at.date().isoformat() if s.first_detected_at else "—",
+                s.last_evidence_at.date().isoformat() if s.last_evidence_at else "—",
+            )
+        console.print(table)
+
+
+@signals_app.command("update")
+def signals_update(
+    limit: int | None = typer.Option(None, "--limit", help="Evaluate at most N items."),
+) -> None:
+    """Evaluate analyzed items against the signal registry."""
+    from culture.analysis.provider import ProviderError, get_provider
+    from culture.database import get_engine, session_scope
+    from culture.services.signals import SignalService
+
+    try:
+        provider = get_provider(get_settings())
+    except ProviderError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(1) from exc
+
+    with session_scope(get_engine()) as session:
+        stats = SignalService(session, provider).update_signals(limit)
+    console.print(
+        f"Items evaluated: {stats.items_processed} · evidence links: {stats.links_created} · "
+        f"new signals: {stats.signals_created} · invalid links skipped: {stats.invalid_links}"
+    )
+    for name in stats.new_signal_names:
+        console.print(f"  [green]+ {name}[/green]")
+
 
 @app.command()
 def report(

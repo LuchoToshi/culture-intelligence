@@ -77,6 +77,8 @@ class ContentItem(Base):
     metadata_json: Mapped[dict] = mapped_column(JSONField, default=dict)
     content_hash: Mapped[str | None] = mapped_column(String(64))
     processing_status: Mapped[str] = mapped_column(String(30), default=ProcessingStatus.NEW.value)
+    # When this item was last evaluated against the signal registry; null = pending.
+    signals_processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow

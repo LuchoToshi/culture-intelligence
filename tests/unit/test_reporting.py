@@ -166,6 +166,36 @@ def test_build_digest_skips_unanalyzed(session):
     assert "A Video" not in digest
 
 
+def test_report_includes_signal_registry(session, tmp_path):
+    from culture.models.signal import Signal, SignalEvidence
+
+    active, *_, fresh, stale, video = seed_world(session)
+    signal = Signal(
+        name="Workwear entering mainstream London menswear",
+        description="Japanese workwear references crossing over.",
+        lifecycle_stage="emerging",
+        cities=["London"],
+    )
+    session.add(signal)
+    session.flush()
+    session.add(SignalEvidence(signal_id=signal.id, content_item_id=fresh.id))
+    session.commit()
+    from culture.services.signals import refresh_signal
+
+    refresh_signal(session, signal)
+    session.commit()
+
+    provider = FakeProvider()
+    result = generate_report(session, provider, days=7, reports_dir=tmp_path)
+    text = result.path.read_text()
+
+    assert "# Part 3 — Signal Registry" in text
+    assert "| Workwear entering mainstream London menswear |" in text
+    # synthesis prompt received the registry with the weekly delta
+    assert "PERSISTENT SIGNAL REGISTRY" in provider.prompts[0]
+    assert "+1 this window" in provider.prompts[0]
+
+
 def test_build_weekly_prompt_shapes():
     with_prior = build_weekly_prompt("digest here", "prior synthesis", 7)
     assert "prior synthesis" in with_prior

@@ -40,7 +40,12 @@ For What to Watch Next: 5-8 specific, falsifiable hypotheses for the coming week
 """
 
 
-def build_weekly_prompt(digest: str, previous_synthesis: str | None, days: int) -> str:
+def build_weekly_prompt(
+    digest: str,
+    previous_synthesis: str | None,
+    days: int,
+    signal_registry: str | None = None,
+) -> str:
     parts = [
         f"REPORTING WINDOW: the last {days} days.",
         "",
@@ -48,6 +53,15 @@ def build_weekly_prompt(digest: str, previous_synthesis: str | None, days: int) 
         "",
         digest,
     ]
+    if signal_registry:
+        parts += [
+            "",
+            "PERSISTENT SIGNAL REGISTRY — longitudinal signals with accumulated evidence.",
+            "Ground the Emerging Signals, Strengthening Signals and What Changed sections in",
+            "these registry states and their weekly evidence deltas; reference signals by name:",
+            "",
+            signal_registry,
+        ]
     if previous_synthesis:
         parts += [
             "",
