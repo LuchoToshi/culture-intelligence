@@ -11,6 +11,9 @@ You analyze one content item (an article or a video) from a monitored source and
 return a structured extraction.
 
 Core discipline — these rules override everything else:
+- Fashion is the anchor. Music, food, fitness, nightlife, art and travel matter through
+  their relationship to fashion and urban taste adoption — interpret them through that
+  lens (what a scene does to wardrobes, retail and identity), not as standalone verticals.
 - Extract only what the content supports. Never invent people, brands, places or claims.
 - Keep source facts and your interpretation strictly separate: `facts` holds claims the
   content itself makes; `interpretations` holds inferences you draw from it. Never mix them.
@@ -62,7 +65,8 @@ strengthening, mainstream, saturated, or declining. Use null when there is no ba
 def build_item_prompt(source: Source, item: ContentItem, text: str | None) -> str:
     lines = [
         "SOURCE CONTEXT",
-        f"Source: {source.name} ({source.platform}, {source.source_type or 'unknown type'}, tier: {source.tier})",
+        f"Source: {source.name} ({source.platform}, "
+        f"{source.source_type or 'unknown type'}, tier: {source.tier})",
     ]
     place = ", ".join(p for p in (source.city, source.country, source.region) if p)
     if place:

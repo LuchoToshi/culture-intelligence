@@ -6,9 +6,7 @@ def test_hash_is_deterministic():
 
 
 def test_hash_ignores_whitespace_and_case_noise():
-    assert content_hash("Title", "Body   text\n\nhere") == content_hash(
-        "title", "body text here"
-    )
+    assert content_hash("Title", "Body   text\n\nhere") == content_hash("title", "body text here")
 
 
 def test_different_content_different_hash():

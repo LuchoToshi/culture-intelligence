@@ -36,7 +36,9 @@ YT_FEED = """<?xml version="1.0" encoding="UTF-8"?>
 
 
 def test_parse_youtube_feed():
-    items = parse_youtube_feed(YT_FEED, "https://www.youtube.com/feeds/videos.xml?channel_id=UCtest12345")
+    items = parse_youtube_feed(
+        YT_FEED, "https://www.youtube.com/feeds/videos.xml?channel_id=UCtest12345"
+    )
     assert len(items) == 1
     video = items[0]
     assert video.external_id == "abc123XYZ00"
@@ -144,7 +146,9 @@ def test_transcript_unavailable_preserves_video(session):
     make_yt_source(session)
     enrichment = VideoEnrichment(
         metadata=VideoMetadata(ok=True, duration_seconds=100),
-        transcript=TranscriptResult(status=TranscriptStatus.UNAVAILABLE, error="TranscriptsDisabled"),
+        transcript=TranscriptResult(
+            status=TranscriptStatus.UNAVAILABLE, error="TranscriptsDisabled"
+        ),
     )
     stats = make_service(session, [make_video_raw()], enrichment).ingest()
 
@@ -201,7 +205,10 @@ def test_retry_pass_recovers_failed_transcripts(session):
     session.commit()
 
     recovery = TranscriptResult(
-        status=TranscriptStatus.AVAILABLE, text="Recovered spoken words.", language="en", is_generated=True
+        status=TranscriptStatus.AVAILABLE,
+        text="Recovered spoken words.",
+        language="en",
+        is_generated=True,
     )
     stats = make_service(
         session, [make_video_raw()], FAILED_ENRICHMENT, transcript_fetcher=lambda vid: recovery
@@ -230,9 +237,7 @@ def test_retry_circuit_breaker_stops_hammering_while_blocked(session):
     make_service(session, videos, FAILED_ENRICHMENT, transcript_fetcher=still_blocked).ingest()
 
     assert len(calls) == 3  # breaker tripped, remaining 3 left for next run
-    assert (
-        session.query(ContentItem).filter(ContentItem.transcript_status == "failed").count() == 6
-    )
+    assert session.query(ContentItem).filter(ContentItem.transcript_status == "failed").count() == 6
 
 
 def test_retry_marks_confirmed_unavailable(session):

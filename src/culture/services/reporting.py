@@ -97,17 +97,15 @@ def render_item(item: ContentItem, analysis: ContentAnalysis | None) -> str:
         _entity_line("Scenes & subcultures", analysis.scenes, analysis.subcultures),
         _entity_line("Sports", analysis.sports),
         _entity_line("Garments & footwear", analysis.garments, analysis.footwear),
-        _entity_line(
-            "Places", analysis.restaurants, analysis.cafes, analysis.clubs
-        ),
+        _entity_line("Places", analysis.restaurants, analysis.cafes, analysis.clubs),
         _entity_line(
             "Cultural references", analysis.media_references, analysis.historical_references
         ),
         _entity_line("Consumer archetypes", analysis.consumer_archetypes),
     ]
-    entity_lines = [line for line in entity_lines if line]
-    if entity_lines:
-        lines += entity_lines + [""]
+    present_lines = [line for line in entity_lines if line is not None]
+    if present_lines:
+        lines += present_lines + [""]
 
     if analysis.possible_signals:
         lines.append("**Possible signals**")
@@ -207,20 +205,14 @@ def build_signal_registry_digest(session: Session, since) -> tuple[str, list]:
     """Registry lines for the synthesis prompt + rows for the report appendix."""
     from culture.models.signal import Signal, SignalEvidence, SignalState
 
-    signals = list(
-        session.scalars(
-            select(Signal).where(Signal.state == SignalState.ACTIVE.value)
-        )
-    )
+    signals = list(session.scalars(select(Signal).where(Signal.state == SignalState.ACTIVE.value)))
     if not signals:
         return "", []
     new_evidence: dict[int, int] = {}
     for signal in signals:
         new_evidence[signal.id] = (
             session.query(SignalEvidence)
-            .filter(
-                SignalEvidence.signal_id == signal.id, SignalEvidence.created_at >= since
-            )
+            .filter(SignalEvidence.signal_id == signal.id, SignalEvidence.created_at >= since)
             .count()
         )
     rows = sorted(
@@ -253,15 +245,14 @@ def render_signal_appendix(rows: list) -> list[str]:
         first = signal.first_detected_at.date().isoformat() if signal.first_detected_at else "—"
         lines.append(
             f"| {signal.name} | {signal.lifecycle_stage} | {signal.evidence_count} "
-            f"| {signal.source_count} | +{delta} | {', '.join(signal.cities[:3]) or '—'} | {first} |"
+            f"| {signal.source_count} | +{delta} "
+            f"| {', '.join(signal.cities[:3]) or '—'} | {first} |"
         )
     return lines
 
 
 def previous_synthesis(reports_dir: Path, current_filename: str) -> str | None:
-    candidates = sorted(
-        p for p in reports_dir.glob("*-W*.md") if p.name != current_filename
-    )
+    candidates = sorted(p for p in reports_dir.glob("*-W*.md") if p.name != current_filename)
     if not candidates:
         return None
     text = candidates[-1].read_text(encoding="utf-8")
@@ -292,9 +283,7 @@ def generate_report(
     for source in sources:
         items = [
             i
-            for i in session.scalars(
-                select(ContentItem).where(ContentItem.source_id == source.id)
-            )
+            for i in session.scalars(select(ContentItem).where(ContentItem.source_id == source.id))
             if (_item_time(i)) and since <= _item_time(i) <= now
         ]
         items_by_source[source.id] = items
@@ -330,8 +319,7 @@ def generate_report(
         "",
     ]
     part1 = [
-        render_source_section(source, items_by_source[source.id], analyses)
-        for source in sources
+        render_source_section(source, items_by_source[source.id], analyses) for source in sources
     ]
     part2 = ["# Part 2 — Weekly Cultural Intelligence", "", synthesis, ""]
     part3 = render_signal_appendix(registry_rows) if registry_rows else []

@@ -78,9 +78,7 @@ def fetch_transcript(video_id: str) -> TranscriptResult:
                 raise
             fetched = transcripts[0].fetch()
     except _UNAVAILABLE_ERRORS as exc:
-        return TranscriptResult(
-            status=TranscriptStatus.UNAVAILABLE, error=type(exc).__name__
-        )
+        return TranscriptResult(status=TranscriptStatus.UNAVAILABLE, error=type(exc).__name__)
     except Exception as exc:
         log.warning("transcript fetch failed for %s: %s", video_id, exc)
         return TranscriptResult(status=TranscriptStatus.FAILED, error=str(exc))

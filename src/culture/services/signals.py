@@ -122,10 +122,9 @@ def refresh_signal(session: Session, signal: Signal) -> None:
 
     averages: dict[str, float | None] = {}
     for score_field, values in score_values.items():
-        averages[score_field] = sum(values) / len(values) if values else None
-        setattr(
-            signal, score_field, round(averages[score_field]) if values else None
-        )
+        avg = sum(values) / len(values) if values else None
+        averages[score_field] = avg
+        setattr(signal, score_field, round(avg) if avg is not None else None)
 
     signal.lifecycle_stage = compute_lifecycle(
         evidence_count=signal.evidence_count,
@@ -187,6 +186,7 @@ class SignalService:
         return stats
 
     def _process_batch(self, batch: list[ContentItem], stats: SignalUpdateStats) -> None:
+        assert self.provider is not None, "update_signals requires a provider"
         analyses = _latest_analysis_map(self.session, [i.id for i in batch])
         registry = self.active_signals()
         prompt = build_signal_prompt(
@@ -237,7 +237,7 @@ class SignalService:
                 log.warning("link to unknown signal %s skipped", link.existing_signal_id)
                 return None
         else:
-            name = link.new_signal_name.strip()
+            name = (link.new_signal_name or "").strip()
             # Defensive dedupe: an LLM-proposed "new" signal matching an existing
             # name (case-insensitive) links instead of duplicating.
             signal = next(
@@ -279,6 +279,7 @@ class SignalService:
 
     def _item_line(self, item: ContentItem, analysis: ContentAnalysis | None) -> str:
         source = self.session.get(Source, item.source_id)
+        assert source is not None
         when = ensure_utc(item.published_at or item.discovered_at)
         lines = [
             f"ITEM {item.id} [{source.name} · {item.content_type} · "

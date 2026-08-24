@@ -30,17 +30,17 @@ def split_paragraphs(text: str) -> list[str]:
     return [p.strip() for p in text.split("\n") if p.strip()]
 
 
-def find_boilerplate(bodies: Iterable[str]) -> set[str]:
-    bodies = [b for b in bodies if b and b.strip()]
-    if len(bodies) < MIN_ITEMS:
+def find_boilerplate(bodies: Iterable[str | None]) -> set[str]:
+    present = [b for b in bodies if b and b.strip()]
+    if len(present) < MIN_ITEMS:
         return set()
     counts: Counter[str] = Counter()
-    for body in bodies:
+    for body in present:
         # count each paragraph once per document
         for paragraph in set(split_paragraphs(body)):
             if len(paragraph) >= MIN_PARAGRAPH_LENGTH:
                 counts[paragraph] += 1
-    threshold = max(MIN_ITEMS, int(len(bodies) * MIN_FRACTION))
+    threshold = max(MIN_ITEMS, int(len(present) * MIN_FRACTION))
     return {p for p, n in counts.items() if n >= threshold}
 
 

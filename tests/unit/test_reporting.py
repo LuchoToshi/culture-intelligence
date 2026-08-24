@@ -25,29 +25,62 @@ class FakeProvider:
 
 
 def seed_world(session):
-    active = Source(name="Active Pub", platform="web", feed_url="https://a.example/feed", active=True, tier="core")
-    silent = Source(name="Silent Pub", platform="web", feed_url="https://s.example/feed", active=True, tier="core")
+    active = Source(
+        name="Active Pub",
+        platform="web",
+        feed_url="https://a.example/feed",
+        active=True,
+        tier="core",
+    )
+    silent = Source(
+        name="Silent Pub",
+        platform="web",
+        feed_url="https://s.example/feed",
+        active=True,
+        tier="core",
+    )
     feedless = Source(
-        name="Feedless Pub", platform="web", active=True, tier="core",
+        name="Feedless Pub",
+        platform="web",
+        active=True,
+        tier="core",
         collection_notes="No RSS feed found; needs custom collector.",
     )
-    channel = Source(name="A Channel", platform="youtube", feed_url="https://yt.example/feed", active=True, tier="core")
+    channel = Source(
+        name="A Channel",
+        platform="youtube",
+        feed_url="https://yt.example/feed",
+        active=True,
+        tier="core",
+    )
     inactive = Source(name="Inactive IG", platform="instagram", active=False, tier="watch")
     session.add_all([active, silent, feedless, channel, inactive])
     session.commit()
 
     fresh = ContentItem(
-        source_id=active.id, url="https://a.example/fresh", title="Fresh Story",
-        content_type="article", published_at=NOW - timedelta(days=2), raw_text="body",
+        source_id=active.id,
+        url="https://a.example/fresh",
+        title="Fresh Story",
+        content_type="article",
+        published_at=NOW - timedelta(days=2),
+        raw_text="body",
     )
     stale = ContentItem(
-        source_id=active.id, url="https://a.example/stale", title="Stale Story",
-        content_type="article", published_at=NOW - timedelta(days=40), raw_text="body",
+        source_id=active.id,
+        url="https://a.example/stale",
+        title="Stale Story",
+        content_type="article",
+        published_at=NOW - timedelta(days=40),
+        raw_text="body",
     )
     video = ContentItem(
-        source_id=channel.id, url="https://yt.example/v1", external_id="v1",
-        title="A Video", content_type="video",
-        published_at=NOW - timedelta(days=1), transcript_status="failed",
+        source_id=channel.id,
+        url="https://yt.example/v1",
+        external_id="v1",
+        title="A Video",
+        content_type="video",
+        published_at=NOW - timedelta(days=1),
+        transcript_status="failed",
     )
     session.add_all([fresh, stale, video])
     session.commit()
@@ -62,7 +95,9 @@ def seed_world(session):
             why_it_matters="Signals niche-to-mainstream migration.",
             lifecycle_stage="strengthening",
             cultural_origin_score=4,
-            analysis_model="m1", analysis_provider="fake", analysis_version="1",
+            analysis_model="m1",
+            analysis_provider="fake",
+            analysis_version="1",
         )
     )
     session.commit()
@@ -135,7 +170,8 @@ def provider_filename(tmp_path):
 
 def test_previous_report_feeds_change_tracking(session, tmp_path):
     (tmp_path / "2020-W01.md").write_text(
-        "# Cultural Intelligence Report\n# Part 2 — Weekly Cultural Intelligence\nOld insight about gorpcore.\n"
+        "# Cultural Intelligence Report\n# Part 2 — Weekly Cultural Intelligence\n"
+        "Old insight about gorpcore.\n"
     )
     seed_world(session)
     provider = FakeProvider()
@@ -157,7 +193,7 @@ def test_report_filename_is_iso_week(session, tmp_path):
 
 
 def test_build_digest_skips_unanalyzed(session):
-    active, *_ , fresh, stale, video = seed_world(session)
+    active, *_, fresh, stale, video = seed_world(session)
     from culture.services.reporting import latest_analyses
 
     analyses = latest_analyses(session, [fresh.id, video.id])

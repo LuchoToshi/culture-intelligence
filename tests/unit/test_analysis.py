@@ -171,9 +171,7 @@ def test_long_text_truncated_in_prompt(session):
     source = Source(name="Pub2", platform="web")
     session.add(source)
     session.commit()
-    item = ContentItem(
-        source_id=source.id, url="https://x.example/long", content_type="article"
-    )
+    item = ContentItem(source_id=source.id, url="https://x.example/long", content_type="article")
     prompt = build_item_prompt(source, item, "x" * (MAX_ANALYSIS_CHARS + 5000))
     assert "truncated" in prompt
     assert len(prompt) < MAX_ANALYSIS_CHARS + 2000

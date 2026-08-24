@@ -17,7 +17,13 @@ from culture.extraction.youtube import (
     fetch_transcript,
 )
 from culture.logging import get_logger
-from culture.models.content import ContentItem, ContentType, ExtractionStatus, ProcessingStatus, TranscriptStatus
+from culture.models.content import (
+    ContentItem,
+    ContentType,
+    ExtractionStatus,
+    ProcessingStatus,
+    TranscriptStatus,
+)
 from culture.models.source import Platform, Source
 from culture.repositories.content import ContentRepository
 from culture.schemas.collector import RawContentItem
@@ -212,6 +218,8 @@ class IngestionService:
         )
         consecutive_failures = 0
         for item in failed_items:
+            if not item.external_id:
+                continue
             result = self.transcript_fetcher(item.external_id)
             if result.status == TranscriptStatus.AVAILABLE:
                 consecutive_failures = 0
@@ -292,7 +300,7 @@ class IngestionService:
                 log.warning("article extraction failed: %s", normalized)
             stats.new_articles += 1
         else:
-            enrichment = self.video_enricher(normalized, raw.external_id)
+            enrichment = self.video_enricher(normalized, raw.external_id or "")
             meta = enrichment.metadata
             transcript = enrichment.transcript
 

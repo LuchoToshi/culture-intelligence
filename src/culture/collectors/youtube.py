@@ -16,7 +16,9 @@ def parse_youtube_feed(content: bytes | str, feed_url: str) -> list[RawContentIt
     """Parse a YouTube channel Atom feed into normalized video items."""
     parsed = feedparser.parse(content)
     if parsed.bozo and not parsed.entries:
-        raise CollectorError(f"YouTube feed unparseable: {feed_url}: {parsed.get('bozo_exception')}")
+        raise CollectorError(
+            f"YouTube feed unparseable: {feed_url}: {parsed.get('bozo_exception')}"
+        )
 
     items: list[RawContentItem] = []
     for entry in parsed.entries:

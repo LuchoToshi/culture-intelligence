@@ -24,9 +24,7 @@ def parse_feed(content: bytes | str, feed_url: str) -> list[RawContentItem]:
         if not url:
             log.warning("feed entry without link skipped in %s", feed_url)
             continue
-        published = from_struct_time(
-            entry.get("published_parsed") or entry.get("updated_parsed")
-        )
+        published = from_struct_time(entry.get("published_parsed") or entry.get("updated_parsed"))
         tags = [t.get("term") for t in entry.get("tags", []) if t.get("term")]
         items.append(
             RawContentItem(

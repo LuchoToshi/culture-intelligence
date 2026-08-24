@@ -30,7 +30,9 @@ def get_with_retries(client: httpx.Client, url: str, max_attempts: int = 3) -> h
         try:
             response = client.get(url)
             if response.status_code in RETRYABLE_STATUS and attempt < max_attempts:
-                log.debug("retryable status %s from %s (attempt %d)", response.status_code, url, attempt)
+                log.debug(
+                    "retryable status %s from %s (attempt %d)", response.status_code, url, attempt
+                )
             else:
                 response.raise_for_status()
                 return response
@@ -43,4 +45,4 @@ def get_with_retries(client: httpx.Client, url: str, max_attempts: int = 3) -> h
                 raise
             log.debug("fetch failed for %s (attempt %d): %s", url, attempt, exc)
         time.sleep(2**attempt)  # 2s, 4s
-    raise last_error  # unreachable, keeps type checkers honest
+    raise AssertionError(f"retry loop exited without result for {url}") from last_error

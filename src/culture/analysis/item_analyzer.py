@@ -77,6 +77,7 @@ class ItemAnalyzer:
 
     def _analyze_item(self, item: ContentItem) -> None:
         source = self.session.get(Source, item.source_id)
+        assert source is not None
         text = cleaned_text_for(self.session, item)
         prompt = build_item_prompt(source, item, text)
         response = self.provider.generate_structured(

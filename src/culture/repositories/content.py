@@ -28,8 +28,7 @@ class ContentRepository:
             select(ContentItem)
             .where(
                 ContentItem.source_id == source_id,
-                ContentItem.url.in_(candidates)
-                | ContentItem.canonical_url.in_(candidates),
+                ContentItem.url.in_(candidates) | ContentItem.canonical_url.in_(candidates),
             )
             .limit(1)
         )

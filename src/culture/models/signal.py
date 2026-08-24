@@ -1,7 +1,15 @@
 from datetime import UTC, datetime
 from enum import StrEnum
 
-from sqlalchemy import DateTime, ForeignKey, Integer, SmallInteger, String, Text, UniqueConstraint
+from sqlalchemy import (
+    DateTime,
+    ForeignKey,
+    Integer,
+    SmallInteger,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from culture.database import Base, JSONField
@@ -60,14 +68,15 @@ class Signal(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<Signal {self.id} {self.name!r} stage={self.lifecycle_stage} evidence={self.evidence_count}>"
+        return (
+            f"<Signal {self.id} {self.name!r} "
+            f"stage={self.lifecycle_stage} evidence={self.evidence_count}>"
+        )
 
 
 class SignalEvidence(Base):
     __tablename__ = "signal_evidence"
-    __table_args__ = (
-        UniqueConstraint("signal_id", "content_item_id", name="uq_signal_evidence"),
-    )
+    __table_args__ = (UniqueConstraint("signal_id", "content_item_id", name="uq_signal_evidence"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     signal_id: Mapped[int] = mapped_column(ForeignKey("signals.id", ondelete="CASCADE"), index=True)

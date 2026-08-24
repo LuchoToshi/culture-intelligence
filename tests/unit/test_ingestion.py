@@ -64,9 +64,7 @@ def make_service(session, collector, pages=None):
             return result
         return ARTICLE_HTML
 
-    return IngestionService(
-        session, collectors={"web": collector}, page_fetcher=fetch_page
-    )
+    return IngestionService(session, collectors={"web": collector}, page_fetcher=fetch_page)
 
 
 def test_ingestion_stores_new_article_with_extraction(session):
@@ -177,7 +175,7 @@ def test_one_failing_source_does_not_stop_others(session):
 
 
 def test_sources_without_feed_or_collector_are_skipped_visibly(session):
-    no_feed = make_web_source(session, name="No Feed", feed_url=None)
+    make_web_source(session, name="No Feed", feed_url=None)
     session.add(Source(name="Instagram Thing", platform="instagram", active=True))
     session.commit()
 

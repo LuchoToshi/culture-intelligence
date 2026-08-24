@@ -1,19 +1,27 @@
 from culture.models.content import ContentItem
 from culture.models.source import Source
 from culture.services.boilerplate import (
-    boilerplate_for_source,
     clean_text,
     cleaned_text_for,
     find_boilerplate,
 )
 
 UPSELL = "The essential daily round-up of fashion news, analysis, and breaking news alerts."
-SIGNIN = "Please sign in to ensure you can read our agenda-setting intelligence, analysis and advice."
-AFFILIATE = "We may receive a commission from your purchase through affiliate marketing partnerships."
+SIGNIN = (
+    "Please sign in to ensure you can read our agenda-setting intelligence, analysis and advice."
+)
+AFFILIATE = (
+    "We may receive a commission from your purchase through affiliate marketing partnerships."
+)
 
 
 def article(body: str, n: int) -> str:
-    return f"{SIGNIN}\n{UPSELL}\nReal reporting paragraph number {n} about a designer collection with plenty of substance.\nMore unique analysis in article {n} that only this article contains.\n{AFFILIATE}"
+    return (
+        f"{SIGNIN}\n{UPSELL}\n"
+        f"Real reporting paragraph number {n} about a designer collection with substance.\n"
+        f"More unique analysis in article {n} that only this article contains.\n"
+        f"{AFFILIATE}"
+    )
 
 
 def test_repeated_paragraphs_detected_across_documents():

@@ -46,7 +46,11 @@ def status() -> None:
 
     from culture.database import get_engine, session_scope
     from culture.models import ContentAnalysis, ContentItem, Source
-    from culture.models.content import ExtractionStatus, ProcessingStatus, TranscriptStatus
+    from culture.models.content import (
+        ExtractionStatus,
+        ProcessingStatus,
+        TranscriptStatus,
+    )
     from culture.models.source import Platform
 
     settings = get_settings()
@@ -54,45 +58,63 @@ def status() -> None:
         engine = get_engine()
         with session_scope(engine) as session:
             total_sources = session.scalar(select(func.count(Source.id))) or 0
-            active_sources = session.scalar(
-                select(func.count(Source.id)).where(Source.active.is_(True))
-            ) or 0
-            supported_sources = session.scalar(
-                select(func.count(Source.id)).where(
-                    Source.active.is_(True),
-                    Source.platform.in_([Platform.WEB.value, Platform.YOUTUBE.value]),
-                    Source.feed_url.is_not(None),
-                )
-            ) or 0
-            last_ingestion = session.scalar(select(func.max(Source.last_checked_at)))
-            total_items = session.scalar(select(func.count(ContentItem.id))) or 0
-            new_items = session.scalar(
-                select(func.count(ContentItem.id)).where(
-                    ContentItem.processing_status == ProcessingStatus.NEW.value
-                )
-            ) or 0
-            unanalyzed = session.scalar(
-                select(func.count(ContentItem.id)).where(
-                    ContentItem.processing_status.in_(
-                        [ProcessingStatus.NEW.value, ProcessingStatus.READY.value]
+            active_sources = (
+                session.scalar(select(func.count(Source.id)).where(Source.active.is_(True))) or 0
+            )
+            supported_sources = (
+                session.scalar(
+                    select(func.count(Source.id)).where(
+                        Source.active.is_(True),
+                        Source.platform.in_([Platform.WEB.value, Platform.YOUTUBE.value]),
+                        Source.feed_url.is_not(None),
                     )
                 )
-            ) or 0
-            failed_extractions = session.scalar(
-                select(func.count(ContentItem.id)).where(
-                    ContentItem.extraction_status == ExtractionStatus.FAILED.value
+                or 0
+            )
+            last_ingestion = session.scalar(select(func.max(Source.last_checked_at)))
+            total_items = session.scalar(select(func.count(ContentItem.id))) or 0
+            new_items = (
+                session.scalar(
+                    select(func.count(ContentItem.id)).where(
+                        ContentItem.processing_status == ProcessingStatus.NEW.value
+                    )
                 )
-            ) or 0
-            failed_transcripts = session.scalar(
-                select(func.count(ContentItem.id)).where(
-                    ContentItem.transcript_status == TranscriptStatus.FAILED.value
+                or 0
+            )
+            unanalyzed = (
+                session.scalar(
+                    select(func.count(ContentItem.id)).where(
+                        ContentItem.processing_status.in_(
+                            [ProcessingStatus.NEW.value, ProcessingStatus.READY.value]
+                        )
+                    )
                 )
-            ) or 0
-            failed_analyses = session.scalar(
-                select(func.count(ContentItem.id)).where(
-                    ContentItem.processing_status == ProcessingStatus.FAILED.value
+                or 0
+            )
+            failed_extractions = (
+                session.scalar(
+                    select(func.count(ContentItem.id)).where(
+                        ContentItem.extraction_status == ExtractionStatus.FAILED.value
+                    )
                 )
-            ) or 0
+                or 0
+            )
+            failed_transcripts = (
+                session.scalar(
+                    select(func.count(ContentItem.id)).where(
+                        ContentItem.transcript_status == TranscriptStatus.FAILED.value
+                    )
+                )
+                or 0
+            )
+            failed_analyses = (
+                session.scalar(
+                    select(func.count(ContentItem.id)).where(
+                        ContentItem.processing_status == ProcessingStatus.FAILED.value
+                    )
+                )
+                or 0
+            )
             total_analyses = session.scalar(select(func.count(ContentAnalysis.id))) or 0
             latest_content = session.scalar(select(func.max(ContentItem.published_at)))
     except Exception as exc:
@@ -221,7 +243,11 @@ def ingest(
     console.print(f"Articles extracted: {stats.total_extracted}")
     console.print(f"Partial extractions: {stats.total_partial}")
     console.print(f"Extraction failures: {stats.total_extraction_failed}")
-    if stats.total_new_videos or stats.total_transcripts_available or stats.total_transcripts_recovered:
+    if (
+        stats.total_new_videos
+        or stats.total_transcripts_available
+        or stats.total_transcripts_recovered
+    ):
         console.print()
         console.print("YouTube transcripts:")
         console.print(f"Available: {stats.total_transcripts_available}")
@@ -254,8 +280,7 @@ def analyze(
             return
         todo = min(pending, limit) if limit else pending
         console.print(
-            f"Analyzing {todo} of {pending} pending items with "
-            f"{provider.name}/{provider.model}..."
+            f"Analyzing {todo} of {pending} pending items with {provider.name}/{provider.model}..."
         )
         stats = analyzer.analyze_pending(limit)
         remaining = len(analyzer.pending_items())
@@ -364,9 +389,7 @@ def report(
         raise typer.Exit(1) from exc
 
     with session_scope(get_engine()) as session:
-        result = generate_report(
-            session, provider, days=days, reports_dir=PROJECT_ROOT / "reports"
-        )
+        result = generate_report(session, provider, days=days, reports_dir=PROJECT_ROOT / "reports")
 
     console.print()
     console.print(f"Sources monitored: {result.sources_covered}")
