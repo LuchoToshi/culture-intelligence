@@ -1,33 +1,26 @@
 {% extends "base.html" %}
+{% from "_macros.html" import signal_table %}
 {% block title %}Signals — Culture Intelligence{% endblock %}
 {% block content %}
-<h1>Signal Registry</h1>
-<div class="filters">
-  <a href="/signals" {% if not stage %}aria-current="true"{% endif %}>all</a>
-  {% for name in stage_order %}
-    <a href="/signals?stage={{ name }}" {% if stage == name %}aria-current="true"{% endif %}>{{ name }}</a>
+<p class="eyebrow">Signal registry</p>
+<h1>Signals</h1>
+<p class="lede">Objects, aesthetics, behaviors, places and references that are appearing across the monitored universe. Each signal is a persistent entity accumulating evidence — the ledger shows twelve months of observations.</p>
+
+<form class="filterbar" method="get" action="/signals">
+  <span class="label">Lifecycle</span>
+  <a href="/signals{{ '?sort=' + sort if sort != 'moving' else '' }}" {% if not stage %}aria-current="true"{% endif %}>All</a>
+  {% for s in stage_order %}
+    <a href="/signals?stage={{ s }}{{ '&sort=' + sort if sort != 'moving' else '' }}" {% if stage == s %}aria-current="true"{% endif %}>{{ stage_labels[s] }}</a>
   {% endfor %}
-</div>
-<table>
-  <thead><tr>
-    <th scope="col">Signal</th><th scope="col">Stage</th>
-    <th scope="col" class="num">Evidence</th><th scope="col" class="num">Sources</th>
-    <th scope="col" class="num">+7d</th><th scope="col">Cities</th><th scope="col">First seen</th>
-  </tr></thead>
-  <tbody>
-  {% for signal, delta in signals %}
-    <tr>
-      <td><a href="/signals/{{ signal.id }}">{{ signal.name }}</a></td>
-      <td><span class="badge {{ signal.lifecycle_stage }}">{{ signal.lifecycle_stage }}</span></td>
-      <td class="num">{{ signal.evidence_count }}</td>
-      <td class="num">{{ signal.source_count }}</td>
-      <td class="num">{% if delta %}<span class="delta">+{{ delta }}</span>{% else %}—{% endif %}</td>
-      <td>{{ signal.cities[:3] | join(", ") }}</td>
-      <td>{{ signal.first_detected_at.date().isoformat() if signal.first_detected_at else "—" }}</td>
-    </tr>
-  {% else %}
-    <tr><td colspan="7" class="empty">Nothing in this stage.</td></tr>
+</form>
+<form class="filterbar" method="get" action="/signals">
+  <span class="label">Sort</span>
+  {% for key, label in [("moving", "Moving now"), ("evidence", "Most evidence"), ("sources", "Most sources"), ("newest", "Newest")] %}
+    <a href="/signals?sort={{ key }}{{ '&stage=' + stage if stage else '' }}" {% if sort == key %}aria-current="true"{% endif %}>{{ label }}</a>
   {% endfor %}
-  </tbody>
-</table>
+  {% if stage or sort != "moving" %}<a class="clear" href="/signals">Clear</a>{% endif %}
+</form>
+
+{{ signal_table(rows) }}
+<p class="mono muted">{{ rows | length }} signal{{ "s" if rows | length != 1 }} shown · lifecycle stages are computed from evidence counts, source spread, time span and score averages — <a href="/taste-systems#method">how staging works</a></p>
 {% endblock %}

@@ -1,38 +1,87 @@
 {% extends "base.html" %}
+{% from "_macros.html" import stage_chip, evidence_record %}
 {% block title %}{{ signal.name }} — Culture Intelligence{% endblock %}
 {% block content %}
-<p class="sub"><a href="/signals">← Signal Registry</a></p>
+<p class="eyebrow"><a href="/signals">Signals</a> <span aria-hidden="true">/</span> <span>Signal profile</span></p>
 <h1>{{ signal.name }}</h1>
-<p>
-  <span class="badge {{ signal.lifecycle_stage }}">{{ signal.lifecycle_stage }}</span>
-  &nbsp; {{ signal.evidence_count }} evidence items · {{ signal.source_count }} sources
-  {% if signal.first_detected_at %} · first seen {{ signal.first_detected_at.date().isoformat() }}{% endif %}
-  {% if signal.last_evidence_at %} · last evidence {{ signal.last_evidence_at.date().isoformat() }}{% endif %}
-</p>
-{% if signal.description %}<p>{{ signal.description }}</p>{% endif %}
-{% if signal.cities %}<p class="sub">Cities: {{ signal.cities | join(", ") }}</p>{% endif %}
-{% if signal.categories %}<p class="sub">Topics: {{ signal.categories | join(", ") }}</p>{% endif %}
+{% if signal.description %}<p class="lede">{{ signal.description }}</p>{% endif %}
 
-<h2>Score profile <span class="sub">(averaged from evidence, 1–5)</span></h2>
-<table style="max-width: 480px">
-  <tbody>
-  {% for label, value in scores %}
-    <tr><td>{{ label }}</td>
-      <td class="num">{% if value %}<span class="dots" aria-label="{{ value }} of 5">{{ "●" * value }}{{ "○" * (5 - value) }}</span>{% else %}<span class="sub">no evidence</span>{% endif %}</td></tr>
-  {% endfor %}
-  </tbody>
-</table>
+<div class="factline">
+  <span class="f"><b>Lifecycle</b> {{ stage_chip(signal.lifecycle_stage) }}</span>
+  <span class="f"><b>Evidence</b> <span class="mono">{{ signal.evidence_count }} item{{ "s" if signal.evidence_count != 1 }} · {{ signal.source_count }} source{{ "s" if signal.source_count != 1 }}</span></span>
+  <span class="f"><b>First observed</b> <span class="mono">{{ signal.first_detected_at.date().isoformat() if signal.first_detected_at else "—" }}</span></span>
+  <span class="f"><b>Last observed</b> <span class="mono">{{ signal.last_evidence_at.date().isoformat() if signal.last_evidence_at else "—" }}</span></span>
+  <span class="f"><b>New this week</b> <span class="mono">{% if delta %}<span class="delta-up">+{{ delta }}</span>{% else %}0{% endif %}</span></span>
+</div>
 
-<h2>Evidence <span class="sub">(newest first)</span></h2>
-{% for e in evidence %}
-<article class="evidence">
-  <div class="meta">{{ e.source.name }} · {{ e.item.content_type }} ·
-    {{ e.when.date().isoformat() if e.when else "?" }}</div>
-  <strong><a href="{{ e.item.url }}" rel="noopener">{{ e.item.title or e.item.url }}</a></strong>
-  {% if e.note %}<div class="sub">Why it's evidence: {{ e.note }}</div>{% endif %}
-  {% if e.summary %}<p>{{ e.summary }}</p>{% endif %}
-</article>
-{% else %}
-<p class="empty">No evidence linked.</p>
+<p class="mono muted">{{ stage_reason }}</p>
+
+<h2 class="section">Observation ledger <span class="note">evidence per month, last 12 months</span></h2>
+<div class="ledger-wide">
+  {{ big_spark | safe }}
+  <div class="ledger-caption"><span>{{ ledger_start }}</span><span>{{ ledger_end }}</span></div>
+</div>
+
+{% if signal.cities or signal.categories %}
+<h2 class="section">Where and what</h2>
+{% if signal.cities %}
+<p class="mono muted" style="margin-bottom:0.2rem">CITIES · in order of evidence frequency</p>
+<div class="tagrow">{% for city in signal.cities %}<a href="/cities/{{ city }}">{{ city }}</a>{% endfor %}</div>
+{% endif %}
+{% if signal.categories %}
+<p class="mono muted" style="margin:0.8rem 0 0.2rem">THEMES</p>
+<div class="tagrow">{% for topic in signal.categories %}<span>{{ topic }}</span>{% endfor %}</div>
+{% endif %}
+{% endif %}
+
+{% if related %}
+<h2 class="section">Appears alongside <span class="note">signals sharing evidence items — computed, not asserted</span></h2>
+{% for other, shared in related %}
+  <div class="card">
+    <div class="meta">{{ shared }} shared evidence item{{ "s" if shared != 1 }}</div>
+    <h3><a href="/signals/{{ other.id }}">{{ other.name }}</a></h3>
+    {{ stage_chip(other.lifecycle_stage) }}
+  </div>
 {% endfor %}
+{% endif %}
+
+{% if archetype_observations %}
+<h2 class="section">Who is combining it <span class="note">archetype observations from this signal's evidence</span></h2>
+{% for obs in archetype_observations %}
+  <div class="card">
+    <div class="meta">{{ obs.source.name }} · {{ obs.when.date().isoformat() if obs.when else "?" }}{% if obs.cities %} · {{ obs.cities | join(", ") }}{% endif %}</div>
+    <p style="margin:0">{{ obs.text }}</p>
+  </div>
+{% endfor %}
+{% endif %}
+
+<h2 class="section">Score profile <span class="note">averaged across evidence · 1–5 · blank means the evidence doesn't support a judgment</span></h2>
+<div class="scoregrid">
+  {% for label, value in scores %}
+    <div class="row"><span>{{ label }}</span>
+      {% if value %}<span class="dots" aria-label="{{ value }} of 5">{{ "●" * value }}<span class="off">{{ "●" * (5 - value) }}</span></span>
+      {% else %}<span class="muted">no evidence</span>{% endif %}</div>
+  {% endfor %}
+</div>
+
+<h2 class="section">Diffusion story <span class="note">order of appearance in monitored media — not proof of adoption order</span></h2>
+{% if diffusion_steps %}
+<div class="evidence-list">
+  {% for step in diffusion_steps %}
+  <div class="record">
+    <div class="provenance"><span class="kind kind-inference"></span><span class="mono">{{ step.when.date().isoformat() if step.when else "?" }}</span></div>
+    <p style="margin:0"><strong>{{ step.source_name }}</strong>{% if step.cities %} · {{ step.cities | join(", ") }}{% endif %} — <a href="/items/{{ step.item.id }}">{{ step.item.title or "(untitled)" }}</a></p>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty">Not enough dated evidence to sequence yet.</div>
+{% endif %}
+
+<h2 class="section">Evidence <span class="note">{{ evidence | length }} records, newest first</span></h2>
+<div class="evidence-list">
+{% for e in evidence %}
+  {{ evidence_record(e.item, e.source, summary=e.summary, note=e.note, when=e.when, limitations=e.limitations) }}
+{% endfor %}
+</div>
 {% endblock %}

@@ -4,85 +4,279 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}Culture Intelligence{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --paper: #faf8f4; --ink: #1b1917; --muted: #6d675f; --line: #e4ded4;
-    --accent: #8a4b2d; --card: #ffffff;
-    --emerging: #2f6f4f; --strengthening: #1f5fa8; --mainstream: #6b6b6b;
-    --saturated: #b3541e; --declining: #7a2e2e; --unknown: #999489;
+    /* ground + ink */
+    --porcelain: #F6F6F3;
+    --surface: #FFFFFF;
+    --recessed: #EFEFEB;
+    --ink: #1A1B1E;
+    --ink-2: #5F6167;
+    --ink-3: #94969C;
+    --hairline: #E3E3DE;
+    --hairline-strong: #C9C9C2;
+    /* single interactive accent */
+    --accent: #2B2BC4;
+    --accent-deep: #1F1F96;
+    /* lifecycle — always paired with glyph + label, never color alone */
+    --st-emerging: #1F7A50;
+    --st-strengthening: #B04E12;
+    --st-mainstream: #5B6470;
+    --st-saturated: #A03B5C;
+    --st-declining: #71624F;
+    --st-unknown: #8B8B86;
+    --font-display: "Newsreader", Georgia, serif;
+    --font-ui: "Instrument Sans", -apple-system, "Segoe UI", sans-serif;
+    --font-data: "Spline Sans Mono", "SF Mono", Menlo, monospace;
+    --maxw: 1180px;
   }
   * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+  }
   body {
-    margin: 0; background: var(--paper); color: var(--ink);
-    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    margin: 0; background: var(--porcelain); color: var(--ink);
+    font: 15.5px/1.6 var(--font-ui);
+    -webkit-font-smoothing: antialiased;
   }
-  header {
-    border-bottom: 1px solid var(--line); background: var(--paper);
-    position: sticky; top: 0; z-index: 5;
+  .skip-link {
+    position: absolute; left: -9999px; top: 0; background: var(--ink); color: #fff;
+    padding: 0.5rem 1rem; z-index: 50;
   }
-  .nav {
-    max-width: 1100px; margin: 0 auto; padding: 0.7rem 1.2rem;
-    display: flex; gap: 1.4rem; align-items: baseline; flex-wrap: wrap;
+  .skip-link:focus { left: 0; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-deep); }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px;
   }
-  .brand { font-family: Georgia, "Times New Roman", serif; font-size: 1.15rem; font-weight: 700; letter-spacing: 0.01em; }
-  .brand a { color: var(--ink); text-decoration: none; }
-  nav a { color: var(--muted); text-decoration: none; font-size: 0.95rem; }
-  nav a:hover, nav a:focus-visible { color: var(--accent); }
-  nav a[aria-current="page"] { color: var(--ink); font-weight: 600; }
-  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
-  main { max-width: 1100px; margin: 0 auto; padding: 1.6rem 1.2rem 4rem; }
-  h1 { font-family: Georgia, "Times New Roman", serif; font-size: 1.7rem; margin: 0.4rem 0 1.1rem; }
-  h2 { font-family: Georgia, serif; font-size: 1.25rem; margin-top: 2rem; }
-  .sub { color: var(--muted); font-size: 0.92rem; }
-  table { width: 100%; border-collapse: collapse; margin: 1rem 0; background: var(--card);
-          border: 1px solid var(--line); font-size: 0.95rem; }
-  th, td { text-align: left; padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
-  th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
-  tr:hover td { background: #f6f2ea; }
-  td a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--line); }
-  td a:hover { color: var(--accent); border-color: var(--accent); }
-  .num { text-align: right; font-variant-numeric: tabular-nums; }
-  .badge {
-    display: inline-block; padding: 0.1rem 0.5rem; border-radius: 99px;
-    font-size: 0.75rem; font-weight: 600; color: #fff; white-space: nowrap;
+
+  /* ── top bar ─────────────────────────────────────────── */
+  header.topbar { background: var(--surface); border-bottom: 1px solid var(--hairline); }
+  .topbar-inner {
+    max-width: var(--maxw); margin: 0 auto; padding: 0 1.4rem;
+    display: flex; align-items: center; gap: 1.6rem; min-height: 58px; flex-wrap: wrap;
   }
-  .badge.emerging { background: var(--emerging); } .badge.strengthening { background: var(--strengthening); }
-  .badge.mainstream { background: var(--mainstream); } .badge.saturated { background: var(--saturated); }
-  .badge.declining { background: var(--declining); } .badge.unknown { background: var(--unknown); }
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.8rem; margin: 1rem 0 1.6rem; }
-  .card { background: var(--card); border: 1px solid var(--line); padding: 0.8rem 1rem; }
-  .card .big { font-size: 1.7rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .card .label { color: var(--muted); font-size: 0.82rem; }
-  .delta { color: var(--emerging); font-weight: 600; }
-  .filters { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.4rem; }
-  .filters a { font-size: 0.85rem; color: var(--muted); text-decoration: none; border: 1px solid var(--line);
-               padding: 0.15rem 0.6rem; border-radius: 99px; background: var(--card); }
-  .filters a[aria-current="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
-  .prose { background: var(--card); border: 1px solid var(--line); padding: 2rem 2.4rem; max-width: 860px; }
-  .prose h1, .prose h2, .prose h3 { font-family: Georgia, serif; }
-  .prose table { display: block; overflow-x: auto; }
+  .wordmark { font-family: var(--font-display); font-weight: 600; font-size: 1.12rem;
+              letter-spacing: 0.01em; color: var(--ink); white-space: nowrap; }
+  .wordmark a { color: var(--ink); }
+  .wordmark .tick { color: var(--accent); }
+  nav.primary { display: flex; gap: 1.15rem; flex-wrap: wrap; }
+  nav.primary a {
+    color: var(--ink-2); font-size: 0.92rem; font-weight: 500; padding: 0.35rem 0;
+    border-bottom: 2px solid transparent;
+  }
+  nav.primary a:hover { color: var(--ink); }
+  nav.primary a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--accent); }
+  .searchbox { margin-left: auto; }
+  .searchbox input {
+    font: 0.88rem var(--font-ui); color: var(--ink);
+    background: var(--porcelain); border: 1px solid var(--hairline);
+    border-radius: 999px; padding: 0.4rem 0.95rem; width: 200px;
+    transition: width 120ms ease, border-color 120ms ease;
+  }
+  .searchbox input:focus { width: 260px; border-color: var(--accent); outline: none; }
+  @media (max-width: 900px) {
+    .topbar-inner { gap: 0.9rem; padding: 0.55rem 1rem; }
+    .searchbox { margin-left: 0; flex-basis: 100%; }
+    .searchbox input, .searchbox input:focus { width: 100%; }
+  }
+  .searchbox input::placeholder { color: var(--ink-3); }
+
+  /* ── page scaffolding ───────────────────────────────── */
+  main { max-width: var(--maxw); margin: 0 auto; padding: 2rem 1.4rem 5rem; }
+  .eyebrow {
+    font: 500 0.72rem var(--font-data); letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ink-3); display: flex; gap: 0.7rem; align-items: baseline; flex-wrap: wrap;
+  }
+  .eyebrow a { color: var(--ink-2); }
+  .eyebrow a:hover { color: var(--accent); }
+  h1 {
+    font-family: var(--font-display); font-optical-sizing: auto;
+    font-weight: 500; font-size: clamp(1.6rem, 3.2vw, 2.15rem); line-height: 1.18;
+    letter-spacing: -0.005em; margin: 0.45rem 0 0.5rem; max-width: 60ch;
+  }
+  .lede { color: var(--ink-2); max-width: 68ch; margin: 0 0 1.6rem; }
+  h2.section {
+    font: 500 0.78rem var(--font-data); letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ink-2); margin: 2.6rem 0 0.9rem; padding-top: 1.1rem;
+    border-top: 1px solid var(--hairline-strong);
+    display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap;
+  }
+  h2.section .note { font-family: var(--font-ui); text-transform: none; letter-spacing: 0;
+                     font-weight: 400; color: var(--ink-3); font-size: 0.85rem; }
+
+  /* ── lifecycle chips (glyph + label, color-independent) ─ */
+  .stage { font: 500 0.78rem var(--font-data); letter-spacing: 0.04em; white-space: nowrap; }
+  .stage .g { display: inline-block; width: 1.05em; text-align: center; }
+  .stage.emerging { color: var(--st-emerging); }
+  .stage.strengthening { color: var(--st-strengthening); }
+  .stage.mainstream { color: var(--st-mainstream); }
+  .stage.saturated { color: var(--st-saturated); }
+  .stage.declining { color: var(--st-declining); }
+  .stage.unknown { color: var(--st-unknown); }
+
+  /* ── evidence ledger sparklines ─────────────────────── */
+  .spark-bar { fill: var(--ink); }
+  .spark-empty { fill: var(--hairline); }
+  tr:hover .spark-bar, .card:hover .spark-bar { fill: var(--accent); }
+
+  /* ── index tables (registry lists) ──────────────────── */
+  table.index { width: 100%; border-collapse: collapse; background: var(--surface);
+                border: 1px solid var(--hairline); font-size: 0.92rem; }
+  table.index th {
+    font: 500 0.7rem var(--font-data); letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--ink-3); text-align: left; padding: 0.6rem 0.85rem; white-space: nowrap;
+    border-bottom: 1px solid var(--hairline-strong); background: var(--surface);
+  }
+  table.index td { padding: 0.75rem 0.85rem; border-bottom: 1px solid var(--hairline);
+                   vertical-align: middle; }
+  table.index tr:last-child td { border-bottom: none; }
+  table.index tbody tr:hover { background: #FBFBF9; }
+  .cell-primary { min-width: 250px; }
+  .cell-primary a { color: var(--ink); font-weight: 500; }
+  .cell-primary a:hover { color: var(--accent); }
+  .cell-primary .desc { color: var(--ink-2); font-size: 0.85rem; margin-top: 0.15rem;
+                        display: block; max-width: 46ch; }
+  td.num, th.num { text-align: right; font-family: var(--font-data); font-size: 0.84rem; }
+  .delta-up { color: var(--st-emerging); font-weight: 500; }
+  .muted { color: var(--ink-3); }
+  .mono { font-family: var(--font-data); font-size: 0.84rem; }
+  .table-scroll { overflow-x: auto; }
+
+  /* ── cards ──────────────────────────────────────────── */
+  .card { background: var(--surface); border: 1px solid var(--hairline); padding: 1rem 1.15rem; }
+  .card + .card { margin-top: -1px; }
+  .card h3 { margin: 0 0 0.2rem; font-size: 1rem; font-weight: 600; }
+  .card h3 a { color: var(--ink); }
+  .card h3 a:hover { color: var(--accent); }
+  .card .meta { font: 400 0.78rem var(--font-data); color: var(--ink-3); margin-bottom: 0.3rem; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem; }
+  @media (max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+  /* ── evidence records ───────────────────────────────── */
+  .evidence-list { display: flex; flex-direction: column; }
+  .record { background: var(--surface); border: 1px solid var(--hairline);
+            padding: 0.95rem 1.15rem; margin-bottom: -1px; }
+  .record .provenance {
+    font: 500 0.7rem var(--font-data); letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--ink-3); display: flex; gap: 0.9rem; flex-wrap: wrap; margin-bottom: 0.3rem;
+  }
+  .record .provenance .kind { color: var(--ink-2); }
+  .record h3, .record .headline { margin: 0 0 0.25rem; font-size: 0.98rem; font-weight: 600; }
+  .record .headline a { color: var(--ink); }
+  .record .headline a:hover { color: var(--accent); }
+  .record p { margin: 0.3rem 0 0; color: var(--ink-2); font-size: 0.92rem; }
+  .record .curator { border-left: 2px solid var(--hairline-strong); padding-left: 0.75rem;
+                     margin-top: 0.5rem; font-size: 0.88rem; color: var(--ink-2); }
+  .limitation { color: var(--st-saturated); font-size: 0.85rem; }
+
+  /* provenance labels: what kind of information a block is */
+  .kind-observed::before { content: "OBSERVED"; }
+  .kind-model::before { content: "MODEL ANALYSIS"; }
+  .kind-inference::before { content: "INFERENCE"; }
+  .kind-aggregate::before { content: "COMPUTED"; }
+
+  /* ── filters ────────────────────────────────────────── */
+  .filterbar { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;
+               margin: 0 0 1rem; }
+  .filterbar a, .filterbar button {
+    font: 500 0.8rem var(--font-ui); color: var(--ink-2); background: var(--surface);
+    border: 1px solid var(--hairline); border-radius: 999px; padding: 0.25rem 0.8rem;
+    cursor: pointer;
+  }
+  .filterbar a:hover { border-color: var(--hairline-strong); color: var(--ink); }
+  .filterbar a[aria-current="true"] { border-color: var(--ink); color: var(--ink); font-weight: 600; }
+  .filterbar .clear { border: none; background: none; color: var(--accent); }
+  .filterbar .label { font: 500 0.7rem var(--font-data); letter-spacing: 0.1em;
+                      text-transform: uppercase; color: var(--ink-3); margin-right: 0.2rem; }
+
+  /* ── overview briefing ──────────────────────────────── */
+  .briefing-head { border-bottom: 3px solid var(--ink); padding-bottom: 1.1rem; margin-bottom: 0.3rem; }
+  .freshness { font: 400 0.8rem var(--font-data); color: var(--ink-2); }
+  .freshness .live { color: var(--st-strengthening); }
+  .lead-row { display: grid; grid-template-columns: 2fr 1fr; gap: 1.4rem; margin-top: 1.4rem; }
+  @media (max-width: 900px) { .lead-row { grid-template-columns: 1fr; } }
+
+  /* ── detail pages ───────────────────────────────────── */
+  .factline { display: flex; gap: 1.6rem; flex-wrap: wrap; margin: 0.6rem 0 1.2rem;
+              font-size: 0.88rem; color: var(--ink-2); }
+  .factline .f b { display: block; font: 500 0.68rem var(--font-data); letter-spacing: 0.12em;
+                   text-transform: uppercase; color: var(--ink-3); }
+  .ledger-wide { background: var(--surface); border: 1px solid var(--hairline);
+                 padding: 1rem 1.15rem; }
+  .ledger-wide svg { width: 100%; height: 46px; display: block; }
+  .ledger-caption { display: flex; justify-content: space-between; font: 400 0.72rem var(--font-data);
+                    color: var(--ink-3); margin-top: 0.35rem; }
+  .scoregrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+               gap: 0 1.6rem; }
+  .scoregrid .row { display: flex; justify-content: space-between; align-items: baseline;
+                    padding: 0.4rem 0; border-bottom: 1px solid var(--hairline); font-size: 0.88rem; }
+  .dots { font-family: var(--font-data); letter-spacing: 0.12em; color: var(--ink); }
+  .dots .off { color: var(--hairline-strong); }
+  .tagrow { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0.4rem 0; }
+  .tagrow a, .tagrow span { font-size: 0.82rem; color: var(--ink-2); background: var(--recessed);
+                            padding: 0.15rem 0.65rem; border-radius: 999px; }
+  .tagrow a:hover { color: var(--accent); background: #EAEAF8; }
+
+  /* ── prose (reports) ────────────────────────────────── */
+  .prose { background: var(--surface); border: 1px solid var(--hairline);
+           padding: 2.4rem clamp(1.2rem, 4vw, 3rem); max-width: 60rem; }
+  .prose h1, .prose h2, .prose h3 { font-family: var(--font-display); font-weight: 500; }
+  .prose h1 { font-size: 1.7rem; }
   .prose a { color: var(--accent); }
-  .evidence { background: var(--card); border: 1px solid var(--line); padding: 0.9rem 1.1rem; margin-bottom: 0.7rem; }
-  .evidence .meta { color: var(--muted); font-size: 0.85rem; }
-  .scorebar { display: flex; gap: 0.35rem; align-items: center; }
-  .dots { letter-spacing: 0.15em; color: var(--accent); }
-  .empty { color: var(--muted); font-style: italic; }
+  .prose table { border-collapse: collapse; display: block; overflow-x: auto; font-size: 0.88rem; }
+  .prose th, .prose td { border: 1px solid var(--hairline); padding: 0.4rem 0.6rem; text-align: left; }
+  .prose blockquote { border-left: 3px solid var(--hairline-strong); margin-left: 0;
+                      padding-left: 1rem; color: var(--ink-2); }
+
+  /* ── states ─────────────────────────────────────────── */
+  .empty { background: var(--surface); border: 1px dashed var(--hairline-strong);
+           padding: 1.6rem; color: var(--ink-2); font-size: 0.95rem; max-width: 60ch; }
+  .empty b { color: var(--ink); }
+  details.disclosure summary { cursor: pointer; font-weight: 500; color: var(--ink-2);
+                               font-size: 0.9rem; padding: 0.4rem 0; }
+  details.disclosure summary:hover { color: var(--ink); }
+
+  footer.pagefoot { max-width: var(--maxw); margin: 0 auto; padding: 0 1.4rem 2rem;
+                    font: 400 0.78rem var(--font-data); color: var(--ink-3);
+                    display: flex; gap: 1.6rem; flex-wrap: wrap; }
 </style>
 </head>
 <body>
-<header>
-  <div class="nav">
-    <span class="brand"><a href="/">Culture Intelligence</a></span>
-    <nav aria-label="Main">
+<a class="skip-link" href="#content">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <span class="wordmark"><a href="/">Culture<span class="tick">—</span>Intelligence</a></span>
+    <nav class="primary" aria-label="Main">
       <a href="/signals" {% if active_nav == "signals" %}aria-current="page"{% endif %}>Signals</a>
-      <a href="/stream" {% if active_nav == "stream" %}aria-current="page"{% endif %}>Stream</a>
+      <a href="/taste-systems" {% if active_nav == "taste-systems" %}aria-current="page"{% endif %}>Taste Systems</a>
+      <a href="/archetypes" {% if active_nav == "archetypes" %}aria-current="page"{% endif %}>Archetypes</a>
+      <a href="/cities" {% if active_nav == "cities" %}aria-current="page"{% endif %}>Cities</a>
       <a href="/reports" {% if active_nav == "reports" %}aria-current="page"{% endif %}>Reports</a>
       <a href="/sources" {% if active_nav == "sources" %}aria-current="page"{% endif %}>Sources</a>
     </nav>
+    <form class="searchbox" action="/search" method="get" role="search">
+      <label for="q" class="skip-link">Search the intelligence</label>
+      <input id="q" name="q" type="search" placeholder="Search signals, cities, archetypes…"
+             value="{{ q or '' }}">
+    </form>
   </div>
 </header>
-<main>
+<main id="content">
 {% block content %}{% endblock %}
 </main>
+<footer class="pagefoot">
+  {% if freshness %}
+  <span>Last collection: {{ freshness.last_check.strftime("%Y-%m-%d %H:%M") if freshness.last_check else "never" }}</span>
+  <span>{% if freshness.pending %}<span class="live">{{ freshness.pending }} items in analysis</span>{% else %}Analysis up to date{% endif %}</span>
+  {% endif %}
+  <span>Read-only view · pipeline is the only writer</span>
+</footer>
 </body>
 </html>

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Cities — Culture Intelligence{% endblock %}
+{% block content %}
+<p class="eyebrow">Cities</p>
+<h1>Where taste is forming</h1>
+<p class="lede">Cities ranked by evidence concentration — how often each place appears in analyzed content, how many signals name it, and how much arrived this week. A ranked view says more than a map at this scale; place counts reflect what monitored sources cover, so under-covered cities may simply be under-observed.</p>
+
+<div class="table-scroll">
+<table class="index">
+  <thead><tr>
+    <th scope="col">City</th>
+    <th scope="col" class="num">Evidence items</th>
+    <th scope="col" class="num">Signals</th>
+    <th scope="col" class="num">Sources</th>
+    <th scope="col" class="num">Archetype observations</th>
+    <th scope="col" class="num">New this week</th>
+  </tr></thead>
+  <tbody>
+  {% for city in cities %}
+    <tr>
+      <td class="cell-primary"><a href="/cities/{{ city.name }}">{{ city.name }}</a></td>
+      <td class="num">{{ city.item_count }}</td>
+      <td class="num">{{ city.signal_count }}</td>
+      <td class="num">{{ city.source_count }}</td>
+      <td class="num">{{ city.archetype_count }}</td>
+      <td class="num">{% if city.recent_count %}<span class="delta-up">+{{ city.recent_count }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="6"><div class="empty" style="border:none">No city has enough evidence yet.</div></td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% from "_macros.html" import stage_chip, evidence_record %}
+{% block title %}{{ name }} — Culture Intelligence{% endblock %}
+{% block content %}
+<p class="eyebrow"><a href="/cities">Cities</a> <span aria-hidden="true">/</span> <span>City profile</span></p>
+<h1>{{ name }}</h1>
+<p class="lede">{{ detail.item_count }} evidence item{{ "s" if detail.item_count != 1 }} reference {{ name }} across the monitored universe.</p>
+
+{% if detail.neighborhoods %}
+<p class="mono muted" style="margin-bottom:0.2rem">NEIGHBORHOODS OBSERVED</p>
+<div class="tagrow">{% for hood, count in detail.neighborhoods %}<span>{{ hood }} · {{ count }}</span>{% endfor %}</div>
+{% endif %}
+
+<h2 class="section">Signals present here <span class="note">{{ detail.signals | length }} signal{{ "s" if detail.signals | length != 1 }}</span></h2>
+{% for signal in detail.signals %}
+  <div class="card">
+    <div class="meta">{{ signal.evidence_count }} items · {{ signal.source_count }} sources</div>
+    <h3><a href="/signals/{{ signal.id }}">{{ signal.name }}</a></h3>
+    {{ stage_chip(signal.lifecycle_stage) }}
+  </div>
+{% else %}
+<div class="empty">No persistent signal names {{ name }} yet — the evidence below is where one may form.</div>
+{% endfor %}
+
+{% if detail.archetypes %}
+<h2 class="section">Archetype observations here</h2>
+{% for text, item_id in detail.archetypes %}
+  <div class="card"><p style="margin:0">{{ text }} <a class="mono" href="/items/{{ item_id }}">evidence →</a></p></div>
+{% endfor %}
+{% endif %}
+
+{% if detail.local_sources %}
+<h2 class="section">Sources based here</h2>
+<div class="tagrow">{% for s in detail.local_sources %}<span>{{ s.name }}</span>{% endfor %}</div>
+{% endif %}
+
+<h2 class="section">Evidence mentioning {{ name }} <span class="note">newest first</span></h2>
+<div class="evidence-list">
+{% for item, analysis in detail["items"] %}
+  {{ evidence_record(item, detail.sources_map[item.source_id], summary=analysis.summary, when=item.published_at or item.discovered_at) }}
+{% endfor %}
+</div>
+{% endblock %}

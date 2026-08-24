@@ -35,19 +35,37 @@ def client(tmp_path):
             content_type="article",
             published_at=NOW - timedelta(days=1),
             processing_status="analyzed",
+            raw_text="Full extracted body text about workwear.",
         )
-        session.add(item)
+        video = ContentItem(
+            source_id=source.id,
+            url="https://youtube.example/v",
+            external_id="vid1",
+            title="Untranscribed video",
+            content_type="video",
+            transcript_status="failed",
+            published_at=NOW - timedelta(days=2),
+            processing_status="analyzed",
+        )
+        session.add_all([item, video])
         session.flush()
         session.add(
             ContentAnalysis(
                 content_item_id=item.id,
                 summary="Workwear keeps spreading through London menswear.",
+                cities=["London", "Tokyo"],
+                neighborhoods=["Hackney"],
+                consumer_archetypes=["Creative professional adopting Japanese workwear"],
+                facts_json={"claims": ["Kapital opened a London stockist."]},
+                interpretations_json={"inferences": ["Workwear is crossing to mainstream."]},
+                brands=["Kapital"],
                 analysis_model="m",
                 analysis_provider="p",
                 analysis_version="1",
+                analyzed_at=NOW,
             )
         )
-        signal = Signal(
+        signal_a = Signal(
             name="Japanese workwear in London menswear",
             description="Workwear crossover.",
             lifecycle_stage="emerging",
@@ -55,57 +73,137 @@ def client(tmp_path):
             source_count=1,
             cities=["London", "Tokyo"],
             first_detected_at=NOW - timedelta(days=5),
+            last_evidence_at=NOW - timedelta(days=1),
             cultural_origin_score=4,
         )
-        session.add(signal)
+        signal_b = Signal(
+            name="Chore jacket normalization",
+            lifecycle_stage="strengthening",
+            evidence_count=1,
+            source_count=1,
+        )
+        session.add(
+            ContentAnalysis(
+                content_item_id=video.id,
+                summary="Metadata-only analysis (no transcript): London menswear video.",
+                cities=["London"],
+                analysis_model="m",
+                analysis_provider="p",
+                analysis_version="1",
+                analyzed_at=NOW,
+            )
+        )
+        session.add_all([signal_a, signal_b])
         session.flush()
-        session.add(SignalEvidence(signal_id=signal.id, content_item_id=item.id, note="direct"))
+        session.add_all(
+            [
+                SignalEvidence(signal_id=signal_a.id, content_item_id=item.id, note="direct"),
+                SignalEvidence(signal_id=signal_b.id, content_item_id=item.id),
+            ]
+        )
         session.commit()
-        signal_id = signal.id
+        ids = {"signal": signal_a.id, "item": item.id, "video": video.id}
 
     (tmp_path / "2026-W35.md").write_text(
         "# Part 1\nhello\n\n# Part 2\n## Executive Brief\nBig week."
     )
     app = create_app(engine=engine, reports_dir=tmp_path)
     test_client = TestClient(app)
-    test_client.signal_id = signal_id  # type: ignore[attr-defined]
+    test_client.ids = ids  # type: ignore[attr-defined]
     return test_client
 
 
-def test_index_shows_counts_and_movers(client):
+def test_overview_is_a_briefing(client):
     response = client.get("/")
     assert response.status_code == 200
+    assert "Intelligence briefing" in response.text
     assert "Japanese workwear in London menswear" in response.text
-    assert "Active signals" in response.text
     assert "2026-W35" in response.text
 
 
-def test_signals_list_and_stage_filter(client):
-    assert "Japanese workwear" in client.get("/signals").text
+def test_signals_index_filters_and_sorts(client):
+    page = client.get("/signals").text
+    assert "Japanese workwear" in page
+    assert "Ledger" in page
     assert "Japanese workwear" in client.get("/signals?stage=emerging").text
     assert "Japanese workwear" not in client.get("/signals?stage=saturated").text
+    assert client.get("/signals?sort=evidence").status_code == 200
 
 
-def test_signal_detail_shows_evidence(client):
-    response = client.get(f"/signals/{client.signal_id}")
+def test_signal_profile_shows_evidence_and_provenance(client):
+    response = client.get(f"/signals/{client.ids['signal']}")
     assert response.status_code == 200
     assert "Tokyo workwear moves west" in response.text
     assert "direct" in response.text
-    assert "Workwear keeps spreading" in response.text
+    assert "Observation ledger" in response.text
+    assert "not proof of adoption order" in response.text  # diffusion honesty
+    assert "Chore jacket normalization" in response.text  # co-occurring signal
+    assert "Early classification" in response.text  # stage reasoning
     assert client.get("/signals/99999").status_code == 404
 
 
-def test_stream_and_sources(client):
-    assert "Tokyo workwear moves west" in client.get("/stream").text
-    sources_page = client.get("/sources").text
-    assert "Sabukaru" in sources_page
-    assert "Tokyo" in sources_page
+def test_item_evidence_page_separates_provenance(client):
+    response = client.get(f"/items/{client.ids['item']}")
+    assert response.status_code == 200
+    assert "Kapital opened a London stockist." in response.text  # observed
+    assert "Workwear is crossing to mainstream." in response.text  # inference
+    assert "What the source itself says" in response.text
+    assert "What our system infers" in response.text
+    assert "exactly as extracted" in response.text
+    assert client.get("/items/99999").status_code == 404
+
+
+def test_video_item_shows_limitation(client):
+    response = client.get(f"/items/{client.ids['video']}")
+    assert "metadata-only" in response.text
+
+
+def test_archetypes_lists_observations(client):
+    response = client.get("/archetypes")
+    assert "Creative professional adopting Japanese workwear" in response.text
+    assert "observations, not established personas" in response.text
+    filtered = client.get("/archetypes?q=nomatchxyz")
+    assert "No archetype observations match" in filtered.text
+
+
+def test_cities_index_and_profile(client):
+    index = client.get("/cities")
+    assert "London" in index.text
+    profile = client.get("/cities/London")
+    assert profile.status_code == 200
+    assert "Japanese workwear in London menswear" in profile.text
+    assert "Hackney" in profile.text
+    assert client.get("/cities/Nowhereville").status_code == 404
+
+
+def test_taste_systems_shows_real_pairs_and_honest_status(client):
+    response = client.get("/taste-systems")
+    assert "Japanese workwear in London menswear" in response.text
+    assert "Chore jacket normalization" in response.text
+    assert "Honest status" in response.text
+
+
+def test_search_spans_entities(client):
+    response = client.get("/search?q=workwear")
+    assert "Japanese workwear in London menswear" in response.text
+    assert "Tokyo workwear moves west" in response.text
+    empty = client.get("/search?q=zzzznothing")
+    assert "Nothing found" in empty.text
+    assert client.get("/search").status_code == 200
 
 
 def test_reports_render_markdown(client):
     assert "2026-W35" in client.get("/reports").text
     view = client.get("/reports/2026-W35")
-    assert view.status_code == 200
     assert "<h2>Executive Brief</h2>" in view.text
     assert client.get("/reports/nope").status_code == 404
     assert client.get("/reports/..%2Fsecret").status_code == 404
+
+
+def test_stream_and_sources_still_work(client):
+    assert "Tokyo workwear moves west" in client.get("/stream").text
+    assert "Sabukaru" in client.get("/sources").text
+
+
+def test_footer_shows_pipeline_freshness(client):
+    assert "Analysis up to date" in client.get("/").text

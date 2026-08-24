@@ -1,25 +1,29 @@
 {% extends "base.html" %}
 {% block title %}Sources — Culture Intelligence{% endblock %}
 {% block content %}
-<h1>Sources</h1>
-<table>
+<p class="eyebrow">Sources</p>
+<h1>The monitored universe</h1>
+<p class="lede">Every source the platform watches, by tier. Core sources anchor the intelligence; watch-tier sources are earning standing; inactive records are held for future collection methods.</p>
+<div class="table-scroll">
+<table class="index">
   <thead><tr>
-    <th scope="col">Name</th><th scope="col">Platform</th><th scope="col">Tier</th>
-    <th scope="col">Active</th><th scope="col">Place</th>
-    <th scope="col" class="num">Items</th><th scope="col">Last success</th>
+    <th scope="col">Source</th><th scope="col">Platform</th><th scope="col">Tier</th>
+    <th scope="col">Place</th><th scope="col" class="num">Items</th>
+    <th scope="col">Last collected</th><th scope="col">Status</th>
   </tr></thead>
   <tbody>
   {% for s in sources %}
     <tr>
-      <td>{% if s.url %}<a href="{{ s.url }}" rel="noopener">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}</td>
-      <td>{{ s.platform }}</td>
-      <td>{{ s.tier }}</td>
-      <td>{{ "yes" if s.active else "no" }}</td>
+      <td class="cell-primary">{% if s.url %}<a href="{{ s.url }}" rel="noopener">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}</td>
+      <td class="mono">{{ s.platform }}</td>
+      <td class="mono">{{ s.tier }}</td>
       <td>{{ [s.city, s.country] | select | join(", ") }}</td>
       <td class="num">{{ item_counts.get(s.id, 0) }}</td>
-      <td>{{ s.last_successful_check_at.date().isoformat() if s.last_successful_check_at else "—" }}</td>
+      <td class="mono">{{ s.last_successful_check_at.date().isoformat() if s.last_successful_check_at else "—" }}</td>
+      <td>{% if not s.active %}<span class="muted">inactive</span>{% elif not s.feed_url %}<span class="limitation">needs collection method</span>{% else %}collecting{% endif %}</td>
     </tr>
   {% endfor %}
   </tbody>
 </table>
+</div>
 {% endblock %}

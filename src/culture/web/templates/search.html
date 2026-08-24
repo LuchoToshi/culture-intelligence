@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% from "_macros.html" import stage_chip %}
+{% block title %}Search — Culture Intelligence{% endblock %}
+{% block content %}
+<p class="eyebrow">Search</p>
+<h1>{% if q %}Results for “{{ q }}”{% else %}Search the intelligence{% endif %}</h1>
+
+{% if not q %}
+<div class="empty">Search across signals, cities, archetype observations, evidence and sources. Try a brand, a city, a garment, or a scene.</div>
+{% else %}
+
+{% if results.signals %}
+<h2 class="section">Signals</h2>
+{% for signal in results.signals %}
+  <div class="card">
+    <h3><a href="/signals/{{ signal.id }}">{{ signal.name }}</a></h3>
+    {{ stage_chip(signal.lifecycle_stage) }} <span class="mono muted">{{ signal.evidence_count }} items</span>
+  </div>
+{% endfor %}
+{% endif %}
+
+{% if results.cities %}
+<h2 class="section">Cities</h2>
+<div class="tagrow">{% for city in results.cities %}<a href="/cities/{{ city.name }}">{{ city.name }} · {{ city.item_count }}</a>{% endfor %}</div>
+{% endif %}
+
+{% if results.archetypes %}
+<h2 class="section">Archetype observations</h2>
+{% for obs in results.archetypes %}
+  <div class="card"><div class="meta">{{ obs.source.name }} · {{ obs.when.date().isoformat() if obs.when else "?" }}</div>
+  <p style="margin:0">{{ obs.text }} <a class="mono" href="/items/{{ obs.item.id }}">evidence →</a></p></div>
+{% endfor %}
+{% endif %}
+
+{% if results["items"] %}
+<h2 class="section">Evidence</h2>
+{% for item in results["items"] %}
+  <div class="card"><h3><a href="/items/{{ item.id }}">{{ item.title }}</a></h3></div>
+{% endfor %}
+{% endif %}
+
+{% if results.sources %}
+<h2 class="section">Sources</h2>
+<div class="tagrow">{% for s in results.sources %}<span>{{ s.name }}</span>{% endfor %}</div>
+{% endif %}
+
+{% if not (results.signals or results.cities or results.archetypes or results["items"] or results.sources) %}
+<div class="empty"><b>Nothing found for “{{ q }}”.</b> Try a shorter term — search matches names, descriptions and titles, not full text.</div>
+{% endif %}
+{% endif %}
+{% endblock %}

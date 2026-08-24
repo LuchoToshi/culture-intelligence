@@ -1,12 +1,14 @@
 {% extends "base.html" %}
 {% block title %}Reports — Culture Intelligence{% endblock %}
 {% block content %}
-<h1>Weekly Reports</h1>
+<p class="eyebrow">Reports</p>
+<h1>Weekly intelligence reports</h1>
+<p class="lede">Each report pairs a complete source roundup with cross-source synthesis grounded in the signal registry.</p>
 {% if reports %}
-<ul>
-  {% for name in reports %}<li><a href="/reports/{{ name }}">{{ name }}</a></li>{% endfor %}
-</ul>
+{% for name in reports %}
+  <div class="card"><h3><a href="/reports/{{ name }}">{{ name }}</a></h3></div>
+{% endfor %}
 {% else %}
-<p class="empty">No reports yet — run <code>uv run culture report --days 7</code>.</p>
+<div class="empty"><b>No reports yet.</b> Generate the first with <code>uv run culture report --days 7</code>.</div>
 {% endif %}
 {% endblock %}

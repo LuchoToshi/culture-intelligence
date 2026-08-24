@@ -1,0 +1,54 @@
+{% macro stage_chip(stage) -%}
+<span class="stage {{ stage }}"><span class="g" aria-hidden="true">{{ stage_glyphs[stage] }}</span> {{ stage_labels[stage] }}</span>
+{%- endmacro %}
+
+{% macro signal_table(rows, caption=None) -%}
+<div class="table-scroll">
+<table class="index">
+  {% if caption %}<caption class="skip-link">{{ caption }}</caption>{% endif %}
+  <thead><tr>
+    <th scope="col">Signal</th>
+    <th scope="col">Lifecycle</th>
+    <th scope="col">Ledger <span class="muted">12 mo</span></th>
+    <th scope="col" class="num">Items</th>
+    <th scope="col" class="num">Sources</th>
+    <th scope="col" class="num">New this week</th>
+    <th scope="col">Cities</th>
+  </tr></thead>
+  <tbody>
+  {% for row in rows %}
+    <tr>
+      <td class="cell-primary">
+        <a href="/signals/{{ row.signal.id }}">{{ row.signal.name }}</a>
+        {% if row.related_count %}<span class="desc">Connected to {{ row.related_count }} other signal{{ "s" if row.related_count != 1 }}</span>{% endif %}
+      </td>
+      <td>{{ stage_chip(row.signal.lifecycle_stage) }}</td>
+      <td>{{ row.spark | safe }}</td>
+      <td class="num">{{ row.signal.evidence_count }}</td>
+      <td class="num">{{ row.signal.source_count }}</td>
+      <td class="num">{% if row.delta_7d %}<span class="delta-up">+{{ row.delta_7d }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+      <td class="mono muted">{{ row.signal.cities[:2] | join(", ") }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="7"><div class="empty" style="border:none">Nothing matches. <a href="/signals">Clear filters</a>.</div></td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{%- endmacro %}
+
+{% macro evidence_record(item, source, summary=None, note=None, when=None, limitations=None, show_link=True) -%}
+<article class="record">
+  <div class="provenance">
+    <span class="kind kind-observed"></span>
+    <span>{{ source.name if source else "?" }}</span>
+    <span>{{ item.content_type }}</span>
+    <span>{{ when.date().isoformat() if when else "date unknown" }}</span>
+  </div>
+  <div class="headline"><a href="/items/{{ item.id }}">{{ item.title or "(untitled)" }}</a></div>
+  {% if limitations %}{% for l in limitations %}<div class="limitation">{{ l }}</div>{% endfor %}{% endif %}
+  {% if summary %}<p>{{ summary }}</p>{% endif %}
+  {% if note %}<div class="curator"><span class="mono muted">WHY IT'S EVIDENCE</span> — {{ note }}</div>{% endif %}
+  {% if show_link and item.url %}<p class="mono"><a href="{{ item.url }}" rel="noopener">Open original ↗</a></p>{% endif %}
+</article>
+{%- endmacro %}

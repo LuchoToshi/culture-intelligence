@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "_macros.html" import stage_chip %}
+{% block title %}Archetypes — Culture Intelligence{% endblock %}
+{% block content %}
+<p class="eyebrow">Archetypes</p>
+<h1>Archetype observations</h1>
+<p class="lede">Identity descriptions observed in the evidence — who is combining which signals, where. These are observations, not established personas: an archetype earns standing by recurring across independent sources. None has recurred enough yet to be considered established, so treat each as a single sighting with its evidence attached.</p>
+
+<form class="filterbar" method="get" action="/archetypes">
+  <span class="label">Filter</span>
+  <input name="q" type="search" placeholder="e.g. runner, curator, Berlin…" value="{{ q or '' }}"
+         style="font:0.85rem var(--font-ui); border:1px solid var(--hairline); border-radius:999px; padding:0.25rem 0.8rem">
+  <button type="submit">Apply</button>
+  {% if q or city %}<a class="clear" href="/archetypes">Clear</a>{% endif %}
+</form>
+
+{% for obs in observations %}
+<article class="record">
+  <div class="provenance">
+    <span class="kind kind-model"></span>
+    <span>{{ obs.source.name }}</span>
+    <span>{{ obs.when.date().isoformat() if obs.when else "?" }}</span>
+    {% if obs.cities %}<span>{{ obs.cities | join(" · ") }}</span>{% endif %}
+  </div>
+  <p style="margin:0; font-size: 1rem">{{ obs.text }}</p>
+  <div class="tagrow" style="margin-top:0.5rem">
+    {% for signal in obs.signals %}<a href="/signals/{{ signal.id }}">{{ signal.name }}</a>{% endfor %}
+    <a href="/items/{{ obs.item.id }}" class="mono">evidence →</a>
+  </div>
+</article>
+{% else %}
+<div class="empty"><b>No archetype observations match.</b> {% if q %}Try a broader term or <a href="/archetypes">clear the filter</a>.{% else %}Observations appear as analysis runs.{% endif %}</div>
+{% endfor %}
+{% endblock %}

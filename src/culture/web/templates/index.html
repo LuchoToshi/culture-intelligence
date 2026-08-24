@@ -1,35 +1,71 @@
 {% extends "base.html" %}
+{% from "_macros.html" import stage_chip, signal_table %}
 {% block content %}
-<h1>Overview</h1>
-<div class="cards">
-  <div class="card"><div class="big">{{ counts.signals }}</div><div class="label">Active signals</div></div>
-  <div class="card"><div class="big">{{ counts.sources }}</div><div class="label">Active sources</div></div>
-  <div class="card"><div class="big">{{ counts.content_items }}</div><div class="label">Content items</div></div>
-  <div class="card"><div class="big">{{ counts.analyzed }}</div><div class="label">Analyzed</div></div>
-  <div class="card"><div class="big">{{ counts.pending }}</div><div class="label">Pending analysis</div></div>
+<div class="briefing-head">
+  <p class="eyebrow">Intelligence briefing · {{ today }}</p>
+  <h1>What is moving in urban taste</h1>
+  <p class="freshness">
+    Tracking {{ counts.signals }} signals across {{ counts.sources }} sources.
+    {% if freshness.pending %}<span class="live">{{ freshness.pending }} new items are being analyzed right now</span> — figures will sharpen as they land.{% else %}All collected evidence is analyzed.{% endif %}
+    {% if latest_report %} Weekly synthesis: <a href="/reports/{{ latest_report }}">{{ latest_report }}</a>.{% endif %}
+  </p>
 </div>
 
-{% if latest_report %}
-<p>Latest report: <a href="/reports/{{ latest_report }}">{{ latest_report }}</a></p>
+<h2 class="section">Moving this week <span class="note">signals with new evidence in the last 7 days</span></h2>
+{{ signal_table(movers) }}
+
+<div class="grid-2" style="margin-top: 2.4rem">
+  <div>
+    <h2 class="section" style="margin-top:0">Newly detected <span class="note">first seen in the last 14 days</span></h2>
+    {% for signal in newly_detected %}
+      <div class="card">
+        <div class="meta">first seen {{ signal.first_detected_at.date().isoformat() if signal.first_detected_at else "—" }} · {{ signal.evidence_count }} item{{ "s" if signal.evidence_count != 1 }}</div>
+        <h3><a href="/signals/{{ signal.id }}">{{ signal.name }}</a></h3>
+        {{ stage_chip(signal.lifecycle_stage) }}
+      </div>
+    {% else %}
+      <div class="empty">No signals were first detected in the last two weeks. New detections appear here as the daily analysis finds them.</div>
+    {% endfor %}
+  </div>
+  <div>
+    <h2 class="section" style="margin-top:0">Needs more evidence <span class="note">single observations — early or noise</span></h2>
+    {% for signal in weak_signals %}
+      <div class="card">
+        <div class="meta">{{ signal.evidence_count }} item · {{ signal.cities[:2] | join(", ") or "no city yet" }}</div>
+        <h3><a href="/signals/{{ signal.id }}">{{ signal.name }}</a></h3>
+        {{ stage_chip(signal.lifecycle_stage) }}
+      </div>
+    {% else %}
+      <div class="empty">Every active signal currently has more than one supporting observation.</div>
+    {% endfor %}
+  </div>
+</div>
+
+<h2 class="section">Approaching the mainstream <span class="note">broad editorial presence or saturation risk</span></h2>
+{% if approaching %}
+{{ signal_table(approaching) }}
+{% else %}
+<div class="empty">No signal currently classifies as mainstream or saturated. When one does, it appears here — usually the moment to stop calling it early.</div>
 {% endif %}
 
-<h2>Signals moving this week</h2>
-<table>
-  <thead><tr><th scope="col">Signal</th><th scope="col">Stage</th>
-    <th scope="col" class="num">Evidence</th><th scope="col" class="num">Sources</th>
-    <th scope="col" class="num">+7d</th></tr></thead>
-  <tbody>
-  {% for signal, delta in movers %}
-    <tr>
-      <td><a href="/signals/{{ signal.id }}">{{ signal.name }}</a></td>
-      <td><span class="badge {{ signal.lifecycle_stage }}">{{ signal.lifecycle_stage }}</span></td>
-      <td class="num">{{ signal.evidence_count }}</td>
-      <td class="num">{{ signal.source_count }}</td>
-      <td class="num">{% if delta %}<span class="delta">+{{ delta }}</span>{% else %}—{% endif %}</td>
-    </tr>
-  {% else %}
-    <tr><td colspan="5" class="empty">No signals yet — run the pipeline first.</td></tr>
-  {% endfor %}
-  </tbody>
-</table>
+<div class="grid-2" style="margin-top: 2.4rem">
+  <div>
+    <h2 class="section" style="margin-top:0">Where activity concentrates</h2>
+    {% for city in top_cities %}
+      <div class="card">
+        <h3><a href="/cities/{{ city.name }}">{{ city.name }}</a></h3>
+        <div class="meta">{{ city.item_count }} evidence items · {{ city.signal_count }} signals · {{ city.recent_count }} new this week</div>
+      </div>
+    {% endfor %}
+  </div>
+  <div>
+    <h2 class="section" style="margin-top:0">Latest evidence <span class="note"><a href="/stream">full stream →</a></span></h2>
+    {% for r in latest_items %}
+      <div class="card">
+        <div class="meta">{{ r.source_name }} · {{ r.when.date().isoformat() if r.when else "?" }}</div>
+        <h3><a href="/items/{{ r.item.id }}">{{ r.item.title or "(untitled)" }}</a></h3>
+      </div>
+    {% endfor %}
+  </div>
+</div>
 {% endblock %}

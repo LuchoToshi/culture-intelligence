@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% from "_macros.html" import stage_chip %}
+{% block title %}{{ item.title or "Evidence" }} — Culture Intelligence{% endblock %}
+{% block content %}
+<p class="eyebrow"><a href="/stream">Evidence</a> <span aria-hidden="true">/</span> <span>Source record</span></p>
+<h1>{{ item.title or "(untitled)" }}</h1>
+
+<div class="factline">
+  <span class="f"><b>Source</b> {{ source.name }}</span>
+  <span class="f"><b>Type</b> {{ item.content_type }}</span>
+  <span class="f"><b>Published</b> <span class="mono">{{ when.date().isoformat() if when else "unknown" }}</span></span>
+  <span class="f"><b>Collected</b> <span class="mono">{{ item.discovered_at.date().isoformat() if item.discovered_at else "—" }}</span></span>
+  {% if item.author %}<span class="f"><b>Author</b> {{ item.author }}</span>{% endif %}
+  <span class="f"><b>Original</b> <a href="{{ item.url }}" rel="noopener">open ↗</a></span>
+</div>
+
+{% for l in limitations %}<p class="limitation">{{ l }}</p>{% endfor %}
+
+{% if analysis %}
+<h2 class="section">Model analysis <span class="note">{{ analysis.analysis_provider }}/{{ analysis.analysis_model }} · analyzed {{ analysis.analyzed_at.date().isoformat() if analysis.analyzed_at else "?" }}</span></h2>
+<article class="record">
+  <div class="provenance"><span class="kind kind-model"></span></div>
+  <p style="font-size:1rem">{{ analysis.summary }}</p>
+  {% if analysis.why_it_matters %}<div class="curator"><span class="mono muted">WHY IT MATTERS</span> — {{ analysis.why_it_matters }}</div>{% endif %}
+</article>
+
+{% if analysis.facts_json.claims %}
+<h2 class="section">What the source itself says <span class="note">claims made by the content</span></h2>
+<article class="record"><div class="provenance"><span class="kind kind-observed"></span></div>
+<ul>{% for claim in analysis.facts_json.claims %}<li>{{ claim }}</li>{% endfor %}</ul></article>
+{% endif %}
+
+{% if analysis.interpretations_json.inferences %}
+<h2 class="section">What our system infers <span class="note">interpretation, kept separate from source claims</span></h2>
+<article class="record"><div class="provenance"><span class="kind kind-inference"></span></div>
+<ul>{% for inference in analysis.interpretations_json.inferences %}<li>{{ inference }}</li>{% endfor %}</ul></article>
+{% endif %}
+
+{% if entity_rows %}
+<h2 class="section">Extracted entities</h2>
+<div class="scoregrid">
+  {% for label, values in entity_rows %}
+    <div class="row"><span class="muted">{{ label }}</span><span style="text-align:right">{{ values | join(", ") }}</span></div>
+  {% endfor %}
+</div>
+{% endif %}
+{% else %}
+<div class="empty"><b>Not analyzed yet.</b> This item is in the analysis queue — its extraction and interpretation will appear here once the pipeline processes it.</div>
+{% endif %}
+
+{% if signals %}
+<h2 class="section">Signals this item evidences</h2>
+{% for signal in signals %}
+  <div class="card">
+    <h3><a href="/signals/{{ signal.id }}">{{ signal.name }}</a></h3>
+    {{ stage_chip(signal.lifecycle_stage) }}
+  </div>
+{% endfor %}
+{% endif %}
+
+{% if item.raw_text %}
+<h2 class="section">Stored text <span class="note">exactly as extracted — never edited</span></h2>
+<details class="disclosure">
+  <summary>Show extracted text ({{ item.raw_text | length }} characters)</summary>
+  <article class="record"><div class="provenance"><span class="kind kind-observed"></span></div>
+  <p style="white-space: pre-line">{{ item.raw_text[:6000] }}{% if item.raw_text | length > 6000 %}…{% endif %}</p></article>
+</details>
+{% endif %}
+{% endblock %}
