@@ -1,0 +1,124 @@
+# Culture Intelligence
+
+An intelligence platform that monitors fashion, culture, lifestyle and urban taste sources, analyzes what they publish, and produces weekly cultural intelligence reports.
+
+This is **not** a news aggregator. The system is built to eventually distinguish editorial attention from social attention, social attention from real-world adoption, and adoption from commercial success — and to track how cultural signals move from subculture to mainstream across cities.
+
+## Current scope (V0, Phase 1 complete)
+
+| Phase | Status |
+|---|---|
+| 1. Foundation: project, config, database, models, migrations, CLI skeleton | ✅ done |
+| 2. Source registry + seed import | not started |
+| 3. RSS collector + extraction + dedup (single publication) | not started |
+| 4. Multi-publication ingestion + resilience | not started |
+| 5. YouTube ingestion + transcripts | not started |
+| 6. AI provider abstraction + item analysis | not started |
+| 7. Weekly report (roundup + synthesis) | not started |
+| 8. Quality pass | not started |
+
+## Architecture
+
+A synchronous CLI pipeline: `seed → ingest → analyze → report`.
+
+- **Sources** are data, not code. Every source row carries platform, tier (`candidate/watch/core/dormant`), geography, and collection configuration. Only `web` (RSS) and `youtube` will be active collectors in V0.
+- **Collectors** (Phase 3+) normalize all platforms into one intermediate schema; ingestion doesn't care where an item came from.
+- **Raw content is never overwritten by AI output.** `content_items` holds what the source said; `content_analyses` holds what our system inferred, stamped with model, provider and version.
+- **Dedup is enforced by the database**, not just application logic: unique constraints on `(source_id, external_id)` and `(source_id, normalized url)`.
+- Status fields (`extraction_status`, `transcript_status`, `processing_status`) make every failure explicit and retryable. One failing source never kills a run.
+
+## Technology
+
+Python 3.11+ · uv · PostgreSQL · SQLAlchemy 2 · Alembic · Pydantic / pydantic-settings · Typer · Rich. Later phases add httpx, feedparser, trafilatura, yt-dlp, and the Anthropic/OpenAI SDKs.
+
+## Setup
+
+### 1. PostgreSQL
+
+```bash
+brew install postgresql@16
+brew services start postgresql@16
+createdb culture_intelligence
+```
+
+### 2. Environment
+
+```bash
+cp .env.example .env
+```
+
+Set `DATABASE_URL` (default works for a local Homebrew Postgres):
+
+```
+DATABASE_URL=postgresql+psycopg://localhost:5432/culture_intelligence
+```
+
+AI keys are not needed until Phase 6.
+
+### 3. Install
+
+```bash
+uv sync
+```
+
+> **⚠️ iCloud-synced folders (macOS):** if this repo lives under `~/Documents` with iCloud Drive sync enabled, do **not** keep the virtualenv inside the repo. iCloud marks files inside dot-directories as hidden and can evict their contents; CPython skips hidden `.pth` files, which silently breaks the editable install. Put the venv outside iCloud and symlink it before running `uv sync`:
+>
+> ```bash
+> mkdir -p ~/.venvs/culture-intelligence
+> ln -s ~/.venvs/culture-intelligence .venv
+> uv sync
+> ```
+
+### 4. Database schema
+
+```bash
+uv run culture db init
+```
+
+Applies all Alembic migrations. Safe to run repeatedly.
+
+## Usage
+
+Working today:
+
+```bash
+uv run culture db init    # apply migrations
+uv run culture status     # system health: sources, content, backlog
+```
+
+Arriving in later phases (currently exit with a clear message):
+
+```bash
+uv run culture seed            # Phase 2: import seeds/sources.yaml
+uv run culture sources         # Phase 2: list sources
+uv run culture ingest          # Phase 3/5: collect new content
+uv run culture analyze         # Phase 6: AI analysis
+uv run culture report --days 7 # Phase 7: weekly report -> reports/2026-W35.md
+```
+
+## Migrations
+
+```bash
+uv run alembic revision --autogenerate -m "describe change"
+uv run alembic upgrade head
+```
+
+`DATABASE_URL` from the environment/.env always wins over `alembic.ini`.
+
+## Testing
+
+```bash
+uv run pytest
+```
+
+Unit tests run against in-memory SQLite (JSONB columns degrade to JSON via a type variant); nothing touches the network or the real database. PostgreSQL-specific behavior belongs in `tests/integration/`.
+
+## Known limitations
+
+- No ingestion, analysis, or reporting yet — Phase 1 is foundation only.
+- Enum-like fields are stored as plain strings by design (vocabulary can evolve without migrations); invalid values are caught at the application layer, not by the database.
+- Instagram/TikTok/X/Substack/Reddit/podcast sources are stored as records only; no collectors exist for them in V0 by design.
+
+## Roadmap
+
+V0: the pipeline above. V1: source discovery + source/content quality scoring. V2: more platforms, source graph, persistent signal database, historical intelligence. V3: client-specific networks and a UI. See the project specification for detail.

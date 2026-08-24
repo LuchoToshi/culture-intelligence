@@ -1,0 +1,32 @@
+[project]
+name = "culture-intelligence"
+version = "0.1.0"
+description = "Cultural intelligence platform: monitors fashion, culture and urban taste sources, analyzes content, and produces weekly intelligence reports."
+requires-python = ">=3.11"
+dependencies = [
+    "sqlalchemy>=2.0",
+    "alembic>=1.13",
+    "psycopg[binary]>=3.1",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.2",
+    "typer>=0.12",
+    "rich>=13.7",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[project.scripts]
+culture = "culture.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/culture"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/unit"]
