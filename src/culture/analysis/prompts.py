@@ -28,11 +28,12 @@ Core discipline — these rules override everything else:
 Field guidance:
 - summary: 3-6 sentences on what the item actually says or shows.
 - major_points: the main arguments and notable observations, as short statements.
-- Entity lists (people, brands, products, designers, artists, musicians, creators, cities,
-  neighborhoods, countries, scenes, subcultures, sports, garments, footwear,
-  lifestyle_objects, restaurants, cafes, clubs, media_references, historical_references):
-  names exactly as the content gives them. A person goes in the most specific list that
-  fits (a designer in `designers`, not `people`); `people` is for those who fit no other list.
+- entities: every named entity as a {type, name} pair, with name exactly as the content
+  gives it. Types: people, brands, products, designers, artists, musicians, creators,
+  cities, neighborhoods, countries, scenes, subcultures, sports, garments, footwear,
+  lifestyle_objects, restaurants, cafes, clubs, media_references, historical_references.
+  Give each entity the most specific type that fits (a designer is `designers`, not
+  `people`); use `people` only when no other type fits.
 - topics: cultural themes, e.g. "archive fashion", "running culture", "quiet luxury".
 - tags: short free-form labels useful for later retrieval.
 - consumer_archetypes: identity clusters the content evokes (clothing + places + jobs +

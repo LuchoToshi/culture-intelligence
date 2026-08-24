@@ -9,7 +9,7 @@ from culture.logging import get_logger
 from culture.models.analysis import ContentAnalysis
 from culture.models.content import ContentItem, ProcessingStatus
 from culture.models.source import Source
-from culture.schemas.analysis import ItemAnalysisResponse
+from culture.schemas.analysis import EntityType, ItemAnalysisResponse
 from culture.services.boilerplate import cleaned_text_for
 from culture.utils.dates import now_utc
 
@@ -18,29 +18,9 @@ log = get_logger("culture.analysis")
 ANALYSIS_VERSION = "1"
 
 # Direct 1:1 list fields between the LLM response and the ContentAnalysis row.
+# Entity columns are filled separately by fanning out the typed entities array.
 _LIST_FIELDS = (
     "major_points",
-    "people",
-    "brands",
-    "products",
-    "designers",
-    "artists",
-    "musicians",
-    "creators",
-    "cities",
-    "neighborhoods",
-    "countries",
-    "scenes",
-    "subcultures",
-    "sports",
-    "garments",
-    "footwear",
-    "lifestyle_objects",
-    "restaurants",
-    "cafes",
-    "clubs",
-    "media_references",
-    "historical_references",
     "topics",
     "tags",
     "consumer_archetypes",
@@ -127,4 +107,6 @@ class ItemAnalyzer:
         )
         for field_name in _LIST_FIELDS:
             setattr(row, field_name, getattr(response, field_name))
+        for entity_type in EntityType:
+            setattr(row, entity_type.value, response.entity_names(entity_type))
         return row

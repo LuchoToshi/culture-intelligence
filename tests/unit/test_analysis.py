@@ -12,9 +12,13 @@ from culture.schemas.analysis import ItemAnalysisResponse, ItemScores
 GOOD_RESPONSE = ItemAnalysisResponse(
     summary="Japanese workwear labels are opening London stockists.",
     major_points=["Workwear references are moving into mainstream menswear."],
-    brands=["Kapital", "orSlow"],
-    cities=["London", "Tokyo"],
-    garments=["chore jacket"],
+    entities=[
+        {"type": "brands", "name": "Kapital"},
+        {"type": "brands", "name": "orSlow"},
+        {"type": "cities", "name": "London"},
+        {"type": "cities", "name": "Tokyo"},
+        {"type": "garments", "name": "chore jacket"},
+    ],
     topics=["workwear", "japanese fashion"],
     possible_signals=["Japanese workwear entering mainstream London menswear"],
     why_it_matters="Signals migration from niche to mainstream.",
@@ -78,6 +82,8 @@ def test_analysis_stores_full_row(session):
     assert row.summary.startswith("Japanese workwear")
     assert row.brands == ["Kapital", "orSlow"]
     assert row.cities == ["London", "Tokyo"]
+    assert row.garments == ["chore jacket"]
+    assert row.people == []  # entity types with no entities stay empty
     assert row.cultural_origin_score == 4
     assert row.urban_adoption_score is None
     assert row.lifecycle_stage == "strengthening"
@@ -171,6 +177,65 @@ def test_long_text_truncated_in_prompt(session):
     prompt = build_item_prompt(source, item, "x" * (MAX_ANALYSIS_CHARS + 5000))
     assert "truncated" in prompt
     assert len(prompt) < MAX_ANALYSIS_CHARS + 2000
+
+
+# Anthropic's structured-outputs API rejects schemas with more than this many
+# optional parameters ("Schemas contains too many optional parameters").
+ANTHROPIC_OPTIONAL_PARAM_LIMIT = 24
+
+
+def count_optional_params(schema: dict) -> int:
+    """Count properties not listed as required, across all nested objects."""
+    count = 0
+    if isinstance(schema, dict):
+        properties = schema.get("properties")
+        if isinstance(properties, dict):
+            required = set(schema.get("required", []))
+            count += len(set(properties) - required)
+        for value in schema.values():
+            if isinstance(value, dict):
+                count += count_optional_params(value)
+            elif isinstance(value, list):
+                count += sum(count_optional_params(v) for v in value if isinstance(v, dict))
+    return count
+
+
+def test_wire_schema_respects_anthropic_optional_param_limit():
+    schema = ItemAnalysisResponse.model_json_schema()
+    optional = count_optional_params(schema)
+    assert optional <= ANTHROPIC_OPTIONAL_PARAM_LIMIT, (
+        f"Generated schema has {optional} optional parameters; Anthropic rejects "
+        f"schemas with more than {ANTHROPIC_OPTIONAL_PARAM_LIMIT}. Mark new fields "
+        "required via _all_fields_required in culture.schemas.analysis."
+    )
+    # The mechanism: every field is required on the wire, at every level.
+    assert optional == 0
+
+
+def test_entity_names_dedupes_and_preserves_order():
+    response = ItemAnalysisResponse(
+        summary="ok",
+        entities=[
+            {"type": "brands", "name": "Nike"},
+            {"type": "brands", "name": "Salomon"},
+            {"type": "brands", "name": "Nike"},
+            {"type": "cities", "name": "Nike"},  # same name, different type — kept
+        ],
+    )
+    from culture.schemas.analysis import EntityType
+
+    assert response.entity_names(EntityType.BRANDS) == ["Nike", "Salomon"]
+    assert response.entity_names(EntityType.CITIES) == ["Nike"]
+
+
+def test_required_wire_schema_keeps_python_defaults():
+    # Python-side construction ergonomics are unchanged: defaults still apply.
+    response = ItemAnalysisResponse(summary="ok")
+    assert response.entities == []
+    assert response.scores.cultural_origin is None
+    # But the wire schema demands every field, including nested scores.
+    schema = ItemAnalysisResponse.model_json_schema()
+    assert set(schema["required"]) == set(schema["properties"])
 
 
 def test_response_validation_rejects_bad_scores():
