@@ -192,9 +192,10 @@ sources:
     collection_method: rss
 
   - name: Throwing Fits
-    platform: web
+    platform: podcast
     source_type: podcast
     url: https://www.throwingfits.com
+    feed_url: https://rss.libsyn.com/shows/519643/destinations/4460808.xml
     country: United States
     city: New York
     region: US
@@ -203,9 +204,10 @@ sources:
     intelligence_layers: [social_codes, scene_subculture]
     tier: core
     active: true
+    collection_method: rss
     notes: >-
-      Primarily a podcast; the website exposed no RSS feed during automated
-      verification on 2026-08-24. Podcast collection is a future phase.
+      Public Libsyn podcast feed verified via Apple Podcasts lookup on
+      2026-08-24 (11 entries). Episodes are analyzed from show notes only.
 
   # ── YouTube channels (channel IDs + feeds verified) ──────────────────────
   - name: Business of Fashion (YouTube)
@@ -307,6 +309,156 @@ sources:
     tier: watch
     active: true
     collection_method: rss
+
+  # ── Scene-adjacent newsletters & Substacks (feeds verified 2026-08-24) ──
+  - name: Blackbird Spyplane
+    platform: substack
+    source_type: newsletter
+    url: https://www.blackbirdspyplane.com
+    feed_url: https://www.blackbirdspyplane.com/feed
+    country: United States
+    region: US
+    language: en
+    categories: [fashion, menswear, taste, culture]
+    intelligence_layers: [scene_subculture, social_codes, personal_application]
+    tier: core
+    active: true
+    collection_method: rss
+
+  - name: Die Workwear
+    platform: web
+    source_type: blog
+    url: https://dieworkwear.com
+    feed_url: https://dieworkwear.com/feed/
+    country: United States
+    region: US
+    language: en
+    categories: [menswear, tailoring, workwear, fashion history]
+    intelligence_layers: [editorial, social_codes, personal_application]
+    tier: core
+    active: true
+    collection_method: rss
+
+  - name: Opulent Tips
+    platform: substack
+    source_type: newsletter
+    url: https://opulenttips.substack.com
+    feed_url: https://opulenttips.substack.com/feed
+    country: United States
+    city: New York
+    region: US
+    language: en
+    categories: [fashion, luxury, taste, culture]
+    intelligence_layers: [editorial, social_codes]
+    tier: core
+    active: true
+    collection_method: rss
+
+  - name: Perfectly Imperfect
+    platform: substack
+    source_type: newsletter
+    url: https://perfectlyimperfect.substack.com
+    feed_url: https://perfectlyimperfect.substack.com/feed
+    country: United States
+    city: New York
+    region: US
+    language: en
+    categories: [taste, culture, lifestyle, music]
+    intelligence_layers: [urban_archetype, scene_subculture]
+    tier: core
+    active: true
+    collection_method: rss
+
+  - name: After School
+    platform: substack
+    source_type: newsletter
+    url: https://afterschool.substack.com
+    feed_url: https://afterschool.substack.com/feed
+    country: United States
+    city: New York
+    region: US
+    language: en
+    categories: [youth culture, consumer trends, fashion]
+    intelligence_layers: [fast_radar, psychology]
+    tier: watch
+    active: true
+    collection_method: rss
+
+  - name: The Sociology of Business
+    platform: substack
+    source_type: newsletter
+    url: https://andjelicaaa.substack.com
+    feed_url: https://andjelicaaa.substack.com/feed
+    country: United States
+    city: New York
+    region: US
+    language: en
+    categories: [brand strategy, fashion business, consumer psychology]
+    intelligence_layers: [industry_structure, psychology]
+    tier: watch
+    active: true
+    collection_method: rss
+
+  - name: Feed Me
+    platform: newsletter
+    source_type: newsletter
+    url: https://www.readfeedme.com
+    feed_url: https://www.readfeedme.com/feed
+    country: United States
+    city: New York
+    region: US
+    language: en
+    categories: [media, consumer culture, lifestyle, internet culture]
+    intelligence_layers: [fast_radar, social_codes]
+    tier: watch
+    active: true
+    collection_method: rss
+
+  - name: 5 Things You Should Buy
+    platform: substack
+    source_type: newsletter
+    url: https://5thingsyoushouldbuy.substack.com
+    feed_url: https://5thingsyoushouldbuy.substack.com/feed
+    country: United States
+    city: New York
+    region: US
+    language: en
+    categories: [fashion, shopping, taste]
+    intelligence_layers: [personal_application, fast_radar]
+    tier: watch
+    active: true
+    collection_method: rss
+
+  # ── Podcasts (feeds verified via Apple Podcasts lookup 2026-08-24) ───────
+  - name: Blamo!
+    platform: podcast
+    source_type: podcast
+    url: https://www.blamo.show
+    feed_url: https://feeds.simplecast.com/_J_JkqSe
+    country: United States
+    language: en
+    categories: [menswear, fashion, craft]
+    intelligence_layers: [scene_subculture, editorial]
+    tier: watch
+    active: true
+    collection_method: rss
+    notes: Episodes are analyzed from show notes only.
+
+  - name: Fashion People
+    platform: podcast
+    source_type: podcast
+    url: https://puck.news/podcasts/fashion-people
+    feed_url: https://rss.amperwave.net/v2/feed/audacynetwork/fashion-people
+    country: United States
+    city: New York
+    region: US
+    language: en
+    categories: [fashion business, media, luxury]
+    intelligence_layers: [industry_structure, social_codes]
+    tier: watch
+    active: true
+    collection_method: rss
+    notes: Episodes are analyzed from show notes only.
 
   # ── Instagram (future phases; no collector in V0, all inactive) ──────────
   - name: Fashion Is Psychology (Instagram)

@@ -88,6 +88,12 @@ def build_item_prompt(source: Source, item: ContentItem, text: str | None) -> st
     if item.description and item.description != text:
         lines.append(f"Description: {item.description[:2000]}")
 
+    if item.content_type == "podcast":
+        lines.append(
+            "Podcast episode — only the show notes are available. Never guess spoken "
+            "content beyond them."
+        )
+
     if item.content_type == "video":
         duration = item.metadata_json.get("duration_seconds")
         if duration:

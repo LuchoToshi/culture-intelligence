@@ -50,7 +50,9 @@ def _entity_line(label: str, *lists: list) -> str | None:
 
 def _limitations(item: ContentItem) -> list[str]:
     notes = []
-    if item.content_type == "video":
+    if item.content_type == "podcast":
+        notes.append("Podcast episode: analysis based on show notes only, audio not transcribed.")
+    elif item.content_type == "video":
         if item.transcript_status == TranscriptStatus.AVAILABLE.value:
             notes.append("Analysis used the video transcript.")
         else:

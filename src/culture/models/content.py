@@ -11,6 +11,7 @@ from culture.models.source import Source
 class ContentType(StrEnum):
     ARTICLE = "article"
     VIDEO = "video"
+    PODCAST = "podcast"
 
 
 class ExtractionStatus(StrEnum):

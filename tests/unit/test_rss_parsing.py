@@ -56,3 +56,10 @@ def test_parse_feed_tolerates_missing_fields():
 def test_parse_feed_rejects_garbage():
     with pytest.raises(CollectorError):
         parse_feed("this is not xml at all {}", "https://example.com/feed")
+
+
+def test_parse_feed_respects_content_type_override():
+    from culture.models.content import ContentType
+
+    items = parse_feed(FEED, "https://pod.example/feed", content_type=ContentType.PODCAST)
+    assert all(i.content_type == ContentType.PODCAST for i in items)

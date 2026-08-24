@@ -12,7 +12,11 @@ from culture.utils.http import get_with_retries
 log = get_logger("culture.collectors.rss")
 
 
-def parse_feed(content: bytes | str, feed_url: str) -> list[RawContentItem]:
+def parse_feed(
+    content: bytes | str,
+    feed_url: str,
+    content_type: ContentType = ContentType.ARTICLE,
+) -> list[RawContentItem]:
     """Parse RSS/Atom bytes into normalized items. Pure function, easy to test."""
     parsed = feedparser.parse(content)
     if parsed.bozo and not parsed.entries:
@@ -34,7 +38,7 @@ def parse_feed(content: bytes | str, feed_url: str) -> list[RawContentItem]:
                 author=(entry.get("author") or "").strip() or None,
                 description=(entry.get("summary") or "").strip() or None,
                 published_at=published,
-                content_type=ContentType.ARTICLE,
+                content_type=content_type,
                 metadata={"feed_tags": tags} if tags else {},
             )
         )
@@ -42,10 +46,13 @@ def parse_feed(content: bytes | str, feed_url: str) -> list[RawContentItem]:
 
 
 class RSSCollector:
-    """Collects articles from any source with a verified RSS/Atom feed."""
+    """Collects items from any source with a verified RSS/Atom feed."""
 
-    def __init__(self, client: httpx.Client) -> None:
+    def __init__(
+        self, client: httpx.Client, content_type: ContentType = ContentType.ARTICLE
+    ) -> None:
         self.client = client
+        self.content_type = content_type
 
     def fetch(self, source: Source) -> list[RawContentItem]:
         if not source.feed_url:
@@ -54,4 +61,4 @@ class RSSCollector:
             response = get_with_retries(self.client, source.feed_url)
         except httpx.HTTPError as exc:
             raise CollectorError(f"Feed fetch failed for {source.name!r}: {exc}") from exc
-        return parse_feed(response.content, source.feed_url)
+        return parse_feed(response.content, source.feed_url, self.content_type)

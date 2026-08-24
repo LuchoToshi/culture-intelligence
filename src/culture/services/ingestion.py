@@ -72,6 +72,7 @@ class SourceIngestStats:
     skipped_reason: str | None = None
     new_articles: int = 0
     new_videos: int = 0
+    new_podcasts: int = 0
     duplicates: int = 0
     extracted: int = 0
     partial: int = 0
@@ -132,6 +133,9 @@ class IngestionService:
             client = create_client()
             collectors = collectors or {
                 Platform.WEB.value: RSSCollector(client),
+                Platform.SUBSTACK.value: RSSCollector(client),
+                Platform.NEWSLETTER.value: RSSCollector(client),
+                Platform.PODCAST.value: RSSCollector(client, content_type=ContentType.PODCAST),
                 Platform.YOUTUBE.value: YouTubeCollector(client),
             }
             page_fetcher = page_fetcher or _polite_fetcher(client)
@@ -299,6 +303,11 @@ class IngestionService:
                 stats.extraction_failed += 1
                 log.warning("article extraction failed: %s", normalized)
             stats.new_articles += 1
+        elif raw.content_type == ContentType.PODCAST:
+            # Show notes travel in description; episode audio is not transcribed.
+            item.extraction_status = ExtractionStatus.NOT_ATTEMPTED.value
+            item.transcript_status = TranscriptStatus.NOT_ATTEMPTED.value
+            stats.new_podcasts += 1
         else:
             enrichment = self.video_enricher(normalized, raw.external_id or "")
             meta = enrichment.metadata

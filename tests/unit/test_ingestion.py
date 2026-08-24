@@ -201,3 +201,42 @@ def test_named_ingest_of_unknown_source_raises(session):
     service = make_service(session, FakeCollector([]))
     with pytest.raises(ValueError, match="Nope"):
         service.ingest(source_name="Nope")
+
+
+def test_podcast_ingestion_stores_show_notes_without_pretending(session):
+    source = Source(
+        name="A Podcast",
+        platform="podcast",
+        feed_url="https://pod.example/feed",
+        active=True,
+        tier="core",
+    )
+    session.add(source)
+    session.commit()
+    episode = make_raw(
+        url="https://pod.example/ep1",
+        external_id="ep-1",
+        content_type=ContentType.PODCAST,
+        description="Show notes: guest talks London menswear.",
+    )
+
+    class PodcastCollector:
+        def fetch(self, source):
+            return [episode]
+
+    service = IngestionService(
+        session,
+        collectors={"podcast": PodcastCollector()},
+        page_fetcher=lambda url: (_ for _ in ()).throw(AssertionError("no page fetch for podcasts")),
+    )
+    stats = service.ingest()
+
+    assert stats.total_new_podcasts == 1
+    item = session.query(ContentItem).one()
+    assert item.content_type == "podcast"
+    assert item.extraction_status == "not_attempted"
+    assert item.transcript_status == "not_attempted"
+    assert item.raw_text is None
+    assert "Show notes" in item.description
+    assert item.processing_status == "ready"
+
