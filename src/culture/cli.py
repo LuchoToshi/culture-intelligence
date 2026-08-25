@@ -757,6 +757,7 @@ def report(
             f"[yellow]{result.items_unanalyzed} item(s) not yet analyzed — "
             "run `culture analyze` and regenerate for full coverage.[/yellow]"
         )
+    console.print(f"Spend this run: [bold]${provider.spent_usd:.2f}[/bold] ({provider.model})")
     console.print()
     console.print(f"Weekly report generated:\n[bold]{result.path}[/bold]")
     console.print("Saved to the database for the hosted site's private report archive.")
