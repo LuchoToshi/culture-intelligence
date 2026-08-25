@@ -12,6 +12,8 @@ NOW = datetime.now(UTC)
 class FakeProvider:
     name = "fake"
     model = "fake-synth-1"
+    spent_usd = 0.0
+    max_spend_usd = None
 
     def __init__(self):
         self.prompts = []

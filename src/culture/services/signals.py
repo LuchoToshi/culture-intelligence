@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from culture.analysis.provider import AIProvider
+from culture.analysis.provider import AIProvider, BudgetExceededError
 from culture.analysis.signal_prompts import SIGNAL_SYSTEM_PROMPT, build_signal_prompt
 from culture.logging import get_logger
 from culture.models.analysis import ContentAnalysis, LifecycleStage
@@ -45,6 +45,8 @@ class SignalUpdateStats:
     signals_created: int = 0
     invalid_links: int = 0
     new_signal_names: list[str] = field(default_factory=list)
+    budget_stopped: bool = False
+    spent_usd: float = 0.0
 
 
 def compute_lifecycle(
@@ -195,12 +197,25 @@ class SignalService:
             batch = items[start : start + BATCH_SIZE]
             try:
                 self._process_batch(batch, stats)
+            except BudgetExceededError as exc:
+                # Not a per-batch failure — the call was never attempted, and
+                # every remaining batch would raise the same way. Stop the
+                # whole loop instead of iterating through each one for nothing.
+                self.session.rollback()
+                stats.budget_stopped = True
+                log.warning(
+                    "%s (%d item(s) left unprocessed this run)",
+                    exc,
+                    len(items) - stats.items_processed,
+                )
+                break
             except Exception as exc:
                 # Leave the batch unprocessed for the next run; keep going.
                 self.session.rollback()
                 log.error("signal batch failed (items %d-%d): %s", batch[0].id, batch[-1].id, exc)
                 continue
             self.session.commit()
+        stats.spent_usd = getattr(self.provider, "spent_usd", 0.0)
         log.info(
             "signal matching completed: %d items, %d links, %d new signals",
             stats.items_processed,

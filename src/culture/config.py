@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     ai_synthesis_model: str = ""
     anthropic_api_key: str = ""
     openai_api_key: str = ""
+    # Hard ceiling on real dollar spend per `culture analyze` invocation
+    # (shared across item analysis and the signal-matching that follows it
+    # in the same run). A run stops cleanly between items once reached —
+    # nothing lost, remaining items retry next run. None = uncapped.
+    ai_max_spend_per_run: float | None = 5.0
     # Managed scraping for Instagram/TikTok (no official API for monitoring
     # arbitrary public accounts). Empty = those platforms stay uncollected,
     # exactly as before — no regression when the token is absent.

@@ -11,9 +11,11 @@ material with its sha256 recorded for integrity.
 """
 
 import hashlib
+import io
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from PIL import Image
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -41,6 +43,38 @@ IMAGE_MEDIA_TYPES = {
     ".webp": "image/webp",
     ".gif": "image/gif",
 }
+
+# Vision cost scales with pixel count (~width*height/750 tokens), not file
+# size. Instagram/TikTok images arrive at ~1080px — no meme's on-image text
+# or clothing detail needs that; 768px on the long edge stays fully legible
+# (cost-relevant test: "is it readable", not "is it high-resolution") while
+# cutting image tokens by roughly half.
+MAX_IMAGE_DIMENSION = 768
+IMAGE_JPEG_QUALITY = 85
+
+
+def downscale_image(data: bytes, media_type: str) -> tuple[bytes, str]:
+    """Resize to MAX_IMAGE_DIMENSION on the long edge; re-encode as JPEG.
+
+    Returns (possibly unchanged) bytes and the resulting media type. Images
+    already at or under the target size pass through untouched — no point
+    re-encoding (and possibly degrading) an already-small image.
+    """
+    try:
+        image = Image.open(io.BytesIO(data))
+        image.load()
+    except Exception as exc:
+        log.warning("could not decode image for downscaling, storing as-is: %s", exc)
+        return data, media_type
+
+    if max(image.size) <= MAX_IMAGE_DIMENSION:
+        return data, media_type
+
+    rgb_image = image if image.mode in ("RGB", "L") else image.convert("RGB")
+    rgb_image.thumbnail((MAX_IMAGE_DIMENSION, MAX_IMAGE_DIMENSION), Image.Resampling.LANCZOS)
+    buffer = io.BytesIO()
+    rgb_image.save(buffer, format="JPEG", quality=IMAGE_JPEG_QUALITY)
+    return buffer.getvalue(), "image/jpeg"
 
 
 class IntakeError(Exception):
@@ -79,14 +113,16 @@ def infer_source(session: Session, url: str) -> Source | None:
 
 
 def store_image_bytes(data: bytes, media_type: str, stem: str) -> dict:
-    """Persist image bytes into the media dir. Returns an images-list entry.
+    """Downscale, then persist image bytes into the media dir. Returns an
+    images-list entry.
 
     Shared by manual intake and the social collector so both produce the
     identical metadata shape the analyzer reads via load_item_images.
     """
-    suffix = next((s for s, mt in IMAGE_MEDIA_TYPES.items() if mt == media_type), None)
-    if suffix is None:
+    if media_type not in IMAGE_MEDIA_TYPES.values():
         raise IntakeError(f"Unsupported image media type {media_type!r}.")
+    data, media_type = downscale_image(data, media_type)
+    suffix = next(s for s, mt in IMAGE_MEDIA_TYPES.items() if mt == media_type)
     MEDIA_DIR.mkdir(parents=True, exist_ok=True)
     digest = hashlib.sha256(data).hexdigest()
     destination = MEDIA_DIR / f"{stem}{suffix}"

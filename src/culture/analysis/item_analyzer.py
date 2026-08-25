@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from culture.analysis.prompts import ITEM_SYSTEM_PROMPT, build_item_prompt
-from culture.analysis.provider import AIProvider
+from culture.analysis.provider import AIProvider, BudgetExceededError
 from culture.logging import get_logger
 from culture.models.analysis import ContentAnalysis
 from culture.models.content import ContentItem, ProcessingStatus
@@ -40,6 +40,8 @@ class AnalyzeStats:
     failed: int = 0
     stale_skipped: int = 0
     failures: list[str] = field(default_factory=list)
+    budget_stopped: bool = False
+    spent_usd: float = 0.0
 
 
 class ItemAnalyzer:
@@ -93,12 +95,22 @@ class ItemAnalyzer:
                 item.processing_status = ProcessingStatus.ANALYZED.value
                 stats.analyzed += 1
                 log.info("analysis completed: [%d] %s", item.id, item.title or item.url)
+            except BudgetExceededError as exc:
+                # Not a per-item failure — the call was never attempted.
+                # Leave the item exactly as it was so it's retried next run.
+                item.processing_status = ProcessingStatus.READY.value
+                self.session.commit()
+                stats.budget_stopped = True
+                left = len(items) - stats.analyzed - stats.failed
+                log.warning("%s (%d item(s) left unanalyzed this run)", exc, left)
+                break
             except Exception as exc:
                 item.processing_status = ProcessingStatus.FAILED.value
                 stats.failed += 1
                 stats.failures.append(f"[{item.id}] {item.title or item.url}: {exc}")
                 log.error("analysis failed: [%d] %s: %s", item.id, item.title or item.url, exc)
             self.session.commit()
+        stats.spent_usd = getattr(self.provider, "spent_usd", 0.0)
         return stats
 
     def _analyze_item(self, item: ContentItem) -> None:

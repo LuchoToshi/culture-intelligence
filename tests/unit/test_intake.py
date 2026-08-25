@@ -180,3 +180,82 @@ def test_analyzer_text_only_posts_get_caption_only_guard(session, ig_source):
     stats = ItemAnalyzer(session, TextFake()).analyze_pending()
     assert stats.analyzed == 1
     assert "never guess what the visual showed" in calls["user"]
+
+
+def make_large_image(tmp_path, name="big.jpg", size=(1080, 1080)):
+    from PIL import Image
+
+    path = tmp_path / name
+    img = Image.new("RGB", size, color=(200, 50, 50))
+    img.save(path, format="JPEG", quality=90)
+    return path
+
+
+def test_downscale_shrinks_oversized_images():
+    import io
+
+    from PIL import Image
+
+    from culture.services.intake import MAX_IMAGE_DIMENSION, downscale_image
+
+    buf = io.BytesIO()
+    Image.new("RGB", (1080, 1080), color="blue").save(buf, format="JPEG")
+    original = buf.getvalue()
+
+    resized, media_type = downscale_image(original, "image/jpeg")
+    assert media_type == "image/jpeg"
+    assert len(resized) < len(original)
+    out = Image.open(io.BytesIO(resized))
+    assert max(out.size) == MAX_IMAGE_DIMENSION
+
+
+def test_downscale_leaves_small_images_untouched():
+    import io
+
+    from PIL import Image
+
+    from culture.services.intake import downscale_image
+
+    buf = io.BytesIO()
+    Image.new("RGB", (400, 400), color="green").save(buf, format="PNG")
+    original = buf.getvalue()
+
+    resized, media_type = downscale_image(original, "image/png")
+    assert resized == original
+    assert media_type == "image/png"
+
+
+def test_downscale_converts_png_to_jpeg_when_resizing():
+    import io
+
+    from PIL import Image
+
+    from culture.services.intake import downscale_image
+
+    buf = io.BytesIO()
+    Image.new("RGB", (1200, 1200), color="red").save(buf, format="PNG")
+    original = buf.getvalue()
+
+    resized, media_type = downscale_image(original, "image/png")
+    assert media_type == "image/jpeg"
+    import io
+
+    from PIL import Image
+    out = Image.open(io.BytesIO(resized))
+    assert max(out.size) == 768  # dimensions shrank — the actual API cost driver
+    assert out.format == "JPEG"
+
+
+def test_add_post_stores_downscaled_image(session, ig_source, tmp_path):
+    large = make_large_image(tmp_path)
+    item = add_post(
+        session,
+        "https://www.instagram.com/nolitadirtbag/p/Cbig/",
+        caption="big image",
+        image_path=large,
+    )
+    stored_path = item.metadata_json["images"][0]["path"]
+    from PIL import Image
+
+    with Image.open(stored_path) as img:
+        assert max(img.size) <= 768

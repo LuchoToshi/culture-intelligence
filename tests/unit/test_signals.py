@@ -1,5 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
+from culture.analysis.provider import BudgetExceededError
 from culture.models.analysis import ContentAnalysis
 from culture.models.content import ContentItem
 from culture.models.signal import Signal, SignalEvidence
@@ -13,6 +14,8 @@ NOW = datetime.now(UTC)
 class FakeProvider:
     name = "fake"
     model = "fake-1"
+    spent_usd = 0.0
+    max_spend_usd = None
 
     def __init__(self, responses):
         self.responses = list(responses)
@@ -184,6 +187,43 @@ def test_failed_batch_leaves_items_for_next_run(session):
     assert stats.items_processed == 0
     session.expire_all()
     assert item.signals_processed_at is None  # will be retried
+
+
+def test_budget_exceeded_stops_run_and_requeues_item(session):
+    source = make_source(session)
+    item = make_analyzed_item(session, source, "Retry Me")
+
+    class BudgetExhaustedProvider(FakeProvider):
+        def generate_structured(self, system, user, output_format):
+            raise BudgetExceededError(5.0, 5.0)
+
+    stats = SignalService(session, BudgetExhaustedProvider([])).update_signals()
+    assert stats.items_processed == 0
+    assert stats.budget_stopped is True
+    session.expire_all()
+    assert item.signals_processed_at is None  # will be retried
+
+
+def test_budget_exceeded_skips_remaining_batches_entirely(session):
+    source = make_source(session)
+    for i in range(25):  # spans two batches (BATCH_SIZE == 20)
+        make_analyzed_item(session, source, f"Item {i}")
+
+    class BudgetExhaustedAfterFirstBatch(FakeProvider):
+        def __init__(self, responses):
+            super().__init__(responses)
+            self.batch_calls = 0
+
+        def generate_structured(self, system, user, output_format):
+            self.batch_calls += 1
+            if self.batch_calls > 1:
+                raise AssertionError("second batch should never be dispatched")
+            raise BudgetExceededError(5.0, 5.0)
+
+    provider = BudgetExhaustedAfterFirstBatch([])
+    stats = SignalService(session, provider).update_signals()
+    assert provider.batch_calls == 1
+    assert stats.budget_stopped is True
 
 
 def test_registry_passed_to_prompt(session):

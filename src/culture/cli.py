@@ -270,6 +270,12 @@ def ingest(
 @app.command()
 def analyze(
     limit: int | None = typer.Option(None, "--limit", help="Analyze at most N items."),
+    max_spend: float | None = typer.Option(
+        None,
+        "--max-spend",
+        help="Real dollar cap for this run (item analysis + signal matching combined). "
+        "Defaults to AI_MAX_SPEND_PER_RUN.",
+    ),
 ) -> None:
     """Run AI analysis on unprocessed content (retries earlier failures)."""
     from culture.analysis.item_analyzer import ItemAnalyzer
@@ -277,7 +283,7 @@ def analyze(
     from culture.database import get_engine, session_scope
 
     try:
-        provider = get_provider(get_settings())
+        provider = get_provider(get_settings(), max_spend_usd=max_spend if max_spend else -1.0)
     except ProviderError as exc:
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(1) from exc
@@ -305,6 +311,10 @@ def analyze(
     for failure in stats.failures[:10]:
         console.print(f"  [red]- {failure}[/red]")
     console.print(f"Remaining unanalyzed: {remaining}")
+    if stats.budget_stopped:
+        console.print(
+            "[yellow]Stopped early: spend cap reached. Remaining items retry next run.[/yellow]"
+        )
 
     # Newly analyzed items feed the signal registry in the same run.
     from culture.services.signals import SignalService
@@ -320,6 +330,13 @@ def analyze(
         )
         for name in signal_stats.new_signal_names[:15]:
             console.print(f"  [green]+ {name}[/green]")
+    if signal_stats.budget_stopped:
+        console.print(
+            "[yellow]Stopped early: spend cap reached. Remaining items retry next run.[/yellow]"
+        )
+
+    console.print()
+    console.print(f"Spend this run: [bold]${provider.spent_usd:.2f}[/bold]")
 
 
 @app.command()
@@ -559,6 +576,11 @@ def signals_update(
     )
     for name in stats.new_signal_names:
         console.print(f"  [green]+ {name}[/green]")
+    if stats.budget_stopped:
+        console.print(
+            "[yellow]Stopped early: spend cap reached. Remaining items retry next run.[/yellow]"
+        )
+    console.print(f"Spend this run: [bold]${provider.spent_usd:.2f}[/bold]")
 
 
 @app.command()

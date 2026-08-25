@@ -2,7 +2,7 @@ import pytest
 
 from culture.analysis.item_analyzer import ItemAnalyzer
 from culture.analysis.prompts import MAX_ANALYSIS_CHARS, build_item_prompt
-from culture.analysis.provider import ProviderError, get_provider
+from culture.analysis.provider import BudgetExceededError, ProviderError, get_provider
 from culture.config import Settings
 from culture.models.analysis import ContentAnalysis
 from culture.models.content import ContentItem
@@ -32,14 +32,22 @@ GOOD_RESPONSE = ItemAnalysisResponse(
 class FakeProvider:
     name = "fake"
     model = "fake-model-1"
+    max_spend_usd = None
 
-    def __init__(self, response=GOOD_RESPONSE, fail_titles=()):
+    def __init__(self, response=GOOD_RESPONSE, fail_titles=(), budget_exhausted_after=None):
         self.response = response
         self.fail_titles = fail_titles
         self.prompts = []
+        self.spent_usd = 0.0
+        self.budget_exhausted_after = budget_exhausted_after
+        self.calls = 0
 
     def generate_structured(self, system, user, output_format):
+        if self.budget_exhausted_after is not None and self.calls >= self.budget_exhausted_after:
+            raise BudgetExceededError(self.spent_usd, 0.0)
+        self.calls += 1
         self.prompts.append(user)
+        self.spent_usd += 1.0
         for title in self.fail_titles:
             if title in user:
                 raise ProviderError("simulated provider failure")
@@ -122,6 +130,20 @@ def test_failed_items_are_retried_next_run(session):
     stats = ItemAnalyzer(session, FakeProvider()).analyze_pending()
     assert stats.analyzed == 1
     assert session.query(ContentItem).one().processing_status == "analyzed"
+
+
+def test_budget_exceeded_stops_run_and_requeues_item(session):
+    make_item(session, title="Analyzed Before Cap")
+    make_item(session, title="Blocked By Cap")
+    provider = FakeProvider(budget_exhausted_after=1)
+    stats = ItemAnalyzer(session, provider).analyze_pending()
+
+    assert stats.analyzed == 1
+    assert stats.failed == 0
+    assert stats.budget_stopped is True
+    assert stats.spent_usd == pytest.approx(1.0)
+    blocked = session.query(ContentItem).filter_by(title="Blocked By Cap").one()
+    assert blocked.processing_status == "ready"
 
 
 def test_analyzed_items_are_not_reprocessed(session):
