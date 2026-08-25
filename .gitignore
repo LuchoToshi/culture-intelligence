@@ -11,3 +11,4 @@ reports/*.md
 logs/
 .vercel
 .env*
+media/

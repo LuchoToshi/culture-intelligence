@@ -7,7 +7,8 @@ MAX_ANALYSIS_CHARS = 24_000
 ITEM_SYSTEM_PROMPT = """\
 You are the analysis engine of a cultural intelligence platform covering fashion, \
 lifestyle and urban taste across Europe, the UK, the US, Japan, Korea and Australia. \
-You analyze one content item (an article or a video) from a monitored source and \
+You analyze one content item (an article, video, podcast episode or social post) from a \
+monitored source and \
 return a structured extraction.
 
 Core discipline — these rules override everything else:
@@ -25,6 +26,9 @@ Core discipline — these rules override everything else:
 - If the item is a video with no transcript, analyze ONLY the title, description and
   metadata, and begin the summary with "Metadata-only analysis (no transcript):". Never
   guess what is said in the video.
+- If the item is a social post with attached image(s), describe what is actually visible
+  — clothing, objects, places, in-image text, meme format — and keep visual observation
+  separate from interpretation. Never describe visuals that were not provided.
 - If the text is a short paywalled teaser, treat it as headline-level evidence and note the
   limitation in the summary.
 
@@ -62,7 +66,9 @@ strengthening, mainstream, saturated, or declining. Use null when there is no ba
 """
 
 
-def build_item_prompt(source: Source, item: ContentItem, text: str | None) -> str:
+def build_item_prompt(
+    source: Source, item: ContentItem, text: str | None, has_images: bool = False
+) -> str:
     lines = [
         "SOURCE CONTEXT",
         f"Source: {source.name} ({source.platform}, "
@@ -87,6 +93,20 @@ def build_item_prompt(source: Source, item: ContentItem, text: str | None) -> st
     ]
     if item.description and item.description != text:
         lines.append(f"Description: {item.description[:2000]}")
+
+    if item.content_type == "post":
+        if has_images:
+            lines.append(
+                "Manually submitted social post — image(s) attached ABOVE this text. "
+                "Read the image(s) carefully: garments, styling, setting, people, any text "
+                "inside the image, and the meme or joke structure if present. Treat what is "
+                "visually shown as primary evidence alongside the caption."
+            )
+        else:
+            lines.append(
+                "Manually submitted social post — caption only, no image was provided. "
+                "Analyze the caption text; never guess what the visual showed."
+            )
 
     if item.content_type == "podcast":
         lines.append(

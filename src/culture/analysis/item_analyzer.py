@@ -102,13 +102,22 @@ class ItemAnalyzer:
         return stats
 
     def _analyze_item(self, item: ContentItem) -> None:
+        from culture.services.intake import load_item_images
+
         source = self.session.get(Source, item.source_id)
         assert source is not None
         text = cleaned_text_for(self.session, item)
-        prompt = build_item_prompt(source, item, text)
-        response = self.provider.generate_structured(
-            ITEM_SYSTEM_PROMPT, prompt, ItemAnalysisResponse
-        )
+        images = load_item_images(item) if item.metadata_json.get("images") else []
+        prompt = build_item_prompt(source, item, text, has_images=bool(images))
+        if images:
+            # Passed conditionally so text-only providers/fakes keep working.
+            response = self.provider.generate_structured(
+                ITEM_SYSTEM_PROMPT, prompt, ItemAnalysisResponse, images=images
+            )
+        else:
+            response = self.provider.generate_structured(
+                ITEM_SYSTEM_PROMPT, prompt, ItemAnalysisResponse
+            )
         self.session.add(self._to_row(item, response))
 
     def _to_row(self, item: ContentItem, response: ItemAnalysisResponse) -> ContentAnalysis:

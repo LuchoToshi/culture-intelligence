@@ -370,6 +370,51 @@ def discover(
 
 
 @app.command()
+def add(
+    url: str = typer.Argument(..., help="Post URL (Instagram, TikTok, ...)."),
+    caption: str | None = typer.Option(None, "--caption", help="Post caption / text."),
+    image: Path | None = typer.Option(None, "--image", help="Path to a saved screenshot."),
+    source: str | None = typer.Option(
+        None, "--source", help="Registered source name (inferred from URL when possible)."
+    ),
+    date: str | None = typer.Option(None, "--date", help="Publication date, YYYY-MM-DD."),
+) -> None:
+    """Manually submit a social post as evidence (the compliant IG/TikTok path)."""
+    from datetime import UTC, datetime
+
+    from culture.database import get_engine, session_scope
+    from culture.services.intake import IntakeError, add_post
+
+    published = None
+    if date:
+        try:
+            published = datetime.strptime(date, "%Y-%m-%d").replace(tzinfo=UTC)
+        except ValueError as exc:
+            console.print(f"[red]Invalid --date {date!r} — use YYYY-MM-DD.[/red]")
+            raise typer.Exit(1) from exc
+
+    with session_scope(get_engine()) as session:
+        try:
+            item = add_post(
+                session,
+                url,
+                caption=caption,
+                image_path=image,
+                source_name=source,
+                published=published,
+            )
+        except IntakeError as exc:
+            console.print(f"[red]{exc}[/red]")
+            raise typer.Exit(1) from exc
+        source_name = item.source.name
+    console.print(
+        f"[green]Stored post #{item.id}[/green] for {source_name}"
+        f"{' with image' if image else ' (caption only)'} — "
+        "it will be analyzed on the next `culture analyze` or daily run."
+    )
+
+
+@app.command()
 def lifecycle() -> None:
     """Apply source-tier transitions from collection evidence (promote/retire)."""
     from culture.database import get_engine, session_scope

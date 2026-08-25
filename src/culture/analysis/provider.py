@@ -25,7 +25,13 @@ class AIProvider(Protocol):
     name: str
     model: str
 
-    def generate_structured(self, system: str, user: str, output_format: type[T]) -> T: ...
+    def generate_structured(
+        self,
+        system: str,
+        user: str,
+        output_format: type[T],
+        images: list[tuple[str, bytes]] | None = None,
+    ) -> T: ...
 
     def generate_text(self, system: str, user: str, max_tokens: int = 16000) -> str: ...
 
@@ -39,12 +45,37 @@ class AnthropicProvider:
         self.model = model
         self.client = anthropic.Anthropic(api_key=api_key or None)
 
-    def generate_structured(self, system: str, user: str, output_format: type[T]) -> T:
+    def generate_structured(
+        self,
+        system: str,
+        user: str,
+        output_format: type[T],
+        images: list[tuple[str, bytes]] | None = None,
+    ) -> T:
+        """images: optional (media_type, raw bytes) pairs sent ahead of the text."""
+        import base64
+        from typing import Any
+
+        content: Any
+        if images:
+            content = [
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": media_type,
+                        "data": base64.standard_b64encode(data).decode("ascii"),
+                    },
+                }
+                for media_type, data in images
+            ] + [{"type": "text", "text": user}]
+        else:
+            content = user
         response = self.client.messages.parse(
             model=self.model,
             max_tokens=16000,
             system=system,
-            messages=[{"role": "user", "content": user}],
+            messages=[{"role": "user", "content": content}],
             output_format=output_format,
         )
         if response.stop_reason == "refusal":

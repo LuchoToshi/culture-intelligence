@@ -78,7 +78,12 @@ class DiffusionStep:
 
 def item_limitations(item: ContentItem) -> list[str]:
     notes = []
-    if item.content_type == "podcast":
+    if item.content_type == "post":
+        if item.metadata_json.get("images"):
+            notes.append("Manually submitted social post — analysis includes the attached image.")
+        else:
+            notes.append("Manually submitted social post — caption only, visual not captured.")
+    elif item.content_type == "podcast":
         notes.append("Podcast episode — analysis is based on show notes only.")
     elif item.content_type == "video":
         if item.transcript_status != TranscriptStatus.AVAILABLE.value:

@@ -12,6 +12,8 @@ class ContentType(StrEnum):
     ARTICLE = "article"
     VIDEO = "video"
     PODCAST = "podcast"
+    # Manually submitted social post (Instagram/TikTok/...) — often image-led.
+    POST = "post"
 
 
 class ExtractionStatus(StrEnum):
