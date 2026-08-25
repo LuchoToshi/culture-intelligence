@@ -276,14 +276,32 @@ def analyze(
         help="Real dollar cap for this run (item analysis + signal matching combined). "
         "Defaults to AI_MAX_SPEND_PER_RUN.",
     ),
+    routing: bool = typer.Option(
+        True,
+        "--routing/--no-routing",
+        help="Route text-only items to a cheaper model, images to the capable one "
+        "(see RoutingProvider). Disable to force every item onto the capable model.",
+    ),
 ) -> None:
     """Run AI analysis on unprocessed content (retries earlier failures)."""
     from culture.analysis.item_analyzer import ItemAnalyzer
-    from culture.analysis.provider import ProviderError, get_provider
+    from culture.analysis.provider import (
+        AIProvider,
+        ProviderError,
+        RoutingProvider,
+        get_provider,
+        get_routing_provider,
+    )
     from culture.database import get_engine, session_scope
 
+    settings = get_settings()
+    effective_cap = max_spend if max_spend else -1.0
     try:
-        provider = get_provider(get_settings(), max_spend_usd=max_spend if max_spend else -1.0)
+        provider = (
+            get_routing_provider(settings, max_spend_usd=effective_cap)
+            if routing
+            else get_provider(settings, max_spend_usd=effective_cap)
+        )
     except ProviderError as exc:
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(1) from exc
@@ -295,9 +313,16 @@ def analyze(
             console.print("Nothing to analyze — all content is processed.")
             return
         todo = min(pending, limit) if limit else pending
-        console.print(
-            f"Analyzing {todo} of {pending} pending items with {provider.name}/{provider.model}..."
-        )
+        if isinstance(provider, RoutingProvider):
+            console.print(
+                f"Analyzing {todo} of {pending} pending items — routed: "
+                f"{provider.cheap.model} for text-only, {provider.capable.model} for images..."
+            )
+        else:
+            console.print(
+                f"Analyzing {todo} of {pending} pending items "
+                f"with {provider.name}/{provider.model}..."
+            )
         stats = analyzer.analyze_pending(limit)
         remaining = len(analyzer.pending_items())
 
@@ -316,11 +341,22 @@ def analyze(
             "[yellow]Stopped early: spend cap reached. Remaining items retry next run.[/yellow]"
         )
 
-    # Newly analyzed items feed the signal registry in the same run.
+    # Newly analyzed items feed the signal registry in the same run. Signal
+    # matching batches many items into one shared call, so it can't route
+    # per-item — always the capable model, but still drawing from the same
+    # cumulative spend/cap as the (possibly routed) analysis stage above.
     from culture.services.signals import SignalService
 
+    signal_provider: AIProvider
+    if isinstance(provider, RoutingProvider):
+        signal_provider = provider.capable
+        signal_provider.spent_usd = provider.spent_usd
+        signal_provider.max_spend_usd = provider.max_spend_usd
+    else:
+        signal_provider = provider
+
     with session_scope(get_engine()) as session:
-        signal_stats = SignalService(session, provider).update_signals()
+        signal_stats = SignalService(session, signal_provider).update_signals()
     if signal_stats.items_processed:
         console.print()
         console.print(
@@ -335,8 +371,15 @@ def analyze(
             "[yellow]Stopped early: spend cap reached. Remaining items retry next run.[/yellow]"
         )
 
+    # signal_provider.spent_usd is the source of truth once routing is on:
+    # it was pre-seeded with the router's combined total before signal
+    # matching ran, so re-adding provider.spent_usd here would double-count
+    # the cheap model's share.
+    final_spent_usd = (
+        signal_provider.spent_usd if isinstance(provider, RoutingProvider) else provider.spent_usd
+    )
     console.print()
-    console.print(f"Spend this run: [bold]${provider.spent_usd:.2f}[/bold]")
+    console.print(f"Spend this run: [bold]${final_spent_usd:.2f}[/bold]")
 
 
 @app.command()
