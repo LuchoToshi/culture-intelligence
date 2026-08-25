@@ -1,5 +1,5 @@
 import os
-from typing import Protocol, TypeVar
+from typing import Any, Protocol, TypeVar
 
 from pydantic import BaseModel
 
@@ -16,6 +16,26 @@ T = TypeVar("T", bound=BaseModel)
 
 class ProviderError(Exception):
     """Provider-level failure (configuration, refusal, transport exhaustion)."""
+
+
+def _cached_system(system: str) -> list[Any]:
+    """Mark the (fully static, identical-every-call) system prompt as an
+    ephemeral cache breakpoint. Anthropic requires ~1024+ tokens for a block
+    to actually cache — shorter prompts silently pass through uncached, at
+    no cost. Manual per-block placement (not top-level auto-cache) so the
+    per-call user content/images, which do vary, are never mistakenly
+    included in the cached prefix."""
+    return [{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}]
+
+
+def _log_cache_usage(response) -> None:
+    usage = getattr(response, "usage", None)
+    if usage is None:
+        return
+    read = getattr(usage, "cache_read_input_tokens", 0) or 0
+    created = getattr(usage, "cache_creation_input_tokens", 0) or 0
+    if read or created:
+        log.debug("prompt cache: read=%d created=%d", read, created)
 
 
 class AIProvider(Protocol):
@@ -74,7 +94,7 @@ class AnthropicProvider:
         response = self.client.messages.parse(
             model=self.model,
             max_tokens=16000,
-            system=system,
+            system=_cached_system(system),
             messages=[{"role": "user", "content": content}],
             output_format=output_format,
         )
@@ -82,18 +102,20 @@ class AnthropicProvider:
             raise ProviderError(f"Model refused the request: {response.stop_details}")
         if response.parsed_output is None:
             raise ProviderError(f"No parsable output (stop_reason={response.stop_reason})")
+        _log_cache_usage(response)
         return response.parsed_output
 
     def generate_text(self, system: str, user: str, max_tokens: int = 16000) -> str:
         with self.client.messages.stream(
             model=self.model,
             max_tokens=max_tokens,
-            system=system,
+            system=_cached_system(system),
             messages=[{"role": "user", "content": user}],
         ) as stream:
             response = stream.get_final_message()
         if response.stop_reason == "refusal":
             raise ProviderError(f"Model refused the request: {response.stop_details}")
+        _log_cache_usage(response)
         return "".join(block.text for block in response.content if block.type == "text")
 
 

@@ -17,6 +17,14 @@ from culture.utils.dates import ensure_utc, now_utc
 log = get_logger("culture.signals")
 
 BATCH_SIZE = 20
+# The full active registry is sent as context on every matching batch. Left
+# uncapped, this cost grows forever as more signals accumulate, independent
+# of how much new content is actually being processed. Capping to the most
+# recently active signals bounds that growth: cold signals stop being offered
+# as match targets (they still exist, still appear in reports — they just
+# age out of the LLM's candidate list), which is the same "dormant" logic
+# source lifecycle already applies, just not yet automated for signals.
+MAX_REGISTRY_SIGNALS = 60
 
 _SCORE_FIELDS = (
     "cultural_origin_score",
@@ -78,6 +86,22 @@ def _latest_analysis_map(session: Session, item_ids: list[int]) -> dict[int, Con
         .order_by(ContentAnalysis.content_item_id, ContentAnalysis.id)
     )
     return {row.content_item_id: row for row in rows}
+
+
+def _registry_for_prompt(registry: list[Signal]) -> list[Signal]:
+    """Cap the registry sent to the matcher, most-recently-active first.
+
+    Keeps matching cost bounded as the registry grows; cold signals just stop
+    being offered as match targets (they remain in the DB, reports, and API).
+    """
+    if len(registry) <= MAX_REGISTRY_SIGNALS:
+        return registry
+
+    def sort_key(signal: Signal):
+        last = ensure_utc(signal.last_evidence_at)
+        return (last is not None, last, signal.evidence_count)
+
+    return sorted(registry, key=sort_key, reverse=True)[:MAX_REGISTRY_SIGNALS]
 
 
 def refresh_signal(session: Session, signal: Signal) -> None:
@@ -190,7 +214,7 @@ class SignalService:
         analyses = _latest_analysis_map(self.session, [i.id for i in batch])
         registry = self.active_signals()
         prompt = build_signal_prompt(
-            [self._registry_line(s) for s in registry],
+            [self._registry_line(s) for s in _registry_for_prompt(registry)],
             [self._item_line(i, analyses.get(i.id)) for i in batch],
         )
         response = self.provider.generate_structured(

@@ -228,3 +228,61 @@ def test_refresh_signal_score_averages(session):
     assert signal.saturation_risk_score == 4  # round(4.5) banker's rounding
     assert signal.lifecycle_stage == "saturated"
     assert signal.cultural_origin_score is None
+
+
+def test_registry_capped_by_recency_when_oversized(session):
+    from culture.services.signals import MAX_REGISTRY_SIGNALS, _registry_for_prompt
+
+    now = datetime.now(UTC)
+    signals = []
+    for i in range(MAX_REGISTRY_SIGNALS + 15):
+        s = Signal(
+            name=f"Signal {i}",
+            evidence_count=1,
+            last_evidence_at=now - timedelta(days=i),  # signal 0 is most recent
+        )
+        signals.append(s)
+    session.add_all(signals)
+    session.commit()
+
+    capped = _registry_for_prompt(signals)
+    assert len(capped) == MAX_REGISTRY_SIGNALS
+    names = {s.name for s in capped}
+    assert "Signal 0" in names  # most recently active kept
+    assert f"Signal {MAX_REGISTRY_SIGNALS + 10}" not in names  # coldest dropped
+
+
+def test_registry_under_cap_is_untouched(session):
+    from culture.services.signals import _registry_for_prompt
+
+    signals = [Signal(name="A"), Signal(name="B")]
+    assert _registry_for_prompt(signals) == signals
+
+
+def test_registry_cap_handles_null_last_evidence_at(session):
+    from culture.services.signals import _registry_for_prompt
+
+    signals = [
+        Signal(name="Has evidence date", last_evidence_at=datetime.now(UTC), evidence_count=3),
+        Signal(name="Never scored", last_evidence_at=None, evidence_count=0),
+    ]
+    # must not raise on mixed None/datetime comparison
+    result = _registry_for_prompt(signals)
+    assert result[0].name == "Has evidence date"
+
+
+def test_signal_matching_respects_registry_cap(session):
+    from culture.services.signals import MAX_REGISTRY_SIGNALS
+
+    source = make_source(session)
+    now = datetime.now(UTC)
+    for i in range(MAX_REGISTRY_SIGNALS + 10):
+        session.add(Signal(name=f"Old Signal {i}", last_evidence_at=now - timedelta(days=i + 1)))
+    session.commit()
+
+    make_analyzed_item(session, source, "New Item")
+    provider = FakeProvider([SignalMatchResponse(links=[])])
+    SignalService(session, provider).update_signals()
+
+    prompt = provider.prompts[0]
+    assert prompt.count("Old Signal") == MAX_REGISTRY_SIGNALS

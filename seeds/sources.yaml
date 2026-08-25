@@ -468,8 +468,8 @@ sources:
     categories: [consumer psychology, fashion]
     intelligence_layers: [psychology]
     tier: watch
-    active: false
-    notes: No Instagram collector in V0; stored for future phases.
+    active: true
+    notes: Collected automatically via Apify managed actors (operator-authorized 2026-08-25).
 
   - name: Throwing Fits (Instagram)
     platform: instagram
@@ -480,8 +480,8 @@ sources:
     categories: [menswear, memes, culture]
     intelligence_layers: [social_codes]
     tier: watch
-    active: false
-    notes: No Instagram collector in V0; stored for future phases.
+    active: true
+    notes: Collected automatically via Apify managed actors (operator-authorized 2026-08-25).
 
   - name: Soy Vilnius
     platform: instagram
@@ -490,8 +490,8 @@ sources:
     categories: [memes, internet culture, fashion]
     intelligence_layers: [social_codes, urban_archetype]
     tier: watch
-    active: false
-    notes: No Instagram collector in V0; stored for future phases.
+    active: true
+    notes: Collected automatically via Apify managed actors (operator-authorized 2026-08-25).
 
   - name: Oat Milk Élite
     platform: instagram
@@ -502,8 +502,8 @@ sources:
     categories: [memes, lifestyle, class, urban culture]
     intelligence_layers: [social_codes, urban_archetype]
     tier: watch
-    active: false
-    notes: No Instagram collector in V0; stored for future phases.
+    active: true
+    notes: Collected automatically via Apify managed actors (operator-authorized 2026-08-25).
 
   - name: Saints & Stars Locker Room
     platform: instagram
@@ -514,8 +514,8 @@ sources:
     categories: [memes, fitness, lifestyle]
     intelligence_layers: [social_codes, urban_archetype]
     tier: watch
-    active: false
-    notes: No Instagram collector in V0; stored for future phases.
+    active: true
+    notes: Collected automatically via Apify managed actors (operator-authorized 2026-08-25).
 
   - name: Socks House Meeting
     platform: instagram
@@ -526,8 +526,8 @@ sources:
     categories: [memes, nightlife, urban culture]
     intelligence_layers: [social_codes, scene_subculture]
     tier: watch
-    active: false
-    notes: No Instagram collector in V0; stored for future phases.
+    active: true
+    notes: Collected automatically via Apify managed actors (operator-authorized 2026-08-25).
 
   - name: Real Housewives of Clapton
     platform: instagram
@@ -538,8 +538,8 @@ sources:
     categories: [memes, class, urban culture]
     intelligence_layers: [social_codes, urban_archetype]
     tier: watch
-    active: false
-    notes: No Instagram collector in V0; stored for future phases.
+    active: true
+    notes: Collected automatically via Apify managed actors (operator-authorized 2026-08-25).
 
   - name: Nolita Dirtbag
     platform: instagram
@@ -550,8 +550,8 @@ sources:
     categories: [memes, fashion, class, urban culture]
     intelligence_layers: [social_codes, urban_archetype]
     tier: watch
-    active: false
-    notes: No Instagram collector in V0; stored for future phases.
+    active: true
+    notes: Collected automatically via Apify managed actors (operator-authorized 2026-08-25).
 
   - name: Témalapaire
     platform: instagram
@@ -561,8 +561,8 @@ sources:
     categories: [memes, sneakers, fashion]
     intelligence_layers: [social_codes]
     tier: watch
-    active: false
-    notes: No Instagram collector in V0; stored for future phases.
+    active: true
+    notes: Collected automatically via Apify managed actors (operator-authorized 2026-08-25).
 
   - name: Pathetic Fashion
     platform: instagram
@@ -571,8 +571,8 @@ sources:
     categories: [memes, fashion]
     intelligence_layers: [social_codes]
     tier: watch
-    active: false
-    notes: No Instagram collector in V0; stored for future phases.
+    active: true
+    notes: Collected automatically via Apify managed actors (operator-authorized 2026-08-25).
 
   - name: Tote Bag Fan Account
     platform: instagram
@@ -581,8 +581,8 @@ sources:
     categories: [memes, fashion, lifestyle]
     intelligence_layers: [social_codes]
     tier: watch
-    active: false
-    notes: No Instagram collector in V0; stored for future phases.
+    active: true
+    notes: Collected automatically via Apify managed actors (operator-authorized 2026-08-25).
 
   - name: The Fake Rothko
     platform: instagram
@@ -591,8 +591,8 @@ sources:
     categories: [memes, art, class]
     intelligence_layers: [social_codes]
     tier: watch
-    active: false
-    notes: No Instagram collector in V0; stored for future phases.
+    active: true
+    notes: Collected automatically via Apify managed actors (operator-authorized 2026-08-25).
 
   - name: Berlin Club Memes
     platform: instagram
@@ -603,8 +603,8 @@ sources:
     categories: [memes, nightlife, electronic music]
     intelligence_layers: [social_codes, scene_subculture]
     tier: watch
-    active: false
-    notes: No Instagram collector in V0; stored for future phases.
+    active: true
+    notes: Collected automatically via Apify managed actors (operator-authorized 2026-08-25).
 
   - name: Dansaert Vlamingen
     platform: instagram
@@ -615,8 +615,8 @@ sources:
     categories: [memes, class, urban culture]
     intelligence_layers: [social_codes, urban_archetype]
     tier: watch
-    active: false
-    notes: No Instagram collector in V0; stored for future phases.
+    active: true
+    notes: Collected automatically via Apify managed actors (operator-authorized 2026-08-25).
 
   - name: Freeze Magazine
     platform: instagram
@@ -626,8 +626,8 @@ sources:
     categories: [memes, fashion, internet culture]
     intelligence_layers: [social_codes]
     tier: watch
-    active: false
-    notes: No Instagram collector in V0; stored for future phases.
+    active: true
+    notes: Collected automatically via Apify managed actors (operator-authorized 2026-08-25).
 
   - name: Soho House Memes
     platform: instagram
@@ -636,8 +636,8 @@ sources:
     categories: [memes, class, creative industries]
     intelligence_layers: [social_codes, urban_archetype]
     tier: watch
-    active: false
-    notes: No Instagram collector in V0; stored for future phases.
+    active: true
+    notes: Collected automatically via Apify managed actors (operator-authorized 2026-08-25).
 
   - name: Yugnat999
     platform: instagram
@@ -648,8 +648,8 @@ sources:
     categories: [memes, internet culture]
     intelligence_layers: [social_codes]
     tier: watch
-    active: false
-    notes: No Instagram collector in V0; stored for future phases.
+    active: true
+    notes: Collected automatically via Apify managed actors (operator-authorized 2026-08-25).
 
   # ── Discovery candidates (handles not verified — no URL on purpose) ──────
   - name: Dalston Superstoned
