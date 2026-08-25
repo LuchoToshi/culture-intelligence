@@ -11,6 +11,7 @@ from culture.analysis.synthesis_prompts import WEEKLY_SYSTEM_PROMPT, build_weekl
 from culture.logging import get_logger
 from culture.models.analysis import ContentAnalysis
 from culture.models.content import ContentItem, ExtractionStatus, TranscriptStatus
+from culture.models.report import WeeklyReport
 from culture.models.source import Source
 from culture.utils.dates import ensure_utc, now_utc
 
@@ -26,6 +27,7 @@ class ReportResult:
     sources_covered: int
     items_covered: int
     items_unanalyzed: int
+    is_public: bool = False
 
 
 def _item_time(item: ContentItem):
@@ -313,13 +315,15 @@ def generate_report(
     provider: AIProvider,
     days: int = 7,
     reports_dir: Path | None = None,
+    publish: bool = False,
 ) -> ReportResult:
     now = now_utc()
     since = now - timedelta(days=days)
     reports_dir = reports_dir or Path("reports")
     reports_dir.mkdir(parents=True, exist_ok=True)
     iso = now.isocalendar()
-    filename = f"{iso.year}-W{iso.week:02d}.md"
+    iso_week = f"{iso.year}-W{iso.week:02d}"
+    filename = f"{iso_week}.md"
     path = reports_dir / filename
 
     sources = list(
@@ -372,11 +376,30 @@ def generate_report(
     part3 = render_signal_appendix(registry_rows) if registry_rows else []
     part3 += [""] + build_registry_changes(session, since)
 
-    path.write_text("\n".join(header + part1 + [""] + part2 + part3), encoding="utf-8")
+    content = "\n".join(header + part1 + [""] + part2 + part3)
+    path.write_text(content, encoding="utf-8")
     log.info("weekly report created: %s", path)
+
+    # The pipeline runs locally; the deployed web app is stateless and has
+    # no access to this local file, so the report is also stored in the
+    # database — that's the only copy the hosted site can ever read.
+    row = session.scalar(select(WeeklyReport).where(WeeklyReport.iso_week == iso_week))
+    if row is None:
+        row = WeeklyReport(iso_week=iso_week)
+        session.add(row)
+    row.content_markdown = content
+    row.sources_covered = len(sources)
+    row.items_covered = len(all_items)
+    row.generated_at = now
+    if publish:
+        row.is_public = True
+        row.published_at = row.published_at or now
+    session.commit()
+
     return ReportResult(
         path=path,
         sources_covered=len(sources),
         items_covered=len(all_items),
         items_unanalyzed=unanalyzed,
+        is_public=row.is_public,
     )

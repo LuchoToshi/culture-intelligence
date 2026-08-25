@@ -22,14 +22,14 @@ def auth_env(monkeypatch):
 
 
 @pytest.fixture
-def client(tmp_path):
+def client():
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
         poolclass=StaticPool,
         connect_args={"check_same_thread": False},
     )
     Base.metadata.create_all(engine)
-    app = create_app(engine=engine, reports_dir=tmp_path, require_auth=True)
+    app = create_app(engine=engine, require_auth=True)
     return TestClient(app, base_url="https://testserver", follow_redirects=False)
 
 

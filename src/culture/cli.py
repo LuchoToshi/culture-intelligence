@@ -719,6 +719,12 @@ def signals_update(
 @app.command()
 def report(
     days: int = typer.Option(7, "--days", help="Reporting window in days."),
+    publish: bool = typer.Option(
+        False,
+        "--publish",
+        help="Make this report publicly readable at /brief on the live site. "
+        "Off by default — publishing is an explicit decision, not automatic.",
+    ),
 ) -> None:
     """Generate the weekly intelligence report (roundup + cross-source synthesis)."""
     from culture.analysis.provider import (
@@ -739,7 +745,9 @@ def report(
         raise typer.Exit(1) from exc
 
     with session_scope(get_engine()) as session:
-        result = generate_report(session, provider, days=days, reports_dir=PROJECT_ROOT / "reports")
+        result = generate_report(
+            session, provider, days=days, reports_dir=PROJECT_ROOT / "reports", publish=publish
+        )
 
     console.print()
     console.print(f"Sources monitored: {result.sources_covered}")
@@ -751,6 +759,11 @@ def report(
         )
     console.print()
     console.print(f"Weekly report generated:\n[bold]{result.path}[/bold]")
+    console.print("Saved to the database for the hosted site's private report archive.")
+    if result.is_public:
+        console.print("[green]Public: live at /brief on the deployed site.[/green]")
+    else:
+        console.print("Private — rerun with --publish to make it public.")
 
 
 if __name__ == "__main__":

@@ -25,7 +25,9 @@ SESSION_MAX_AGE = 30 * 24 * 60 * 60  # 30 days
 # "/" and "/intelligence" are the public marketing homepage and its public
 # signal preview — "/" checks its own session cookie to redirect logged-in
 # visitors straight to /dashboard rather than showing them the homepage.
-PUBLIC_PATHS = {"/login", "/auth/verify", "/logout", "/", "/intelligence"}
+# "/brief" is the latest report marked is_public=True (see WeeklyReport) —
+# the full private archive stays at /reports, behind login.
+PUBLIC_PATHS = {"/login", "/auth/verify", "/logout", "/", "/intelligence", "/brief"}
 
 
 def _serializer(settings: Settings, salt: str) -> URLSafeTimedSerializer:

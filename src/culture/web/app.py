@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from culture.database import get_engine
 from culture.logging import get_logger
 from culture.models.content import ContentItem, ExtractionStatus, TranscriptStatus
+from culture.models.report import WeeklyReport
 from culture.models.signal import Signal, SignalEvidence
 from culture.models.source import Source
 from culture.utils.dates import ensure_utc, now_utc
@@ -41,7 +42,6 @@ CITY_ALIASES = {
 
 log = get_logger("culture.web.app")
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 
 SCORE_LABELS = [
@@ -182,7 +182,6 @@ def _mount_auth_routes(app: FastAPI) -> None:
 
 def create_app(
     engine: Engine | None = None,
-    reports_dir: Path | None = None,
     require_auth: bool = False,
 ) -> FastAPI:
     app = FastAPI(title="Culture Intelligence", docs_url=None, redoc_url=None)
@@ -196,7 +195,6 @@ def create_app(
     templates.env.globals["stage_glyphs"] = queries.STAGE_GLYPHS
     engine = engine or get_engine()
     factory = sessionmaker(bind=engine, expire_on_commit=False)
-    reports_path = reports_dir or PROJECT_ROOT / "reports"
 
     def db() -> Iterator[Session]:
         session = factory()
@@ -232,6 +230,47 @@ def create_app(
             "sources": top.source_count,
             "first_detected": detected,
             "confidence": "medium" if top.source_count >= 3 else "early",
+        }
+
+    def latest_public_report(session: Session) -> WeeklyReport | None:
+        return session.scalar(
+            select(WeeklyReport)
+            .where(WeeklyReport.is_public.is_(True))
+            .order_by(WeeklyReport.iso_week.desc())
+        )
+
+    def report_excerpt(content_markdown: str, max_words: int = 130) -> str:
+        """Plain-text teaser from Part 2 (the synthesis), not the raw source
+        roundup in Part 1 — trims markdown emphasis/heading marks lightly
+        rather than rendering full HTML, since this is a one-paragraph
+        homepage teaser, not the full report view."""
+        import re as _re
+
+        match = _re.search(r"^# Part 2.*?\n+", content_markdown, _re.MULTILINE)
+        text = content_markdown[match.end() :] if match else content_markdown
+        text = _re.sub(r"^#{1,6}\s*.*$", "", text, flags=_re.MULTILINE)  # drop headings
+        text = _re.sub(r"[*_`]", "", text)  # light emphasis stripping
+        words = text.split()
+        excerpt = " ".join(words[:max_words])
+        return excerpt + ("…" if len(words) > max_words else "")
+
+    def weekly_movement_stats(session: Session, active_signals: list[Signal]) -> dict:
+        """Real counts, computed independently of report text — not parsed
+        from the narrative, so they can't drift from what the DB shows."""
+        week_ago = now_utc() - timedelta(days=7)
+        moved = [
+            s for s in active_signals if (ev := ensure_utc(s.last_evidence_at)) and ev >= week_ago
+        ]
+        new_count = sum(
+            1
+            for s in active_signals
+            if (fd := ensure_utc(s.first_detected_at)) and fd >= week_ago
+        )
+        strengthening_count = sum(1 for s in moved if s.lifecycle_stage == "strengthening")
+        return {
+            "strengthening": strengthening_count,
+            "new_this_week": new_count,
+            "updated": len(moved),
         }
 
     @app.get("/", response_class=HTMLResponse)
@@ -290,6 +329,8 @@ def create_app(
             [top.name.split(" ")[0]] + top.categories[:5] if top and top.categories else []
         )
 
+        report_row = latest_public_report(session)
+
         return render(
             request,
             session,
@@ -313,6 +354,11 @@ def create_app(
                 },
                 "stage_order": queries.STAGE_ORDER,
                 "lifecycle_example_stage": top.lifecycle_stage if top else "unknown",
+                "report": report_row,
+                "report_excerpt": (
+                    report_excerpt(report_row.content_markdown) if report_row else None
+                ),
+                "week_stats": weekly_movement_stats(session, active),
                 "footer_stats": public_footer_stats(session, active),
             },
         )
@@ -371,8 +417,8 @@ def create_app(
                 "approaching": approaching,
                 "top_cities": queries.city_rows(session)[:5],
                 "latest_items": latest_items,
-                "latest_report": next(
-                    (p.stem for p in sorted(reports_path.glob("*-W*.md"), reverse=True)), None
+                "latest_report": session.scalar(
+                    select(WeeklyReport.iso_week).order_by(WeeklyReport.generated_at.desc())
                 ),
                 "today": now_utc().strftime("%A %d %B %Y"),
                 "active_nav": "home",
@@ -614,27 +660,43 @@ def create_app(
 
     @app.get("/reports", response_class=HTMLResponse)
     def reports(request: Request, session: Session = Depends(db)):
-        files = sorted(reports_path.glob("*-W*.md"), reverse=True)
+        weeks = list(
+            session.scalars(select(WeeklyReport.iso_week).order_by(WeeklyReport.iso_week.desc()))
+        )
         return render(
-            request,
-            session,
-            "reports.html",
-            {"reports": [f.stem for f in files], "active_nav": "reports"},
+            request, session, "reports.html", {"reports": weeks, "active_nav": "reports"}
         )
 
     @app.get("/reports/{name}", response_class=HTMLResponse)
     def report_view(name: str, request: Request, session: Session = Depends(db)):
-        if "/" in name or ".." in name:
-            raise HTTPException(404)
-        path = reports_path / f"{name}.md"
-        if not path.exists():
+        report_row = session.scalar(select(WeeklyReport).where(WeeklyReport.iso_week == name))
+        if report_row is None:
             raise HTTPException(404, "No such report")
-        html = md.markdown(path.read_text(encoding="utf-8"), extensions=["tables"])
+        html = md.markdown(report_row.content_markdown, extensions=["tables"])
         return render(
             request,
             session,
             "report_view.html",
             {"name": name, "content": html, "active_nav": "reports"},
+        )
+
+    @app.get("/brief", response_class=HTMLResponse)
+    def public_brief(request: Request, session: Session = Depends(db)):
+        active = queries.active_signals(session)
+        stats = public_footer_stats(session, active)
+        report_row = session.scalar(
+            select(WeeklyReport)
+            .where(WeeklyReport.is_public.is_(True))
+            .order_by(WeeklyReport.iso_week.desc())
+        )
+        if report_row is None:
+            return render(request, session, "brief.html", {"report": None, "footer_stats": stats})
+        html = md.markdown(report_row.content_markdown, extensions=["tables"])
+        return render(
+            request,
+            session,
+            "brief.html",
+            {"report": report_row, "content": html, "footer_stats": stats},
         )
 
     return app

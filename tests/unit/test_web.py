@@ -9,6 +9,7 @@ from sqlalchemy.pool import StaticPool
 from culture.database import Base
 from culture.models.analysis import ContentAnalysis
 from culture.models.content import ContentItem
+from culture.models.report import WeeklyReport
 from culture.models.signal import Signal, SignalEvidence
 from culture.models.source import Source
 from culture.web.app import create_app
@@ -17,7 +18,7 @@ NOW = datetime.now(UTC)
 
 
 @pytest.fixture
-def client(tmp_path):
+def client():
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
         poolclass=StaticPool,
@@ -101,13 +102,19 @@ def client(tmp_path):
                 SignalEvidence(signal_id=signal_b.id, content_item_id=item.id),
             ]
         )
+        session.add(
+            WeeklyReport(
+                iso_week="2026-W35",
+                content_markdown="# Part 1\nhello\n\n# Part 2\n## Executive Brief\nBig week.",
+                sources_covered=1,
+                items_covered=2,
+                is_public=True,
+            )
+        )
         session.commit()
         ids = {"signal": signal_a.id, "item": item.id, "video": video.id}
 
-    (tmp_path / "2026-W35.md").write_text(
-        "# Part 1\nhello\n\n# Part 2\n## Executive Brief\nBig week."
-    )
-    app = create_app(engine=engine, reports_dir=tmp_path)
+    app = create_app(engine=engine)
     test_client = TestClient(app)
     test_client.ids = ids  # type: ignore[attr-defined]
     return test_client
@@ -213,6 +220,20 @@ def test_reports_render_markdown(client):
     assert "<h2>Executive Brief</h2>" in view.text
     assert client.get("/reports/nope").status_code == 404
     assert client.get("/reports/..%2Fsecret").status_code == 404
+
+
+def test_public_brief_shows_the_published_report(client):
+    response = client.get("/brief")
+    assert response.status_code == 200
+    assert "2026-W35" in response.text
+    assert "Big week" in response.text
+
+
+def test_public_homepage_shows_the_week_section(client):
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "What changed this week" in response.text
+    assert "Read the public brief" in response.text
 
 
 def test_stream_and_sources_still_work(client):

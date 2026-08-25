@@ -103,6 +103,22 @@
   .city-row .stat { font: 500 0.82rem var(--font-data); color: var(--ink-2); text-align: right; }
   .city-row .stat .strengthening { color: var(--signal); }
 
+  /* ── weekly intelligence ─────────────────────────────── */
+  .week-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 3rem; align-items: start; }
+  @media (max-width: 860px) { .week-grid { grid-template-columns: 1fr; gap: 2rem; } }
+  .week-date { font: 600 0.78rem var(--font-data); color: var(--signal); letter-spacing: 0.06em;
+               margin-bottom: 0.8rem; }
+  .week-excerpt { font-family: var(--font-display); font-size: 1.2rem; line-height: 1.5;
+                  color: var(--ink); margin: 0 0 1.6rem; }
+  .week-ctas { display: flex; gap: 0.8rem; flex-wrap: wrap; }
+  .week-stats { display: flex; flex-direction: column; gap: 1.2rem; }
+  .wstat { border-top: 2px solid var(--ink); padding-top: 0.6rem; }
+  .wstat b { display: block; font-family: var(--font-display); font-size: 1.8rem; }
+  .wstat span { font: 500 0.72rem var(--font-data); text-transform: uppercase; letter-spacing: 0.06em;
+                color: var(--ink-3); }
+  .week-empty { background: var(--surface); border: 1px dashed var(--rule-strong); padding: 2rem;
+                color: var(--ink-2); max-width: 60ch; }
+
   /* ── methodology ─────────────────────────────────────── */
   .method-flow { display: flex; flex-wrap: wrap; gap: 0; align-items: center; margin-bottom: 2.6rem; }
   .method-flow .stepbox { background: var(--surface); border: 1px solid var(--rule); padding: 1rem 1.2rem;
@@ -305,6 +321,34 @@
       </div>
       {% endfor %}
     </div>
+  </div>
+</section>
+
+<section class="pub" id="week">
+  <div class="wrap">
+    <div class="eyebrow">THE WEEK</div>
+    <h2 style="font-family:var(--font-display);font-weight:500;font-size:clamp(1.5rem, 3vw, 2rem);margin:0.5rem 0 2rem;">What changed this week.</h2>
+    {% if report %}
+    <div class="week-grid">
+      <div class="week-main">
+        <div class="week-date">{{ report.iso_week }}</div>
+        <p class="week-excerpt">{{ report_excerpt }}</p>
+        <div class="week-ctas">
+          <a class="btn btn-primary" href="/brief">Read the public brief</a>
+          <a class="btn btn-ghost" href="/login?next=/reports">Explore the full archive</a>
+        </div>
+      </div>
+      <div class="week-stats">
+        <div class="wstat"><b>{{ week_stats.strengthening }}</b><span>Signals strengthening</span></div>
+        <div class="wstat"><b>{{ week_stats.new_this_week }}</b><span>New signals detected</span></div>
+        <div class="wstat"><b>{{ week_stats.updated }}</b><span>Signals with new evidence</span></div>
+      </div>
+    </div>
+    {% else %}
+    <div class="week-empty">
+      <p>The first public brief is coming soon — a weekly field report on the fashion signals, scenes, people, places and cultural identities shaping influential cities.</p>
+    </div>
+    {% endif %}
   </div>
 </section>
 

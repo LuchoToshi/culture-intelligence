@@ -1,0 +1,42 @@
+{% extends "public_base.html" %}
+
+{% block title %}{% if report %}{{ report.iso_week }} — {% endif %}The Brief — Urban Taste Intelligence{% endblock %}
+
+{% block extra_style %}
+<style>
+  .brief-head { padding: 3.5rem 0 2rem; }
+  .brief-head h1 { font-family: var(--font-display); font-weight: 500; font-size: clamp(1.8rem, 3.5vw, 2.4rem);
+                   margin: 0.6rem 0 0.5rem; }
+  .brief-meta { font: 500 0.78rem var(--font-data); color: var(--ink-3); }
+  .brief-prose { max-width: var(--measure); background: var(--surface); border: 1px solid var(--rule);
+                 padding: 2.2rem clamp(1.2rem, 4vw, 3rem); margin: 2rem 0 4rem; }
+  .brief-prose h1, .brief-prose h2, .brief-prose h3 { font-family: var(--font-display); font-weight: 500; }
+  .brief-prose h1 { font-size: 1.5rem; }
+  .brief-prose h2 { font-size: 1.25rem; margin-top: 2rem; }
+  .brief-prose a { color: var(--signal); text-decoration: underline; }
+  .brief-prose table { border-collapse: collapse; display: block; overflow-x: auto; font-size: 0.88rem; }
+  .brief-prose th, .brief-prose td { border: 1px solid var(--rule); padding: 0.4rem 0.6rem; text-align: left; }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="pub brief-head" style="border-top:none;">
+  <div class="wrap">
+    <div class="eyebrow">THE WEEK</div>
+    {% if report %}
+    <h1>{{ report.iso_week }}</h1>
+    <div class="brief-meta">{{ report.sources_covered }} sources · {{ report.items_covered }} items covered · generated {{ report.generated_at.strftime("%-d %b %Y") }}</div>
+    {% else %}
+    <h1>The first public brief is coming soon.</h1>
+    <p style="color:var(--ink-2);max-width:60ch;">We publish a weekly field report on the fashion signals, scenes, people, places and cultural identities shaping influential cities. Check back shortly — or <a href="/intelligence" style="color:var(--ink);text-decoration:underline;">explore the live signal registry</a> in the meantime.</p>
+    {% endif %}
+  </div>
+</section>
+{% if report %}
+<section class="pub" style="padding-top:0; border-top:none;">
+  <div class="wrap">
+    <div class="brief-prose">{{ content | safe }}</div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}
