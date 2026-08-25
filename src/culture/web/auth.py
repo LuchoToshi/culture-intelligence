@@ -22,7 +22,10 @@ SESSION_MAX_AGE = 30 * 24 * 60 * 60  # 30 days
 
 # Paths reachable without a session. /logout must stay public — it needs to
 # clear a stale or already-invalid cookie, not require a valid one first.
-PUBLIC_PATHS = {"/login", "/auth/verify", "/logout"}
+# "/" and "/intelligence" are the public marketing homepage and its public
+# signal preview — "/" checks its own session cookie to redirect logged-in
+# visitors straight to /dashboard rather than showing them the homepage.
+PUBLIC_PATHS = {"/login", "/auth/verify", "/logout", "/", "/intelligence"}
 
 
 def _serializer(settings: Settings, salt: str) -> URLSafeTimedSerializer:

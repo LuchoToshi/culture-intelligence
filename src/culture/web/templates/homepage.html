@@ -1,0 +1,360 @@
+{% extends "public_base.html" %}
+
+{% block title %}Urban Taste Intelligence — Understand the scene before it becomes a trend{% endblock %}
+
+{% block extra_style %}
+<style>
+  /* ── hero ────────────────────────────────────────────── */
+  .hero { padding: 3rem 0 5rem; }
+  .hero-grid { display: grid; grid-template-columns: 5fr 7fr; gap: 3.5rem; align-items: start; }
+  @media (max-width: 980px) { .hero-grid { grid-template-columns: 1fr; gap: 2.5rem; } }
+  .hero h1 { font-family: var(--font-display); font-weight: 500; font-size: clamp(2.1rem, 4.4vw, 3.1rem);
+             line-height: 1.12; letter-spacing: -0.01em; margin: 0.7rem 0 1.1rem; }
+  .hero .lede { font-size: 1.08rem; color: var(--ink-2); max-width: 46ch; margin: 0 0 0.9rem; }
+  .hero .sub { color: var(--ink-2); max-width: 48ch; margin: 0 0 1.8rem; font-size: 0.96rem; }
+  .hero-ctas { display: flex; gap: 0.9rem; flex-wrap: wrap; margin-bottom: 1.6rem; }
+  .hero-cities { font: 500 0.78rem var(--font-data); letter-spacing: 0.04em; color: var(--ink-3); }
+
+  .pulse { background: var(--surface); border: 1px solid var(--rule); }
+  .pulse-head { display: flex; justify-content: space-between; align-items: center;
+                padding: 0.9rem 1.2rem; border-bottom: 1px solid var(--rule); }
+  .pulse-head .eyebrow { margin: 0; }
+  .pulse-head .live { font: 500 0.72rem var(--font-data); color: var(--signal); }
+  .pulse-body { padding: 1.2rem; }
+  .pulse-signal + .pulse-signal { margin-top: 1.1rem; padding-top: 1.1rem; border-top: 1px solid var(--rule); }
+  .pulse-num { font-family: var(--font-data); color: var(--ink-3); font-size: 0.82rem; }
+  .pulse-name { font-family: var(--font-display); font-size: 1.05rem; margin: 0.25rem 0 0.35rem; line-height: 1.3; }
+  .pulse-meta { display: flex; gap: 0.9rem; flex-wrap: wrap; font: 500 0.76rem var(--font-data);
+                color: var(--ink-3); align-items: center; }
+  .pulse-cities { padding: 0.9rem 1.2rem; border-top: 1px solid var(--rule); font-size: 0.9rem; color: var(--ink-2); }
+  .pulse-cities .path { font-family: var(--font-data); color: var(--ink); }
+  .pulse-evidence { display: flex; gap: 1.4rem; flex-wrap: wrap; padding: 0.9rem 1.2rem;
+                    border-top: 1px solid var(--rule); background: var(--paper); }
+  .pulse-evidence .stat b { display: block; font-family: var(--font-data); font-size: 0.95rem; color: var(--ink); }
+  .pulse-evidence .stat span { font-size: 0.72rem; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.06em; }
+
+  /* ── signal cards ────────────────────────────────────── */
+  .signal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.4rem; }
+  @media (max-width: 980px) { .signal-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 640px) { .signal-grid { grid-template-columns: 1fr; } }
+  .signal-card { background: var(--surface); border: 1px solid var(--rule); display: flex; flex-direction: column; }
+  .signal-card .art { aspect-ratio: 4/5; background: var(--ink); position: relative; overflow: hidden; }
+  .signal-card .art .tag {
+    position: absolute; left: 0.85rem; top: 0.85rem; font: 600 0.68rem var(--font-data);
+    letter-spacing: 0.06em; text-transform: uppercase; color: #fff; background: rgba(17,17,17,0.55);
+    padding: 0.25rem 0.55rem;
+  }
+  .signal-card .art .n {
+    position: absolute; right: 0.9rem; bottom: 0.75rem; font: 500 2.4rem var(--font-display);
+    color: rgba(255,255,255,0.28);
+  }
+  .signal-card .body { padding: 1.1rem 1.15rem 1.3rem; flex: 1; display: flex; flex-direction: column; }
+  .signal-card .meta { font: 500 0.72rem var(--font-data); color: var(--ink-3); margin-bottom: 0.5rem;
+                        display: flex; gap: 0.6rem; flex-wrap: wrap; }
+  .signal-card h3 { font-family: var(--font-display); font-weight: 500; font-size: 1.12rem;
+                     line-height: 1.3; margin: 0 0 0.6rem; }
+  .signal-card .stagerow { display: flex; justify-content: space-between; align-items: center;
+                            margin-bottom: 0.6rem; }
+  .signal-card .evidence { font: 500 0.76rem var(--font-data); color: var(--ink-3); margin-bottom: 0.7rem; }
+  .signal-card p.interp { color: var(--ink-2); font-size: 0.89rem; margin: 0 0 0.9rem; flex: 1; }
+  .signal-card .foot { font: 600 0.82rem var(--font-ui); color: var(--ink); margin-top: auto; }
+  .signal-card:hover .foot { color: var(--signal); }
+
+  /* ── principles ──────────────────────────────────────── */
+  .principle { display: grid; grid-template-columns: 0.9fr 1.4fr; gap: 2.5rem; align-items: center;
+               padding: 2.4rem 0; border-top: 1px solid var(--rule); }
+  .principle:first-of-type { border-top: none; padding-top: 0; }
+  @media (max-width: 860px) { .principle { grid-template-columns: 1fr; gap: 1.2rem; } }
+  .principle .num { font: 500 0.76rem var(--font-data); color: var(--signal); }
+  .principle h3 { font-family: var(--font-display); font-weight: 500; font-size: 1.35rem;
+                  margin: 0.4rem 0 0.6rem; }
+  .principle p { color: var(--ink-2); margin: 0; max-width: 46ch; }
+  .principle .viz { background: var(--surface); border: 1px solid var(--rule); padding: 1.3rem 1.5rem; }
+  .flowline { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; font: 500 0.8rem var(--font-data); }
+  .flowline .step { color: var(--ink-2); }
+  .flowline .step.now { color: var(--ink); border-bottom: 2px solid var(--signal); }
+  .flowline .arrow { color: var(--ink-3); }
+  .compare { display: flex; gap: 2rem; }
+  .compare .col { flex: 1; }
+  .compare .col h4 { font: 500 0.7rem var(--font-data); text-transform: uppercase; letter-spacing: 0.08em;
+                      color: var(--ink-3); margin: 0 0 0.5rem; }
+  .compare .col .big { font-family: var(--font-display); font-size: 1.9rem; margin: 0; }
+  .compare .col.weak .big { color: var(--ink-3); }
+  .compare .col.strong .big { color: var(--signal); }
+  .compare .col p { margin: 0.2rem 0 0; font-size: 0.82rem; color: var(--ink-3); }
+  .stagepath { display: flex; flex-wrap: wrap; gap: 0.4rem; font: 500 0.76rem var(--font-data); }
+  .stagepath span { padding: 0.3rem 0.6rem; border: 1px solid var(--rule); color: var(--ink-3); }
+  .stagepath span.current { border-color: var(--signal); color: var(--ink); background: #FFF3EE; }
+  .entityweb { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+  .entityweb .center { font: 600 0.85rem var(--font-ui); background: var(--ink); color: var(--paper);
+                        padding: 0.4rem 0.8rem; }
+  .entityweb .node { font: 500 0.8rem var(--font-data); color: var(--ink-2); border: 1px solid var(--rule);
+                      padding: 0.3rem 0.65rem; }
+
+  /* ── cities ──────────────────────────────────────────── */
+  .city-index { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-top: 1px solid var(--rule); }
+  @media (max-width: 780px) { .city-index { grid-template-columns: 1fr; } }
+  .city-row { display: flex; justify-content: space-between; align-items: baseline;
+              padding: 1.1rem 0; border-bottom: 1px solid var(--rule); }
+  .city-index > .city-row:nth-child(odd) { padding-right: 2rem; }
+  .city-index > .city-row:nth-child(even) { padding-left: 2rem; }
+  @media (max-width: 780px) { .city-index > .city-row { padding-left: 0 !important; padding-right: 0 !important; } }
+  .city-row .name { font-family: var(--font-display); font-size: 1.15rem; }
+  .city-row .stat { font: 500 0.82rem var(--font-data); color: var(--ink-2); text-align: right; }
+  .city-row .stat .strengthening { color: var(--signal); }
+
+  /* ── methodology ─────────────────────────────────────── */
+  .method-flow { display: flex; flex-wrap: wrap; gap: 0; align-items: center; margin-bottom: 2.6rem; }
+  .method-flow .stepbox { background: var(--surface); border: 1px solid var(--rule); padding: 1rem 1.2rem;
+                           min-width: 140px; }
+  .method-flow .stepbox .k { font: 600 0.68rem var(--font-data); color: var(--signal); letter-spacing: 0.08em; }
+  .method-flow .stepbox .v { font-size: 0.86rem; color: var(--ink-2); margin-top: 0.3rem; }
+  .method-flow .marrow { color: var(--ink-3); padding: 0 0.6rem; font-size: 1.1rem; }
+  @media (max-width: 900px) { .method-flow .marrow { display: none; } .method-flow .stepbox { width: 100%; } }
+  .callout { background: var(--ink); color: var(--paper); padding: 1.8rem 2rem; margin-bottom: 2.2rem; }
+  .callout .k { font: 600 0.78rem var(--font-data); color: var(--signal); text-transform: uppercase;
+                letter-spacing: 0.08em; margin-bottom: 0.5rem; display: block; }
+  .callout p { margin: 0; font-size: 1.02rem; max-width: 62ch; }
+  .principles-list { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1.2rem; }
+  @media (max-width: 980px) { .principles-list { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px) { .principles-list { grid-template-columns: 1fr; } }
+  .principles-list .p { border-top: 2px solid var(--ink); padding-top: 0.7rem; }
+  .principles-list .p h4 { font: 600 0.78rem var(--font-ui); margin: 0 0 0.4rem; }
+  .principles-list .p p { font-size: 0.85rem; color: var(--ink-2); margin: 0; }
+  .method-note { color: var(--ink-3); font-size: 0.88rem; margin-top: 2.2rem; max-width: 62ch; }
+
+  /* ── final cta ───────────────────────────────────────── */
+  .finalcta { text-align: center; padding: 6rem 0; }
+  .finalcta h2 { font-family: var(--font-display); font-weight: 500; font-size: clamp(2rem, 4.5vw, 3rem);
+                 margin: 0 0 1rem; max-width: 20ch; margin-left: auto; margin-right: auto; }
+  .finalcta p { color: var(--ink-2); max-width: 48ch; margin: 0 auto 2rem; }
+  .finalcta .ctas { display: flex; gap: 0.9rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1.2rem; }
+  .finalcta .textlink { font-size: 0.88rem; color: var(--ink-2); }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="eyebrow">FASHION <span class="dot">·</span> CULTURE <span class="dot">·</span> CITIES <span class="dot">·</span> SIGNALS</div>
+      <h1>Understand the scene before it becomes a trend.</h1>
+      <p class="lede">Track how tastes, products, places and cultural identities form and spread across influential cities.</p>
+      <p class="sub">We monitor fashion, creators, media and cultural communities, then connect the evidence to distinguish meaningful movement from noise.</p>
+      <div class="hero-ctas">
+        <a class="btn btn-primary" href="/intelligence">Explore the latest intelligence</a>
+        <a class="btn btn-ghost" href="/login">Log in</a>
+      </div>
+      <div class="hero-cities">{{ monitored_cities | join(" · ") }}</div>
+    </div>
+
+    <div class="pulse">
+      <div class="pulse-head">
+        <span class="eyebrow">CULTURAL PULSE</span>
+        <span class="live">● LIVE</span>
+      </div>
+      <div class="pulse-body">
+        {% for row in pulse_signals %}
+        <div class="pulse-signal">
+          <div class="pulse-num">{{ "%02d" | format(loop.index) }}</div>
+          <div class="pulse-name">{{ row.signal.name }}</div>
+          <div class="pulse-meta">
+            <span class="stage {{ row.signal.lifecycle_stage }}">{{ stage_labels[row.signal.lifecycle_stage] }}</span>
+            {% if row.signal.cities %}<span>{{ row.signal.cities[0] }}</span>{% endif %}
+            {% if row.delta_7d %}<span class="momentum">↑ strengthening</span>{% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% if city_link_a and city_link_b %}
+      <div class="pulse-cities"><span class="path">{{ city_link_a }} → {{ city_link_b }}</span> — signals appearing across both cities</div>
+      {% endif %}
+      <div class="pulse-evidence">
+        <div class="stat"><b>{{ hero_stats.observations }}</b><span>Observations</span></div>
+        <div class="stat"><b>{{ hero_stats.sources }}</b><span>Independent sources</span></div>
+        <div class="stat"><b>{{ hero_stats.first_detected }}</b><span>First detected</span></div>
+        <div class="stat"><b>{{ hero_stats.confidence }}</b><span>Confidence</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="pub" id="signals">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">NOW</div>
+      <h2>Signals worth paying attention to.</h2>
+      <p>Not everything receiving attention is culturally meaningful. These are signals gaining credible evidence across the network.</p>
+    </div>
+    <div class="signal-grid">
+      {% for row in featured_signals %}
+      <a class="signal-card" href="/login?next=/signals/{{ row.signal.id }}">
+        <div class="art">
+          <span class="tag">Fashion</span>
+          <span class="n">{{ "%02d" | format(loop.index) }}</span>
+        </div>
+        <div class="body">
+          <div class="meta">
+            {% if row.signal.cities %}<span>{{ row.signal.cities[0] }}</span>{% endif %}
+            <span>Detected {{ row.signal.first_detected_at.strftime("%-d %b %Y") if row.signal.first_detected_at else "—" }}</span>
+          </div>
+          <h3>{{ row.signal.name }}</h3>
+          <div class="stagerow">
+            <span class="stage {{ row.signal.lifecycle_stage }}">{{ stage_labels[row.signal.lifecycle_stage] }}</span>
+            {% if row.delta_7d %}<span class="momentum">↑ strengthening</span>{% endif %}
+          </div>
+          <div class="evidence">{{ row.signal.evidence_count }} observation{{ "s" if row.signal.evidence_count != 1 }} · {{ row.signal.source_count }} independent source{{ "s" if row.signal.source_count != 1 }}</div>
+          <p class="interp">{{ (row.signal.description or "")[:150] }}{% if (row.signal.description or "") | length > 150 %}…{% endif %}</p>
+          <span class="foot">View evidence →</span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="pub">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>The trend is the outcome. We study what comes before it.</h2>
+    </div>
+
+    <div class="principle">
+      <div>
+        <div class="num">01</div>
+        <h3>Detect earlier</h3>
+        <p>Find recurring fashion and cultural signals before they consolidate into a named trend.</p>
+      </div>
+      <div class="viz">
+        <div class="flowline">
+          <span class="step">Isolated observation</span><span class="arrow">→</span>
+          <span class="step">Recurring evidence</span><span class="arrow">→</span>
+          <span class="step now">Scene formation</span><span class="arrow">→</span>
+          <span class="step">Media visibility</span><span class="arrow">→</span>
+          <span class="step">Commercialization</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="principle">
+      <div>
+        <div class="num">02</div>
+        <h3>Connect the context</h3>
+        <p>See the people, places, products, media and communities that travel with a signal.</p>
+      </div>
+      <div class="viz">
+        <div class="entityweb">
+          {% for node in entity_web_nodes[:1] %}<span class="center">{{ node }}</span>{% endfor %}
+          {% for node in entity_web_nodes[1:] %}<span class="node">{{ node }}</span>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="principle">
+      <div>
+        <div class="num">03</div>
+        <h3>Separate movement from noise</h3>
+        <p>Volume is not confirmation. We distinguish repeated output from one source from independent evidence across different parts of culture.</p>
+      </div>
+      <div class="viz">
+        <div class="compare">
+          <div class="col weak">
+            <h4>One account, many posts</h4>
+            <p class="big">{{ noise_example.posts }}</p>
+            <p>{{ noise_example.source_count }} source</p>
+          </div>
+          <div class="col strong">
+            <h4>Independent confirmation</h4>
+            <p class="big">{{ strong_example.evidence_count }}</p>
+            <p>{{ strong_example.source_count }} independent sources</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="principle">
+      <div>
+        <div class="num">04</div>
+        <h3>Track the lifecycle</h3>
+        <p>Understand whether a signal is forming, strengthening, reaching the mainstream, or becoming a stereotype.</p>
+      </div>
+      <div class="viz">
+        <div class="stagepath">
+          {% for stage in stage_order %}
+          <span {% if stage == lifecycle_example_stage %}class="current"{% endif %}>{{ stage_labels[stage] }}</span>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="pub" id="cities">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">PLACE</div>
+      <h2>Culture starts somewhere.</h2>
+      <p>Fashion signals gain meaning through local scenes. We track where they form, how each city interprets them and how they move between communities.</p>
+    </div>
+    <div class="city-index">
+      {% for c in city_rows %}
+      <div class="city-row">
+        <span class="name">{{ c.name }}</span>
+        <span class="stat">{{ c.signal_count }} active signal{{ "s" if c.signal_count != 1 }}{% if c.strengthening %} · <span class="strengthening">{{ c.strengthening }} strengthening</span>{% endif %}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="pub" id="methodology">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">METHOD</div>
+      <h2>Culture is noisy. Evidence should not be.</h2>
+      <p>We preserve the path from original observation to cultural interpretation so every signal can be inspected rather than simply believed.</p>
+    </div>
+
+    <div class="method-flow">
+      <div class="stepbox"><div class="k">01 SOURCES</div><div class="v">Publications, creators, street observation, newsletters, video, communities</div></div>
+      <div class="marrow">→</div>
+      <div class="stepbox"><div class="k">02 CONTENT</div><div class="v">Articles, posts, videos, interviews, images</div></div>
+      <div class="marrow">→</div>
+      <div class="stepbox"><div class="k">03 STRUCTURE</div><div class="v">People, brands, objects, places, scenes</div></div>
+      <div class="marrow">→</div>
+      <div class="stepbox"><div class="k">04 SIGNALS</div><div class="v">Recurring cultural patterns</div></div>
+      <div class="marrow">→</div>
+      <div class="stepbox"><div class="k">05 CONFIRMATION</div><div class="v">Independent evidence across sources and source types</div></div>
+      <div class="marrow">→</div>
+      <div class="stepbox"><div class="k">06 INTELLIGENCE</div><div class="v">What's forming, where, who carries it, how early</div></div>
+    </div>
+
+    <div class="callout">
+      <span class="k">Independence matters</span>
+      <p>Ten posts from one publication are ten observations, but still only one source. Multiple channels from the same organization do not count as independent confirmation.</p>
+    </div>
+
+    <div class="principles-list">
+      <div class="p"><h4>Source diversity</h4><p>We combine different types of cultural evidence rather than treating one platform as reality.</p></div>
+      <div class="p"><h4>Provenance</h4><p>Every observation retains its original source, date and context.</p></div>
+      <div class="p"><h4>Independent confirmation</h4><p>Repeated content from one organization does not create artificial confidence.</p></div>
+      <div class="p"><h4>Confidence</h4><p>Signals carry visible confidence based on evidence strength, diversity and recency.</p></div>
+      <div class="p"><h4>Editorial judgment</h4><p>Automation helps detect patterns. Cultural interpretation remains explicit, editable and open to contradiction.</p></div>
+    </div>
+    <p class="method-note">Public digital behavior is evidence, not a complete representation of a population or city.</p>
+  </div>
+</section>
+
+<section class="finalcta">
+  <div class="wrap">
+    <h2>See culture while it is still forming.</h2>
+    <p>Explore the signals currently moving through fashion and urban culture.</p>
+    <div class="ctas">
+      <a class="btn btn-primary" href="/intelligence">Explore the latest intelligence</a>
+    </div>
+    <div class="textlink">Already have access? <a href="/login" style="color:var(--ink);text-decoration:underline;">Log in</a></div>
+  </div>
+</section>
+
+{% endblock %}

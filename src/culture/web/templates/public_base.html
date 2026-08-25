@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Urban Taste Intelligence{% endblock %}</title>
+<meta name="description" content="{% block meta_description %}A fashion-first cultural intelligence platform tracking how tastes, products, places and cultural identities form and spread across influential cities.{% endblock %}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F2F0EA;
+    --surface: #FFFFFF;
+    --ink: #111111;
+    --ink-2: #6F6E69;
+    --ink-3: #9A9890;
+    --rule: #D4D1C9;
+    --rule-strong: #BFBBAF;
+    --signal: #FF4B00;
+    --st-emerging: #1F7A50;
+    --st-strengthening: #B04E12;
+    --st-mainstream: #5B6470;
+    --st-saturated: #A03B5C;
+    --st-declining: #71624F;
+    --st-unknown: #8B8B86;
+    --font-display: "Newsreader", Georgia, serif;
+    --font-ui: "Instrument Sans", -apple-system, "Segoe UI", sans-serif;
+    --font-data: "IBM Plex Mono", "SF Mono", Menlo, monospace;
+    --maxw: 1280px;
+    --measure: 720px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+  }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font: 16px/1.55 var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+  }
+  .skip-link {
+    position: absolute; left: -9999px; top: 0; background: var(--ink); color: var(--paper);
+    padding: 0.6rem 1.1rem; z-index: 60;
+  }
+  .skip-link:focus { left: 0; }
+  a { color: inherit; text-decoration: none; }
+  a:focus-visible, button:focus-visible, input:focus-visible {
+    outline: 2px solid var(--signal); outline-offset: 2px;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 1.6rem; }
+  @media (max-width: 720px) { .wrap { padding: 0 1.25rem; } }
+
+  .eyebrow {
+    font: 500 0.72rem var(--font-data); letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .eyebrow .dot { color: var(--signal); }
+
+  /* ── nav ─────────────────────────────────────────────── */
+  header.pubnav {
+    position: sticky; top: 0; z-index: 40; background: transparent;
+    border-bottom: 1px solid transparent; transition: background 160ms ease, border-color 160ms ease;
+  }
+  header.pubnav.scrolled { background: var(--paper); border-bottom-color: var(--rule); }
+  .pubnav-inner {
+    max-width: var(--maxw); margin: 0 auto; padding: 0 1.6rem;
+    display: flex; align-items: center; gap: 2rem; min-height: 68px;
+  }
+  .pubnav .brand { font-family: var(--font-display); font-weight: 600; font-size: 1.08rem;
+                   letter-spacing: -0.005em; color: var(--ink); white-space: nowrap; }
+  .pubnav .brand .mark { color: var(--signal); }
+  .pubnav nav.pmenu { display: flex; gap: 1.5rem; margin: 0 auto; }
+  .pubnav nav.pmenu a { font-size: 0.9rem; font-weight: 500; color: var(--ink-2); }
+  .pubnav nav.pmenu a:hover { color: var(--ink); }
+  .pubnav .login-link { font-size: 0.9rem; font-weight: 500; color: var(--ink);
+                         border: 1px solid var(--rule-strong); padding: 0.4rem 0.95rem; }
+  .pubnav .login-link:hover { border-color: var(--ink); }
+  @media (max-width: 780px) {
+    .pubnav-inner { min-height: 58px; gap: 1rem; }
+    .pubnav nav.pmenu { display: none; }
+  }
+
+  /* ── sections ────────────────────────────────────────── */
+  section.pub { padding: 5.5rem 0; border-top: 1px solid var(--rule); }
+  section.pub:first-of-type { border-top: none; }
+  @media (max-width: 780px) { section.pub { padding: 4rem 0; } }
+  .section-head { max-width: 720px; margin-bottom: 2.6rem; }
+  .section-head h2 {
+    font-family: var(--font-display); font-weight: 500; font-size: clamp(1.5rem, 3vw, 2rem);
+    line-height: 1.2; margin: 0.5rem 0 0.7rem; letter-spacing: -0.005em;
+  }
+  .section-head p { color: var(--ink-2); margin: 0; max-width: 62ch; }
+
+  /* ── buttons ─────────────────────────────────────────── */
+  .btn { display: inline-block; font: 600 0.92rem var(--font-ui); padding: 0.75rem 1.35rem;
+         border: 1px solid var(--ink); }
+  .btn-primary { background: var(--ink); color: var(--paper); }
+  .btn-primary:hover { background: var(--signal); border-color: var(--signal); color: #fff; }
+  .btn-ghost { color: var(--ink); border-color: var(--rule-strong); }
+  .btn-ghost:hover { border-color: var(--ink); }
+
+  /* ── stage / momentum ────────────────────────────────── */
+  .stage { font: 500 0.76rem var(--font-data); letter-spacing: 0.03em; }
+  .stage.emerging { color: var(--st-emerging); }
+  .stage.strengthening { color: var(--st-strengthening); }
+  .stage.mainstream { color: var(--st-mainstream); }
+  .stage.saturated { color: var(--st-saturated); }
+  .stage.declining { color: var(--st-declining); }
+  .stage.unknown { color: var(--st-unknown); }
+  .momentum { font: 500 0.78rem var(--font-data); color: var(--signal); }
+
+  footer.pubfoot { border-top: 1px solid var(--rule); padding: 3rem 0 2.5rem; }
+  .foot-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 2rem; }
+  @media (max-width: 780px) { .foot-grid { grid-template-columns: 1fr 1fr; } }
+  .foot-grid h4 { font: 500 0.72rem var(--font-data); letter-spacing: 0.1em; text-transform: uppercase;
+                  color: var(--ink-3); margin: 0 0 0.8rem; }
+  .foot-grid a { display: block; color: var(--ink-2); font-size: 0.9rem; margin-bottom: 0.5rem; }
+  .foot-grid a:hover { color: var(--ink); }
+  .foot-brand { font-family: var(--font-display); font-size: 1.1rem; margin: 0 0 0.4rem; }
+  .foot-tag { color: var(--ink-3); font-size: 0.86rem; max-width: 32ch; }
+</style>
+{% block extra_style %}{% endblock %}
+</head>
+<body>
+<a class="skip-link" href="#content">Skip to content</a>
+<header class="pubnav" id="pubnav">
+  <div class="pubnav-inner">
+    <a class="brand" href="/">Urban<span class="mark">·</span>Taste Intelligence</a>
+    <nav class="pmenu" aria-label="Main">
+      <a href="/intelligence">Intelligence</a>
+      <a href="/#signals">Signals</a>
+      <a href="/#cities">Cities</a>
+      <a href="/#methodology">Methodology</a>
+    </nav>
+    <a class="login-link" href="/login">Log in</a>
+  </div>
+</header>
+<main id="content">
+{% block content %}{% endblock %}
+</main>
+<footer class="pubfoot">
+  <div class="wrap foot-grid">
+    <div>
+      <div class="foot-brand">Urban Taste Intelligence</div>
+      <p class="foot-tag">Understand the scene before it becomes a trend.</p>
+    </div>
+    <div>
+      <h4>Product</h4>
+      <a href="/intelligence">Intelligence</a>
+      <a href="/#signals">Signals</a>
+      <a href="/#cities">Cities</a>
+      <a href="/#methodology">Methodology</a>
+    </div>
+    <div>
+      <h4>Account</h4>
+      <a href="/login">Log in</a>
+    </div>
+    <div>
+      <h4>Coverage</h4>
+      <p class="foot-tag">{{ footer_stats.sources }} active sources · {{ footer_stats.signals }} tracked signals · {{ footer_stats.cities }} cities</p>
+    </div>
+  </div>
+</footer>
+<script>
+  var nav = document.getElementById('pubnav');
+  if (nav) {
+    var onScroll = function () {
+      if (window.scrollY > 8) { nav.classList.add('scrolled'); }
+      else { nav.classList.remove('scrolled'); }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+</script>
+{% block extra_script %}{% endblock %}
+</body>
+</html>

@@ -114,11 +114,26 @@ def client(tmp_path):
 
 
 def test_overview_is_a_briefing(client):
-    response = client.get("/")
+    response = client.get("/dashboard")
     assert response.status_code == 200
     assert "Intelligence briefing" in response.text
     assert "Japanese workwear in London menswear" in response.text
     assert "2026-W35" in response.text
+
+
+def test_public_homepage_shows_real_signals_not_dashboard(client):
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "Intelligence briefing" not in response.text
+    assert "Understand the scene before it becomes a trend" in response.text
+    assert "Japanese workwear" in response.text  # a real signal, not fabricated copy
+
+
+def test_public_intelligence_page_lists_signals(client):
+    response = client.get("/intelligence")
+    assert response.status_code == 200
+    assert "Japanese workwear" in response.text
+    assert "Log in" in response.text
 
 
 def test_signals_index_filters_and_sorts(client):
@@ -206,4 +221,4 @@ def test_stream_and_sources_still_work(client):
 
 
 def test_footer_shows_pipeline_freshness(client):
-    assert "Analysis up to date" in client.get("/").text
+    assert "Analysis up to date" in client.get("/dashboard").text

@@ -1,0 +1,55 @@
+{% extends "public_base.html" %}
+
+{% block title %}Intelligence — Urban Taste Intelligence{% endblock %}
+
+{% block extra_style %}
+<style>
+  .intel-head { padding: 3.5rem 0 2.5rem; }
+  .intel-head h1 { font-family: var(--font-display); font-weight: 500; font-size: clamp(1.8rem, 3.5vw, 2.4rem);
+                   margin: 0.6rem 0 0.8rem; }
+  .intel-head p { color: var(--ink-2); max-width: 60ch; margin: 0; }
+  .intel-list { border-top: 1px solid var(--rule); }
+  .intel-row { display: grid; grid-template-columns: 2.2fr 1fr 1fr 1fr; gap: 1rem; align-items: baseline;
+               padding: 1.1rem 0; border-bottom: 1px solid var(--rule); }
+  @media (max-width: 780px) { .intel-row { grid-template-columns: 1fr; gap: 0.35rem; } }
+  .intel-row .name { font-family: var(--font-display); font-size: 1.05rem; color: var(--ink); }
+  .intel-row:hover .name { color: var(--signal); }
+  .intel-row .meta { font: 500 0.78rem var(--font-data); color: var(--ink-2); }
+  .intel-row .stage { justify-self: end; }
+  @media (max-width: 780px) { .intel-row .stage { justify-self: start; } }
+  .intel-gate { background: var(--surface); border: 1px solid var(--rule); padding: 1.6rem 1.8rem;
+                margin-top: 2.5rem; }
+  .intel-gate p { margin: 0; color: var(--ink-2); }
+  .intel-gate a { font-weight: 600; color: var(--ink); text-decoration: underline; }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="pub intel-head" style="border-top:none;">
+  <div class="wrap">
+    <div class="eyebrow">INTELLIGENCE</div>
+    <h1>Signals currently moving through fashion and urban culture.</h1>
+    <p>A public preview of the active signal registry — name, city, lifecycle stage and evidence weight. Full source-level evidence, historical timelines and the relationship graph are available to logged-in users.</p>
+  </div>
+</section>
+
+<section class="pub" style="padding-top:0; border-top:none;">
+  <div class="wrap">
+    <div class="intel-list">
+      {% for row in rows %}
+      <a class="intel-row" href="/login?next=/signals/{{ row.signal.id }}">
+        <span class="name">{{ row.signal.name }}</span>
+        <span class="meta">{{ row.signal.cities[0] if row.signal.cities else "—" }}</span>
+        <span class="meta">{{ row.signal.evidence_count }} obs · {{ row.signal.source_count }} sources</span>
+        <span class="stage {{ row.signal.lifecycle_stage }}">{{ stage_labels[row.signal.lifecycle_stage] }}</span>
+      </a>
+      {% else %}
+      <p class="meta" style="padding:1.5rem 0;">No active signals yet.</p>
+      {% endfor %}
+    </div>
+    <div class="intel-gate">
+      <p>This is a curated preview, not the full database. <a href="/login">Log in</a> for complete evidence, provenance and the signal relationship graph.</p>
+    </div>
+  </div>
+</section>
+{% endblock %}

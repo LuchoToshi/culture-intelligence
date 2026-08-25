@@ -252,8 +252,9 @@
 <a class="skip-link" href="#content">Skip to content</a>
 <header class="topbar">
   <div class="topbar-inner">
-    <span class="wordmark"><a href="/">Culture<span class="tick">—</span>Intelligence</a></span>
+    <span class="wordmark"><a href="/dashboard">Culture<span class="tick">—</span>Intelligence</a></span>
     <nav class="primary" aria-label="Main">
+      <a href="/dashboard" {% if active_nav == "home" %}aria-current="page"{% endif %}>Overview</a>
       <a href="/signals" {% if active_nav == "signals" %}aria-current="page"{% endif %}>Signals</a>
       <a href="/taste-systems" {% if active_nav == "taste-systems" %}aria-current="page"{% endif %}>Taste Systems</a>
       <a href="/archetypes" {% if active_nav == "archetypes" %}aria-current="page"{% endif %}>Archetypes</a>

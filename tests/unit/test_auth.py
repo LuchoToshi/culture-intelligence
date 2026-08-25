@@ -96,6 +96,28 @@ def test_token_and_session_are_independently_scoped(auth_env):
     assert verify_login_token(login_token, auth_env) == "allowed@example.com"
 
 
+def test_public_homepage_reachable_without_a_session(client):
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "Understand the scene before it becomes a trend" in response.text
+
+
+def test_public_intelligence_page_reachable_without_a_session(client):
+    response = client.get("/intelligence")
+    assert response.status_code == 200
+
+
+def test_authenticated_visitor_is_redirected_off_the_public_homepage(client):
+    with patch("culture.web.auth.send_login_email") as mock_send:
+        client.post("/login", data={"email": "allowed@example.com", "next": "/dashboard"})
+    token = mock_send.call_args.args[1]
+    client.get(f"/auth/verify?token={token}")
+
+    response = client.get("/")
+    assert response.status_code == 303
+    assert response.headers["location"] == "/dashboard"
+
+
 def test_missing_session_secret_raises_clear_error(monkeypatch):
     monkeypatch.setenv("SESSION_SECRET", "")
     get_settings.cache_clear()

@@ -5,6 +5,7 @@ Auth is opt-in via require_auth= (see culture.web.auth) — off for local/test
 use, on for the hosted deployment.
 """
 
+from collections import Counter
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -12,7 +13,7 @@ from pathlib import Path
 
 import markdown as md
 from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
 from sqlalchemy.engine import Engine
@@ -25,6 +26,18 @@ from culture.models.signal import Signal, SignalEvidence
 from culture.models.source import Source
 from culture.utils.dates import ensure_utc, now_utc
 from culture.web import queries
+
+# Presentation-layer merge only (not a data fix) — the same city shows up
+# under a few spellings in free-text signal.cities because entity
+# extraction isn't normalized. Source.city (the canonical list sources are
+# tagged with) doesn't have this problem, so the public homepage counts
+# signals against that canonical list via these aliases.
+CITY_ALIASES = {
+    "nyc": "New York",
+    "new york city": "New York",
+    "la": "Los Angeles",
+    "los angeles": "Los Angeles",
+}
 
 log = get_logger("culture.web.app")
 
@@ -120,13 +133,13 @@ def _mount_auth_routes(app: FastAPI) -> None:
     templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
     @app.get("/login", response_class=HTMLResponse, include_in_schema=False)
-    def login_form(request: Request, next: str = "/", sent: str | None = None):
+    def login_form(request: Request, next: str = "/dashboard", sent: str | None = None):
         return templates.TemplateResponse(
             request, "login.html", {"next": next, "sent": sent, "error": None}
         )
 
     @app.post("/login", response_class=HTMLResponse, include_in_schema=False)
-    def login_submit(request: Request, email: str = Form(...), next: str = Form("/")):
+    def login_submit(request: Request, email: str = Form(...), next: str = Form("/dashboard")):
         settings = get_settings()
         normalized = email.strip().lower()
         if normalized in settings.allowed_email_set:
@@ -151,12 +164,12 @@ def _mount_auth_routes(app: FastAPI) -> None:
         )
 
     @app.get("/auth/verify", include_in_schema=False)
-    def verify(token: str, next: str = "/"):
+    def verify(token: str, next: str = "/dashboard"):
         settings = get_settings()
         email = auth.verify_login_token(token, settings)
         if email is None or email not in settings.allowed_email_set:
             return RedirectResponse("/login?error=expired", status_code=303)
-        response = RedirectResponse(next or "/", status_code=303)
+        response = RedirectResponse(next or "/dashboard", status_code=303)
         auth.set_session_cookie(response, email, settings)
         return response
 
@@ -199,7 +212,123 @@ def create_app(
         )
         return templates.TemplateResponse(request, template, context)
 
+    def monitored_city_names(session: Session) -> list[str]:
+        active_sources = session.scalars(select(Source).where(Source.active.is_(True)))
+        return sorted({s.city for s in active_sources if s.city})
+
+    def public_footer_stats(session: Session, active_signals: list[Signal]) -> dict:
+        return {
+            "sources": sum(1 for s in session.scalars(select(Source)) if s.active),
+            "signals": len(active_signals),
+            "cities": len(monitored_city_names(session)),
+        }
+
+    def hero_stats(top: Signal | None) -> dict:
+        if top is None:
+            return {"observations": 0, "sources": 0, "first_detected": "—", "confidence": "—"}
+        detected = top.first_detected_at.strftime("%-d %b") if top.first_detected_at else "—"
+        return {
+            "observations": top.evidence_count,
+            "sources": top.source_count,
+            "first_detected": detected,
+            "confidence": "medium" if top.source_count >= 3 else "early",
+        }
+
     @app.get("/", response_class=HTMLResponse)
+    def public_home(request: Request, session: Session = Depends(db)):
+        from culture.config import get_settings
+        from culture.web import auth as auth_module
+
+        settings = get_settings()
+        cookie = request.cookies.get(auth_module.SESSION_COOKIE)
+        if (
+            cookie
+            and settings.session_secret
+            and auth_module.verify_session_value(cookie, settings) is not None
+        ):
+            return RedirectResponse("/dashboard", status_code=303)
+
+        rows = queries.signal_rows(session, sort="evidence")
+        active = queries.active_signals(session)
+        monitored_cities = monitored_city_names(session)
+
+        def canonical_city(raw: str) -> str | None:
+            name = CITY_ALIASES.get(raw.strip().lower(), raw.strip())
+            return name if name in monitored_cities else None
+
+        signal_count_by_city: Counter[str] = Counter()
+        strengthening_by_city: Counter[str] = Counter()
+        for s in active:
+            seen = {c for raw in s.cities if (c := canonical_city(raw))}
+            for c in seen:
+                signal_count_by_city[c] += 1
+                if s.lifecycle_stage == "strengthening":
+                    strengthening_by_city[c] += 1
+        city_rows = [
+            {
+                "name": c,
+                "signal_count": signal_count_by_city[c],
+                "strengthening": strengthening_by_city[c],
+            }
+            for c in sorted(monitored_cities, key=lambda c: -signal_count_by_city[c])
+            if signal_count_by_city[c] > 0
+        ][:6]
+
+        featured = rows[:4]
+        pulse = rows[:2]
+        top = rows[0].signal if rows else None
+
+        multi_city = next((r.signal for r in rows if len(r.signal.cities) >= 2), None)
+
+        noise_candidates = sorted(
+            (r for r in rows if r.signal.source_count == 1), key=lambda r: -r.signal.evidence_count
+        )
+        noise_example = noise_candidates[0].signal if noise_candidates else (top or Signal())
+        strong_example = max(rows, key=lambda r: r.signal.source_count).signal if rows else Signal()
+
+        entity_web_nodes = (
+            [top.name.split(" ")[0]] + top.categories[:5] if top and top.categories else []
+        )
+
+        return render(
+            request,
+            session,
+            "homepage.html",
+            {
+                "monitored_cities": monitored_cities,
+                "pulse_signals": pulse,
+                "featured_signals": featured,
+                "city_rows": city_rows,
+                "city_link_a": multi_city.cities[0] if multi_city else None,
+                "city_link_b": multi_city.cities[1] if multi_city else None,
+                "hero_stats": hero_stats(top),
+                "entity_web_nodes": entity_web_nodes,
+                "noise_example": {
+                    "posts": noise_example.evidence_count,
+                    "source_count": noise_example.source_count,
+                },
+                "strong_example": {
+                    "evidence_count": strong_example.evidence_count,
+                    "source_count": strong_example.source_count,
+                },
+                "stage_order": queries.STAGE_ORDER,
+                "lifecycle_example_stage": top.lifecycle_stage if top else "unknown",
+                "footer_stats": public_footer_stats(session, active),
+            },
+        )
+
+    @app.get("/intelligence", response_class=HTMLResponse)
+    def intelligence(request: Request, session: Session = Depends(db)):
+        rows = queries.signal_rows(session, sort="evidence")[:15]
+        active = queries.active_signals(session)
+        return render(
+            request,
+            session,
+            "intelligence.html",
+            {"rows": rows, "footer_stats": public_footer_stats(session, active)},
+        )
+
+    @app.get("/dashboard", response_class=HTMLResponse)
     def index(request: Request, session: Session = Depends(db)):
         rows = queries.signal_rows(session, sort="moving")
         movers = [r for r in rows if r.delta_7d > 0][:8] or rows[:6]
