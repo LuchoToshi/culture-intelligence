@@ -333,7 +333,16 @@ def web(
     console.print(
         f"Culture Intelligence UI: [bold]http://127.0.0.1:{port}[/bold]  (Ctrl+C to stop)"
     )
-    uvicorn.run(create_app(), host="127.0.0.1", port=port, log_level="warning")
+    try:
+        uvicorn.run(create_app(), host="127.0.0.1", port=port, log_level="warning")
+    except SystemExit:
+        console.print(
+            f"[red]Port {port} is already in use — the UI is probably already running.[/red]\n"
+            f"Open [bold]http://127.0.0.1:{port}[/bold] in your browser, or stop the other "
+            f"instance first:  [bold]lsof -ti :{port} | xargs kill[/bold]  — or serve on "
+            f"another port:  [bold]uv run culture web --port {port + 1}[/bold]"
+        )
+        raise typer.Exit(1) from None
 
 
 signals_app = typer.Typer(help="Persistent signal registry.", no_args_is_help=True)
