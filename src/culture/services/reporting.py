@@ -1,6 +1,6 @@
 import re
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from sqlalchemy import select
@@ -233,6 +233,51 @@ def build_signal_registry_digest(session: Session, since) -> tuple[str, list]:
     return "\n".join(lines), [(s, new_evidence.get(s.id, 0)) for s in rows]
 
 
+def build_registry_changes(session: Session, since) -> list[str]:
+    """Deterministic source-registry changes for the window: tier transitions
+    (from tier_history), newly discovered candidates, and quiet-core flags."""
+    from culture.services.source_lifecycle import quiet_core_sources
+
+    lines: list[str] = []
+    transitions = []
+    new_candidates = []
+    for source in session.scalars(select(Source)):
+        for entry in source.discovery_json.get("tier_history", []):
+            at = ensure_utc(datetime.fromisoformat(entry["at"]))
+            if at >= since:
+                transitions.append((source.name, entry))
+        if (
+            source.source_type == "discovered"
+            and ensure_utc(source.created_at) >= since
+        ):
+            d = source.discovery_json
+            new_candidates.append(
+                f"- **{source.name}** ({source.platform}) — cited by "
+                f"{len(d.get('citing_sources', []))} sources, {d.get('mentions', '?')} mentions"
+            )
+
+    if transitions:
+        lines.append("**Tier changes this window:**")
+        for name, entry in transitions:
+            lines.append(f"- **{name}**: {entry['from']} → {entry['to']} — {entry['reason']}")
+        lines.append("")
+    if new_candidates:
+        lines.append("**Newly discovered candidates (unverified, not yet collected):**")
+        lines.extend(new_candidates)
+        lines.append("")
+    flagged = quiet_core_sources(session)
+    if flagged:
+        lines.append(
+            "**Core sources gone quiet (recommendation only — core is never auto-retired):**"
+        )
+        for source, quiet in flagged:
+            lines.append(f"- **{source.name}** — no new content in {quiet} days")
+        lines.append("")
+    if not lines:
+        lines = ["No registry changes this window.", ""]
+    return ["## Source registry changes", ""] + lines
+
+
 def render_signal_appendix(rows: list) -> list[str]:
     lines = [
         "# Part 3 — Signal Registry",
@@ -325,6 +370,7 @@ def generate_report(
     ]
     part2 = ["# Part 2 — Weekly Cultural Intelligence", "", synthesis, ""]
     part3 = render_signal_appendix(registry_rows) if registry_rows else []
+    part3 += [""] + build_registry_changes(session, since)
 
     path.write_text("\n".join(header + part1 + [""] + part2 + part3), encoding="utf-8")
     log.info("weekly report created: %s", path)

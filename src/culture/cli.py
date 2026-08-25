@@ -369,6 +369,94 @@ def discover(
         console.print(f"  [dim]… and {len(stats.created) - 20} more — see culture sources[/dim]")
 
 
+@app.command()
+def lifecycle() -> None:
+    """Apply source-tier transitions from collection evidence (promote/retire)."""
+    from culture.database import get_engine, session_scope
+    from culture.services.source_lifecycle import apply_lifecycle, quiet_core_sources
+
+    with session_scope(get_engine()) as session:
+        stats = apply_lifecycle(session)
+        flagged = quiet_core_sources(session)
+
+    for tr in stats.promoted:
+        console.print(
+            f"  [green]UP {tr.source_name}: {tr.from_tier} -> {tr.to_tier}[/green] — {tr.reason}"
+        )
+    for tr in stats.retired:
+        console.print(
+            f"  [yellow]DOWN {tr.source_name}: {tr.from_tier} -> {tr.to_tier}[/yellow]"
+            f" — {tr.reason}"
+        )
+    if not stats.promoted and not stats.retired:
+        console.print("No tier changes — every source is where its evidence puts it.")
+    for source, quiet in flagged:
+        console.print(
+            f"  [red]FLAG core source quiet: {source.name} — no content in {quiet} days "
+            f"(recommendation only; core is never auto-retired)[/red]"
+        )
+
+
+@app.command()
+def review(
+    done: str | None = typer.Option(None, "--done", help="Mark this source as reviewed today."),
+) -> None:
+    """Weekly human review queue: manual-platform accounts and unverified candidates."""
+    from culture.database import get_engine, session_scope
+    from culture.services.source_lifecycle import mark_reviewed, review_queue
+
+    with session_scope(get_engine()) as session:
+        if done:
+            try:
+                source = mark_reviewed(session, done)
+            except ValueError as exc:
+                console.print(f"[red]{exc}[/red]")
+                raise typer.Exit(1) from exc
+            console.print(f"[green]Marked reviewed: {source.name}[/green]")
+            return
+        queue = review_queue(session)
+
+        if queue["due"]:
+            table = Table(title=f"Accounts due for review ({len(queue['due'])})")
+            table.add_column("Account")
+            table.add_column("Platform")
+            table.add_column("Tier")
+            table.add_column("Last reviewed")
+            for source, overdue in queue["due"]:
+                table.add_row(
+                    source.name,
+                    source.platform,
+                    source.tier,
+                    f"{overdue} days ago" if overdue is not None else "never",
+                )
+            console.print(table)
+            console.print('[dim]After checking an account: culture review --done "<name>"[/dim]')
+        else:
+            console.print("No accounts due for review.")
+
+        if queue["candidates"]:
+            table = Table(
+                title=f"Discovered candidates awaiting verification ({len(queue['candidates'])})"
+            )
+            table.add_column("Name")
+            table.add_column("Platform")
+            table.add_column("Cited by")
+            table.add_column("Mentions")
+            for source in queue["candidates"]:
+                d = source.discovery_json
+                table.add_row(
+                    source.name,
+                    source.platform,
+                    ", ".join(d.get("citing_sources", [])[:3]),
+                    str(d.get("mentions", "—")),
+                )
+            console.print(table)
+            console.print(
+                "[dim]Verify a candidate, then either edit seeds/sources.yaml to adopt it, "
+                "or delete the row if it is noise.[/dim]"
+            )
+
+
 signals_app = typer.Typer(help="Persistent signal registry.", no_args_is_help=True)
 app.add_typer(signals_app, name="signals")
 

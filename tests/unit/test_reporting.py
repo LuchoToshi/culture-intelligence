@@ -237,3 +237,45 @@ def test_build_weekly_prompt_shapes():
     assert "prior synthesis" in with_prior
     without = build_weekly_prompt("digest here", None, 7)
     assert "first report" in without
+
+
+def test_report_includes_source_registry_changes(session, tmp_path):
+    from datetime import UTC as _UTC
+    from datetime import datetime as _dt
+
+    seed_world(session)
+    session.add(
+        Source(
+            name="Freshly Discovered",
+            platform="other",
+            tier="candidate",
+            active=False,
+            source_type="discovered",
+            discovery_json={"via": "entity", "mentions": 5, "citing_sources": ["A", "B", "C"]},
+        )
+    )
+    promoted = Source(
+        name="Recently Promoted",
+        platform="web",
+        tier="watch",
+        active=True,
+        discovery_json={
+            "tier_history": [
+                {
+                    "from": "candidate",
+                    "to": "watch",
+                    "at": _dt.now(_UTC).isoformat(),
+                    "reason": "trial passed: 4 items",
+                }
+            ]
+        },
+    )
+    session.add(promoted)
+    session.commit()
+
+    text = generate_report(session, FakeProvider(), days=7, reports_dir=tmp_path).path.read_text()
+    assert "## Source registry changes" in text
+    assert "Recently Promoted" in text
+    assert "candidate → watch" in text
+    assert "Freshly Discovered" in text
+    assert "unverified, not yet collected" in text
