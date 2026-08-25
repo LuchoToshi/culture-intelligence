@@ -18,6 +18,17 @@ class Settings(BaseSettings):
 
     log_level: str = "INFO"
 
+    # Web viewer auth (magic-link, invite-only).
+    session_secret: str = ""
+    resend_api_key: str = ""
+    email_from: str = "Culture Intelligence <onboarding@resend.dev>"
+    # Comma-separated allow-list. Empty = nobody can log in (fail closed, not open).
+    allowed_emails: str = ""
+
+    @property
+    def allowed_email_set(self) -> set[str]:
+        return {e.strip().lower() for e in self.allowed_emails.split(",") if e.strip()}
+
 
 @lru_cache
 def get_settings() -> Settings:

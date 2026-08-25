@@ -1,7 +1,8 @@
-"""Read-only local web interface over the intelligence database.
+"""Web interface over the intelligence database.
 
 A viewing and exploration layer: the pipeline writes, this only reads.
-No auth — bind to localhost only.
+Auth is opt-in via require_auth= (see culture.web.auth) — off for local/test
+use, on for the hosted deployment.
 """
 
 from collections.abc import Iterator
@@ -18,11 +19,14 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from culture.database import get_engine
+from culture.logging import get_logger
 from culture.models.content import ContentItem, ExtractionStatus, TranscriptStatus
 from culture.models.signal import Signal, SignalEvidence
 from culture.models.source import Source
 from culture.utils.dates import ensure_utc, now_utc
 from culture.web import queries
+
+log = get_logger("culture.web.app")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 TEMPLATES_DIR = Path(__file__).parent / "templates"
@@ -101,8 +105,74 @@ def stage_reason(signal: Signal) -> str:
     return base
 
 
-def create_app(engine: Engine | None = None, reports_dir: Path | None = None) -> FastAPI:
+def _mount_auth_routes(app: FastAPI) -> None:
+    from fastapi import Form
+    from fastapi.responses import RedirectResponse
+
+    from culture.config import get_settings
+    from culture.web import auth
+
+    templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+
+    @app.get("/login", response_class=HTMLResponse, include_in_schema=False)
+    def login_form(request: Request, next: str = "/", sent: str | None = None):
+        return templates.TemplateResponse(
+            request, "login.html", {"next": next, "sent": sent, "error": None}
+        )
+
+    @app.post("/login", response_class=HTMLResponse, include_in_schema=False)
+    def login_submit(request: Request, email: str = Form(...), next: str = Form("/")):
+        settings = get_settings()
+        normalized = email.strip().lower()
+        if normalized in settings.allowed_email_set:
+            token = auth.create_login_token(normalized, settings)
+            base_url = str(request.base_url)
+            try:
+                auth.send_login_email(normalized, token, base_url, settings)
+            except Exception:
+                log.error("failed to send login email to %s", normalized, exc_info=True)
+                return templates.TemplateResponse(
+                    request,
+                    "login.html",
+                    {
+                        "next": next,
+                        "sent": None,
+                        "error": "Could not send the sign-in email. Try again shortly.",
+                    },
+                )
+        # Same response whether or not the email is allow-listed — don't leak the list.
+        return templates.TemplateResponse(
+            request, "login.html", {"next": next, "sent": email, "error": None}
+        )
+
+    @app.get("/auth/verify", include_in_schema=False)
+    def verify(token: str, next: str = "/"):
+        settings = get_settings()
+        email = auth.verify_login_token(token, settings)
+        if email is None or email not in settings.allowed_email_set:
+            return RedirectResponse("/login?error=expired", status_code=303)
+        response = RedirectResponse(next or "/", status_code=303)
+        auth.set_session_cookie(response, email, settings)
+        return response
+
+    @app.get("/logout", include_in_schema=False)
+    def logout():
+        response = RedirectResponse("/login", status_code=303)
+        auth.clear_session_cookie(response)
+        return response
+
+
+def create_app(
+    engine: Engine | None = None,
+    reports_dir: Path | None = None,
+    require_auth: bool = False,
+) -> FastAPI:
     app = FastAPI(title="Culture Intelligence", docs_url=None, redoc_url=None)
+    if require_auth:
+        from culture.web.auth import AuthMiddleware
+
+        app.add_middleware(AuthMiddleware)
+        _mount_auth_routes(app)
     templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
     templates.env.globals["stage_labels"] = queries.STAGE_LABELS
     templates.env.globals["stage_glyphs"] = queries.STAGE_GLYPHS
