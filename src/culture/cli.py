@@ -282,6 +282,20 @@ def analyze(
         help="Route text-only items to a cheaper model, images to the capable one "
         "(see RoutingProvider). Disable to force every item onto the capable model.",
     ),
+    batch: bool = typer.Option(
+        False,
+        "--batch",
+        help="Submit via the Message Batches API instead of one live call per item: "
+        "50% off every token, in exchange for asynchronous processing (usually under "
+        "an hour, up to 24h). Requires --limit. --max-spend is NOT enforced in this "
+        "mode — there's no per-item checkpoint to stop at once a batch is submitted.",
+    ),
+    batch_wait: int = typer.Option(
+        600,
+        "--batch-wait",
+        help="Seconds to block polling a --batch run before giving up and leaving it "
+        "to finish server-side (see `culture batch-collect`).",
+    ),
 ) -> None:
     """Run AI analysis on unprocessed content (retries earlier failures)."""
     from culture.analysis.item_analyzer import ItemAnalyzer
@@ -294,6 +308,12 @@ def analyze(
     )
     from culture.database import get_engine, session_scope
 
+    if batch and not limit:
+        console.print(
+            "[red]--batch requires --limit — bounds the size of one batch submission.[/red]"
+        )
+        raise typer.Exit(1)
+
     settings = get_settings()
     effective_cap = max_spend if max_spend else -1.0
     try:
@@ -305,6 +325,44 @@ def analyze(
     except ProviderError as exc:
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(1) from exc
+
+    if batch:
+        assert limit is not None  # enforced by the --batch/--limit check above
+        with session_scope(get_engine()) as session:
+            analyzer = ItemAnalyzer(session, provider)
+            pending = len(analyzer.pending_items())
+            if pending == 0:
+                console.print("Nothing to analyze — all content is processed.")
+                return
+            todo = min(pending, limit)
+            console.print(f"Submitting {todo} of {pending} pending items as a batch...")
+            batch_stats = analyzer.analyze_pending_batch(limit, wait_seconds=batch_wait)
+
+        console.print()
+        if batch_stats.stale_skipped:
+            console.print(
+                f"Skipped {batch_stats.stale_skipped} back-catalog item(s) older than "
+                "the analysis window."
+            )
+        console.print(f"Batch: [bold]{batch_stats.batch_id}[/bold]")
+        if batch_stats.still_processing:
+            console.print(
+                f"[yellow]Still processing after {batch_wait}s — items stay queued. "
+                f"Run `culture batch-collect {batch_stats.batch_id}` later to finish.[/yellow]"
+            )
+            return
+        console.print(f"Succeeded: {batch_stats.succeeded}")
+        console.print(f"Errored: {batch_stats.errored}")
+        for failure in batch_stats.errors[:10]:
+            console.print(f"  [red]- {failure}[/red]")
+        console.print(
+            f"Spend this run: [bold]${batch_stats.spent_usd:.2f}[/bold] (batch-discounted)"
+        )
+        console.print(
+            "Signal matching wasn't run — batch mode only covers item analysis. "
+            "Run `culture signals update` to feed these into the registry."
+        )
+        return
 
     with session_scope(get_engine()) as session:
         analyzer = ItemAnalyzer(session, provider)
@@ -380,6 +438,38 @@ def analyze(
     )
     console.print()
     console.print(f"Spend this run: [bold]${final_spent_usd:.2f}[/bold]")
+
+
+@app.command(name="batch-collect")
+def batch_collect(
+    batch_id: str = typer.Argument(..., help="Batch ID printed by `culture analyze --batch`."),
+) -> None:
+    """Finish a --batch analyze run that was still processing when it gave up waiting."""
+    from culture.analysis.item_analyzer import ItemAnalyzer
+    from culture.analysis.provider import ProviderError, get_provider
+    from culture.database import get_engine, session_scope
+
+    try:
+        provider = get_provider(get_settings(), max_spend_usd=None)
+    except ProviderError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(1) from exc
+
+    with session_scope(get_engine()) as session:
+        stats = ItemAnalyzer(session, provider).collect_batch(batch_id)
+
+    if stats.still_processing:
+        console.print(f"[yellow]Batch {batch_id} is still processing. Try again later.[/yellow]")
+        return
+    console.print(f"Succeeded: {stats.succeeded}")
+    console.print(f"Errored: {stats.errored}")
+    for failure in stats.errors[:10]:
+        console.print(f"  [red]- {failure}[/red]")
+    console.print(f"Spend this run: [bold]${stats.spent_usd:.2f}[/bold] (batch-discounted)")
+    console.print(
+        "Signal matching wasn't run — batch mode only covers item analysis. "
+        "Run `culture signals update` to feed these into the registry."
+    )
 
 
 @app.command()

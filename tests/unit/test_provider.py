@@ -20,6 +20,7 @@ class FakeSubProvider:
         self.spent_usd = 0.0
         self.cost_per_call = cost_per_call
         self.calls = []
+        self.client = object()
 
     def generate_structured(self, system, user, output_format, images=None):
         self.calls.append(images)
@@ -63,6 +64,13 @@ def test_estimate_cost_usd_applies_cache_multipliers():
 def test_estimate_cost_usd_unrecognized_model_returns_none():
     usage = FakeUsage(input_tokens=1000, output_tokens=500)
     assert estimate_cost_usd(usage, "some-future-model") is None
+
+
+def test_estimate_cost_usd_batch_halves_every_rate():
+    usage = FakeUsage(input_tokens=1000, cache_read=1000, cache_write=1000, output_tokens=500)
+    live = estimate_cost_usd(usage, "claude-sonnet-5", batch=False)
+    batched = estimate_cost_usd(usage, "claude-sonnet-5", batch=True)
+    assert batched == pytest.approx(live / 2)
 
 
 def test_check_budget_raises_before_dispatch():

@@ -1,6 +1,6 @@
 import pytest
 
-from culture.analysis.item_analyzer import ItemAnalyzer
+from culture.analysis.item_analyzer import BatchAnalyzeStats, ItemAnalyzer
 from culture.analysis.prompts import MAX_ANALYSIS_CHARS, build_item_prompt
 from culture.analysis.provider import BudgetExceededError, ProviderError, get_provider
 from culture.config import Settings
@@ -303,3 +303,131 @@ def test_stale_backlog_items_skipped_not_analyzed(session):
     stats2 = ItemAnalyzer(session, FakeProvider()).analyze_pending()
     assert stats2.stale_skipped == 0
     assert stats2.analyzed == 0
+
+
+def test_model_for_returns_plain_provider_model():
+    from culture.analysis.item_analyzer import _model_for
+
+    assert _model_for(FakeProvider(), images=None) == "fake-model-1"
+    assert _model_for(FakeProvider(), images=[("image/jpeg", b"x")]) == "fake-model-1"
+
+
+def test_model_for_routes_by_images_on_routing_provider():
+    from culture.analysis.item_analyzer import _model_for
+    from culture.analysis.provider import RoutingProvider
+
+    class FakeSub:
+        def __init__(self, model):
+            self.model = model
+            self.spent_usd = 0.0
+            self.client = object()
+
+    router = RoutingProvider(
+        cheap=FakeSub("claude-haiku-4-5"), capable=FakeSub("claude-sonnet-5"), max_spend_usd=None
+    )
+    assert _model_for(router, images=None) == "claude-haiku-4-5"
+    assert _model_for(router, images=[]) == "claude-haiku-4-5"
+    assert _model_for(router, images=[("image/jpeg", b"x")]) == "claude-sonnet-5"
+
+
+def test_to_row_model_override(session):
+    item = make_item(session)
+    analyzer = ItemAnalyzer(session, FakeProvider())
+    row = analyzer._to_row(item, GOOD_RESPONSE, model="claude-haiku-4-5")
+    assert row.analysis_model == "claude-haiku-4-5"
+
+
+def test_to_row_defaults_to_provider_model(session):
+    item = make_item(session)
+    analyzer = ItemAnalyzer(session, FakeProvider())
+    row = analyzer._to_row(item, GOOD_RESPONSE)
+    assert row.analysis_model == "fake-model-1"
+
+
+class FakeBatchUsage:
+    input_tokens = 1000
+    cache_read_input_tokens = 0
+    cache_creation_input_tokens = 0
+    output_tokens = 200
+
+
+class FakeBatchTextBlock:
+    type = "text"
+
+    def __init__(self, text):
+        self.text = text
+
+
+class FakeBatchMessage:
+    def __init__(self, text, model="claude-haiku-4-5"):
+        self.content = [FakeBatchTextBlock(text)]
+        self.model = model
+        self.usage = FakeBatchUsage()
+
+
+class FakeBatchResultInner:
+    def __init__(self, type_, message=None):
+        self.type = type_
+        self.message = message
+
+
+class FakeBatchResult:
+    def __init__(self, custom_id, result):
+        self.custom_id = custom_id
+        self.result = result
+
+
+class FakeBatchClient:
+    def __init__(self, results):
+        self._results = results
+
+    class _Batches:
+        def __init__(self, results):
+            self._results = results
+
+        def results(self, batch_id):
+            return self._results
+
+    @property
+    def messages(self):
+        return self
+
+    @property
+    def batches(self):
+        return FakeBatchClient._Batches(self._results)
+
+
+def test_apply_batch_results_skips_items_not_in_analyzing_state(session):
+    item = make_item(session)
+    item.processing_status = "analyzed"  # already collected once
+    session.commit()
+
+    good_text = GOOD_RESPONSE.model_dump_json()
+    inner = FakeBatchResultInner("succeeded", FakeBatchMessage(good_text))
+    client = FakeBatchClient([FakeBatchResult(str(item.id), inner)])
+    stats = BatchAnalyzeStats()
+    ItemAnalyzer(session, FakeProvider())._apply_batch_results(client, "batch-x", stats)
+
+    assert stats.succeeded == 0
+    assert stats.spent_usd == 0.0
+    assert session.query(ContentAnalysis).filter_by(content_item_id=item.id).count() == 0
+
+
+def test_apply_batch_results_processes_analyzing_items(session):
+    item = make_item(session)
+    item.processing_status = "analyzing"
+    session.commit()
+
+    good_text = GOOD_RESPONSE.model_dump_json()
+    message = FakeBatchMessage(good_text, model="claude-sonnet-5")
+    inner = FakeBatchResultInner("succeeded", message)
+    client = FakeBatchClient([FakeBatchResult(str(item.id), inner)])
+    stats = BatchAnalyzeStats()
+    ItemAnalyzer(session, FakeProvider())._apply_batch_results(client, "batch-x", stats)
+
+    assert stats.succeeded == 1
+    assert stats.spent_usd > 0.0
+    row = session.query(ContentAnalysis).filter_by(content_item_id=item.id).one()
+    assert row.analysis_model == "claude-sonnet-5"
+    session.refresh(item)
+    assert item.processing_status == "analyzed"

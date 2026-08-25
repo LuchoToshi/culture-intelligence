@@ -26,6 +26,9 @@ PRICING_PER_TOKEN: dict[str, tuple[float, float]] = {
 # Cache reads cost ~10% of the input rate; cache writes cost ~125%.
 CACHE_READ_MULTIPLIER = 0.1
 CACHE_WRITE_MULTIPLIER = 1.25
+# The Message Batches API halves every token rate above, cache included, in
+# exchange for asynchronous (usually <1h, up to 24h) processing.
+BATCH_DISCOUNT = 0.5
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -51,16 +54,21 @@ class BudgetExceededError(ProviderError):
         )
 
 
-def estimate_cost_usd(usage, model: str) -> float | None:
+def estimate_cost_usd(usage, model: str, batch: bool = False) -> float | None:
     """Real dollar cost of one response, from its actual token usage.
 
     Returns None for an unrecognized model — spend just isn't tracked for
-    it, rather than silently under- or over-counting.
+    it, rather than silently under- or over-counting. batch=True applies
+    the Message Batches API's 50% discount — token counts in a batch result
+    are the same as a live call, only the rate differs.
     """
     rates = PRICING_PER_TOKEN.get(model)
     if rates is None:
         return None
     input_rate, output_rate = rates
+    if batch:
+        input_rate *= BATCH_DISCOUNT
+        output_rate *= BATCH_DISCOUNT
     fresh_input = getattr(usage, "input_tokens", 0) or 0
     cache_read = getattr(usage, "cache_read_input_tokens", 0) or 0
     cache_write = getattr(usage, "cache_creation_input_tokens", 0) or 0
@@ -83,6 +91,27 @@ def _cached_system(system: str) -> list[Any]:
     return [{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}]
 
 
+def build_message_content(user: str, images: list[tuple[str, bytes]] | None = None) -> Any:
+    """Shared with the Batch API path (item_analyzer.py) so both call shapes
+    encode images identically. images: optional (media_type, raw bytes)
+    pairs sent ahead of the text."""
+    import base64
+
+    if not images:
+        return user
+    return [
+        {
+            "type": "image",
+            "source": {
+                "type": "base64",
+                "media_type": media_type,
+                "data": base64.standard_b64encode(data).decode("ascii"),
+            },
+        }
+        for media_type, data in images
+    ] + [{"type": "text", "text": user}]
+
+
 def _log_cache_usage(response) -> None:
     usage = getattr(response, "usage", None)
     if usage is None:
@@ -101,6 +130,7 @@ class AIProvider(Protocol):
     model: str
     spent_usd: float
     max_spend_usd: float | None
+    client: Any  # anthropic.Anthropic — used directly by the Batch API path
 
     def generate_structured(
         self,
@@ -151,30 +181,12 @@ class AnthropicProvider:
         images: list[tuple[str, bytes]] | None = None,
     ) -> T:
         """images: optional (media_type, raw bytes) pairs sent ahead of the text."""
-        import base64
-        from typing import Any
-
         self._check_budget()
-        content: Any
-        if images:
-            content = [
-                {
-                    "type": "image",
-                    "source": {
-                        "type": "base64",
-                        "media_type": media_type,
-                        "data": base64.standard_b64encode(data).decode("ascii"),
-                    },
-                }
-                for media_type, data in images
-            ] + [{"type": "text", "text": user}]
-        else:
-            content = user
         response = self.client.messages.parse(
             model=self.model,
             max_tokens=16000,
             system=_cached_system(system),
-            messages=[{"role": "user", "content": content}],
+            messages=[{"role": "user", "content": build_message_content(user, images)}],
             output_format=output_format,
         )
         self._track_spend(response)
@@ -226,6 +238,12 @@ class RoutingProvider:
         self.capable = capable
         self.max_spend_usd = max_spend_usd
         self.model = capable.model
+        # Either sub-provider's client reaches the same account — used by
+        # the Batch API path (item_analyzer.py), which submits a request
+        # per item with its own routed model rather than going through
+        # generate_structured. A plain attribute (not a property) so it
+        # satisfies AIProvider's settable-member Protocol check.
+        self.client = capable.client
         # A plain synced attribute, not a computed property — the AIProvider
         # Protocol expects spent_usd to be settable (see cli.py, which
         # hands the combined total off to the capable sub-provider before
