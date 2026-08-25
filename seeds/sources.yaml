@@ -209,6 +209,150 @@ sources:
       Public Libsyn podcast feed verified via Apple Podcasts lookup on
       2026-08-24 (11 entries). Episodes are analyzed from show notes only.
 
+  # ── Added 2026-08-25: operator-supplied source list (see notes per entry) ─
+  - name: FASHIONSNAP
+    platform: web
+    source_type: publication
+    url: https://www.fashionsnap.com
+    feed_url: https://www.fashionsnap.com/rss.xml
+    country: Japan
+    city: Tokyo
+    region: Japan
+    language: ja
+    categories: [streetwear, fashion, street style, beauty, retail]
+    intelligence_layers: [street_adoption, fast_radar]
+    tier: core
+    active: true
+    collection_method: rss
+    notes: >-
+      RSS feed verified 2026-08-25 (70 entries via /rss.xml link tag).
+      Japanese-language content. The site's Street Style section carries
+      structured street-adoption evidence (person, occupation, city, brand
+      worn) beyond what the current per-item analysis schema extracts —
+      flagged as a separate future feature, not built as part of this add.
+
+  - name: HOUYHNHNM
+    platform: web
+    source_type: publication
+    url: https://www.houyhnhnm.jp
+    feed_url: https://www.houyhnhnm.jp/feed
+    country: Japan
+    city: Tokyo
+    region: Japan
+    language: ja
+    categories: [menswear, sneakers, streetwear, vintage, outdoor, lifestyle, music]
+    intelligence_layers: [scene_subculture, editorial, fast_radar]
+    tier: core
+    active: true
+    collection_method: rss
+    notes: >-
+      RSS feed verified 2026-08-25 (18 entries). The /en/ URL path is a site
+      section, not an English translation — content is Japanese-language.
+
+  - name: EYESMAG
+    platform: web
+    source_type: publication
+    url: https://eyesmag.com
+    country: South Korea
+    city: Seoul
+    region: Asia
+    language: ko
+    categories: [fashion, streetwear, interiors, food, lifestyle]
+    intelligence_layers: [scene_subculture, fast_radar]
+    tier: core
+    active: true
+    notes: >-
+      No RSS feed found during verification on 2026-08-25 (checked common
+      WordPress paths and HTML link tags). Needs a custom collector or
+      manual feed discovery before ingestion can start.
+
+  - name: MUSINSA
+    platform: web
+    source_type: retailer_editorial
+    url: https://global.musinsa.com
+    country: South Korea
+    city: Seoul
+    region: Asia
+    language: ko
+    categories: [streetwear, retail, street style, youth culture]
+    intelligence_layers: [street_adoption, commercial_validation]
+    tier: core
+    active: true
+    notes: >-
+      No RSS feed found during verification on 2026-08-25 (redirects to a
+      region chooser, no feed link tag). Needs a custom collector or manual
+      feed discovery before ingestion can start. Operator instruction
+      2026-08-25: MUSINSA's website, Instagram, YouTube and TikTok are one
+      source producing evidence through multiple channels, not independent
+      confirmations — only the website is registered here; do not add the
+      social channels as separate source rows.
+
+  - name: 1 Granary
+    platform: web
+    source_type: publication
+    url: https://1granary.com
+    country: United Kingdom
+    city: London
+    region: UK
+    language: en
+    categories: [emerging designers, fashion education, graduate collections]
+    intelligence_layers: [early_signal, editorial]
+    tier: core
+    active: true
+    notes: >-
+      No RSS feed found during verification on 2026-08-25 (feed path
+      redirects to the homepage, no feed link tag in HTML). Needs a custom
+      collector or manual feed discovery before ingestion can start.
+
+  - name: Resident Advisor
+    platform: web
+    source_type: publication
+    url: https://ra.co
+    region: Global
+    language: en
+    categories: [electronic music, nightlife, clubs, festivals, scenes]
+    intelligence_layers: [scene_subculture, subculture, place]
+    tier: core
+    active: true
+    notes: >-
+      No working RSS feed found during verification on 2026-08-25 — RA's
+      old public RSS endpoints (e.g. /xml/rss/news) now 404. Needs a custom
+      collector or manual feed discovery before ingestion can start.
+
+  - name: NTS
+    platform: web
+    source_type: publication
+    url: https://www.nts.live
+    country: United Kingdom
+    city: London
+    region: Global
+    language: en
+    categories: [underground music, radio, DJs, scenes]
+    intelligence_layers: [scene_subculture, creator_discovery]
+    tier: core
+    active: true
+    notes: >-
+      No RSS feed found during verification on 2026-08-25. Needs a custom
+      collector or manual feed discovery before ingestion can start.
+
+  - name: MUNDIAL
+    platform: web
+    source_type: publication
+    url: https://mundialmag.com
+    country: United Kingdom
+    city: London
+    region: UK
+    language: en
+    categories: [football culture, fan culture, fashion, nightlife]
+    intelligence_layers: [scene_subculture, sport]
+    tier: core
+    active: true
+    notes: >-
+      No RSS feed found during verification on 2026-08-25. Has a MUNDIAL
+      Weekly email newsletter — worth checking for a subscriber-facing feed
+      as a follow-up. Needs a custom collector or manual feed discovery
+      before ingestion can start.
+
   # ── YouTube channels (channel IDs + feeds verified) ──────────────────────
   - name: Business of Fashion (YouTube)
     platform: youtube
@@ -428,6 +572,28 @@ sources:
     tier: watch
     active: true
     collection_method: rss
+
+  - name: Cyclical (Mandy Lee)
+    platform: substack
+    source_type: newsletter
+    url: https://oldloserinbrooklyn.substack.com
+    feed_url: https://oldloserinbrooklyn.substack.com/feed
+    country: United States
+    city: New York
+    region: US
+    language: en
+    categories: [trend forecasting, fashion criticism, personal style, consumer behavior]
+    intelligence_layers: [creator, trend_interpretation]
+    tier: core
+    active: true
+    collection_method: rss
+    notes: >-
+      RSS feed verified 2026-08-25 (19 entries). Also active on TikTok and
+      Instagram as @oldloserinbrooklyn — Substack is the primary channel;
+      the social accounts are not registered as separate sources (same
+      operator instruction as MUSINSA: one organization, one source row).
+      Candidate for a future "leading indicator" score — whether her early
+      calls later get picked up by institutional media — not built yet.
 
   # ── Podcasts (feeds verified via Apple Podcasts lookup 2026-08-24) ───────
   - name: Blamo!
@@ -650,6 +816,26 @@ sources:
     tier: watch
     active: true
     notes: Collected automatically via Apify managed actors (operator-authorized 2026-08-25).
+
+  - name: Watching New York
+    platform: instagram
+    source_type: street_style_account
+    url: https://www.instagram.com/watchingnewyork
+    country: United States
+    city: New York
+    region: US
+    language: en
+    categories: [street style, everyday fashion, documentary photography]
+    intelligence_layers: [street_adoption, place]
+    tier: core
+    active: true
+    notes: >-
+      Collected automatically via Apify managed actors, same as the other
+      Instagram sources (operator-authorized 2026-08-25). Johnny Cirillo's
+      street-style documentary project — observational counterweight to
+      editorial/insider fashion media. Operator instruction 2026-08-25: do
+      not infer occupation, income, or social identity from appearance —
+      describe clothing, styling and objects only, as visual evidence.
 
   # ── Discovery candidates (handles not verified — no URL on purpose) ──────
   - name: Dalston Superstoned
