@@ -345,6 +345,30 @@ def web(
         raise typer.Exit(1) from None
 
 
+@app.command()
+def discover(
+    min_sources: int = typer.Option(
+        2, "--min-sources", help="Independent citing sources required to create a candidate."
+    ),
+) -> None:
+    """Mine collected evidence for new candidate sources (entities + outbound links)."""
+    from culture.database import get_engine, session_scope
+    from culture.services.discovery import run_discovery
+
+    with session_scope(get_engine()) as session:
+        stats = run_discovery(session, min_citing_sources=min_sources)
+
+    console.print(
+        f"New candidates: [green]{len(stats.created)}[/green] · "
+        f"updated: {stats.updated} · below threshold: {stats.below_threshold} · "
+        f"already known: {stats.skipped_known}"
+    )
+    for name in stats.created[:20]:
+        console.print(f"  [green]+ {name}[/green]")
+    if len(stats.created) > 20:
+        console.print(f"  [dim]… and {len(stats.created) - 20} more — see culture sources[/dim]")
+
+
 signals_app = typer.Typer(help="Persistent signal registry.", no_args_is_help=True)
 app.add_typer(signals_app, name="signals")
 

@@ -55,6 +55,12 @@ class Source(Base):
     collection_notes: Mapped[str | None] = mapped_column(Text)
     last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_successful_check_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Automated-discovery bookkeeping (mention counts, citing sources, dates).
+    # Only populated on candidates the discovery service created or tracks.
+    discovery_json: Mapped[dict] = mapped_column(JSONField, default=dict)
+    # When a human last reviewed this source — used by the weekly review queue
+    # for platforms with no automated collector (Instagram, TikTok).
+    last_reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow

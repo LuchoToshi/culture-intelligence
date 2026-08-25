@@ -10,4 +10,5 @@ uv run culture ingest
 ingest_rc=$?
 uv run culture analyze
 analyze_rc=$?
+uv run culture discover
 echo "=== daily run finished: $(date '+%Y-%m-%d %H:%M:%S') (ingest=$ingest_rc analyze=$analyze_rc) ==="
