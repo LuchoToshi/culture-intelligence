@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from culture.collectors.base import Collector, CollectorError
 from culture.collectors.rss import RSSCollector
 from culture.collectors.youtube import YouTubeCollector
+from culture.config import get_settings
 from culture.extraction.article import ExtractionResult, extract_article
 from culture.extraction.youtube import (
     TranscriptResult,
@@ -64,6 +65,49 @@ def _polite_transcript_fetcher(video_id: str) -> TranscriptResult:
     return fetch_transcript(video_id)
 
 
+# Image content types we accept for post display images.
+_IMAGE_CONTENT_TYPES = {
+    "image/jpeg": "image/jpeg",
+    "image/jpg": "image/jpeg",
+    "image/png": "image/png",
+    "image/webp": "image/webp",
+    "image/gif": "image/gif",
+}
+
+
+def _default_image_fetcher(url: str) -> tuple[bytes, str]:
+    response = httpx.get(url, timeout=30.0, follow_redirects=True)
+    response.raise_for_status()
+    raw_type = response.headers.get("content-type", "").split(";")[0].strip().lower()
+    media_type = _IMAGE_CONTENT_TYPES.get(raw_type)
+    if media_type is None:
+        raise ValueError(f"unsupported image content-type {raw_type!r}")
+    return response.content, media_type
+
+
+def _default_collectors(client: httpx.Client) -> dict[str, Collector]:
+    collectors: dict[str, Collector] = {
+        Platform.WEB.value: RSSCollector(client),
+        Platform.SUBSTACK.value: RSSCollector(client),
+        Platform.NEWSLETTER.value: RSSCollector(client),
+        Platform.PODCAST.value: RSSCollector(client, content_type=ContentType.PODCAST),
+        Platform.YOUTUBE.value: YouTubeCollector(client),
+    }
+    # Instagram/TikTok collection is enabled only when APIFY_TOKEN is set;
+    # otherwise those platforms stay skipped exactly as before.
+    settings = get_settings()
+    if settings.apify_token:
+        from culture.collectors.apify_social import ApifySocialCollector, default_runner
+
+        runner = default_runner(settings.apify_token)
+        social = ApifySocialCollector(
+            runner, posts_per_account=settings.apify_posts_per_account
+        )
+        collectors[Platform.INSTAGRAM.value] = social
+        collectors[Platform.TIKTOK.value] = social
+    return collectors
+
+
 @dataclass
 class SourceIngestStats:
     source_name: str
@@ -81,6 +125,7 @@ class SourceIngestStats:
     transcripts_unavailable: int = 0
     transcripts_failed: int = 0
     transcripts_recovered: int = 0
+    new_posts: int = 0
 
 
 @dataclass
@@ -126,22 +171,18 @@ class IngestionService:
         page_fetcher: PageFetcher | None = None,
         video_enricher: VideoEnricher | None = None,
         transcript_fetcher: Callable[[str], TranscriptResult] | None = None,
+        image_fetcher: Callable[[str], tuple[bytes, str]] | None = None,
     ) -> None:
         self.session = session
         self.repo = ContentRepository(session)
         if collectors is None or page_fetcher is None:
             client = create_client()
-            collectors = collectors or {
-                Platform.WEB.value: RSSCollector(client),
-                Platform.SUBSTACK.value: RSSCollector(client),
-                Platform.NEWSLETTER.value: RSSCollector(client),
-                Platform.PODCAST.value: RSSCollector(client, content_type=ContentType.PODCAST),
-                Platform.YOUTUBE.value: YouTubeCollector(client),
-            }
+            collectors = collectors or _default_collectors(client)
             page_fetcher = page_fetcher or _polite_fetcher(client)
         self.collectors = collectors
         self.page_fetcher = page_fetcher
         self.video_enricher = video_enricher or _polite_video_enricher
+        self.image_fetcher = image_fetcher if image_fetcher is not None else _default_image_fetcher
         self.transcript_fetcher = transcript_fetcher or _polite_transcript_fetcher
 
     def ingest(self, source_name: str | None = None) -> IngestionStats:
@@ -167,7 +208,11 @@ class IngestionService:
         if collector is None:
             stats.skipped_reason = f"no collector for platform {source.platform!r}"
             return stats
-        if not source.feed_url:
+        # Feed-based collectors need a feed_url; social collectors resolve the
+        # account from the source URL/handle instead.
+        if source.platform not in (Platform.INSTAGRAM.value, Platform.TIKTOK.value) and (
+            not source.feed_url
+        ):
             stats.skipped_reason = "no verified feed configured"
             return stats
 
@@ -308,6 +353,13 @@ class IngestionService:
             item.extraction_status = ExtractionStatus.NOT_ATTEMPTED.value
             item.transcript_status = TranscriptStatus.NOT_ATTEMPTED.value
             stats.new_podcasts += 1
+        elif raw.content_type == ContentType.POST:
+            # Social post from the Apify collector. Download the display image
+            # now (post is confirmed new) so the vision analyzer can read it.
+            item.extraction_status = ExtractionStatus.NOT_ATTEMPTED.value
+            item.transcript_status = TranscriptStatus.NOT_APPLICABLE.value
+            self._attach_post_image(item, raw)
+            stats.new_posts += 1
         else:
             enrichment = self.video_enricher(normalized, raw.external_id or "")
             meta = enrichment.metadata
@@ -351,6 +403,22 @@ class IngestionService:
         item.processing_status = ProcessingStatus.READY.value
         self.repo.add(item)
         log.info("new content: [%s] %s", source.name, item.title or normalized)
+
+    def _attach_post_image(self, item: ContentItem, raw: RawContentItem) -> None:
+        image_url = raw.metadata.get("image_url")
+        if not image_url or self.image_fetcher is None:
+            return
+        try:
+            data, media_type = self.image_fetcher(image_url)
+        except Exception as exc:
+            item.metadata_json = {**item.metadata_json, "image_error": str(exc)}
+            log.warning("post image download failed for %s: %s", item.url, exc)
+            return
+        from culture.services.intake import store_image_bytes
+
+        stem = f"{raw.metadata.get('platform', 'post')}_{raw.external_id or item.url[-16:]}"
+        entry = store_image_bytes(data, media_type, stem.replace("/", "_"))
+        item.metadata_json = {**item.metadata_json, "images": [entry]}
 
     def _extract(self, url: str) -> ExtractionResult:
         try:

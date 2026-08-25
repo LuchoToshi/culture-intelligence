@@ -247,6 +247,7 @@ def ingest(
     console.print(f"New articles: {stats.total_new_articles}")
     console.print(f"New videos: {stats.total_new_videos}")
     console.print(f"New podcast episodes: {stats.total_new_podcasts}")
+    console.print(f"New social posts: {stats.total_new_posts}")
     console.print(f"Duplicates skipped: {stats.total_duplicates}")
     console.print()
     console.print(f"Articles extracted: {stats.total_extracted}")

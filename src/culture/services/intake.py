@@ -11,7 +11,6 @@ material with its sha256 recorded for integrity.
 """
 
 import hashlib
-import shutil
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -79,8 +78,24 @@ def infer_source(session: Session, url: str) -> Source | None:
     return None
 
 
+def store_image_bytes(data: bytes, media_type: str, stem: str) -> dict:
+    """Persist image bytes into the media dir. Returns an images-list entry.
+
+    Shared by manual intake and the social collector so both produce the
+    identical metadata shape the analyzer reads via load_item_images.
+    """
+    suffix = next((s for s, mt in IMAGE_MEDIA_TYPES.items() if mt == media_type), None)
+    if suffix is None:
+        raise IntakeError(f"Unsupported image media type {media_type!r}.")
+    MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+    digest = hashlib.sha256(data).hexdigest()
+    destination = MEDIA_DIR / f"{stem}{suffix}"
+    destination.write_bytes(data)
+    return {"path": str(destination), "media_type": media_type, "sha256": digest}
+
+
 def _store_image(image_path: Path, item_id: int) -> tuple[str, str, str]:
-    """Copy the image into the media dir. Returns (stored_path, media_type, sha256)."""
+    """Copy a local image into the media dir. Returns (stored_path, media_type, sha256)."""
     suffix = image_path.suffix.lower()
     media_type = IMAGE_MEDIA_TYPES.get(suffix)
     if media_type is None:
@@ -88,12 +103,8 @@ def _store_image(image_path: Path, item_id: int) -> tuple[str, str, str]:
             f"Unsupported image type {suffix!r}. Use one of: "
             + ", ".join(sorted(IMAGE_MEDIA_TYPES))
         )
-    data = image_path.read_bytes()
-    digest = hashlib.sha256(data).hexdigest()
-    MEDIA_DIR.mkdir(parents=True, exist_ok=True)
-    destination = MEDIA_DIR / f"{item_id}{suffix}"
-    shutil.copyfile(image_path, destination)
-    return str(destination), media_type, digest
+    entry = store_image_bytes(image_path.read_bytes(), media_type, str(item_id))
+    return entry["path"], entry["media_type"], entry["sha256"]
 
 
 def load_item_images(item: ContentItem) -> list[tuple[str, bytes]]:

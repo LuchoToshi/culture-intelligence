@@ -15,6 +15,12 @@ class Settings(BaseSettings):
     ai_synthesis_model: str = ""
     anthropic_api_key: str = ""
     openai_api_key: str = ""
+    # Managed scraping for Instagram/TikTok (no official API for monitoring
+    # arbitrary public accounts). Empty = those platforms stay uncollected,
+    # exactly as before — no regression when the token is absent.
+    apify_token: str = ""
+    # Max posts pulled per social account per run (cost control).
+    apify_posts_per_account: int = 10
 
     log_level: str = "INFO"
 
