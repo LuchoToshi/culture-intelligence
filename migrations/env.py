@@ -1,12 +1,11 @@
 from logging.config import fileConfig
 
+from alembic import context
 from sqlalchemy import create_engine, pool
 
-from alembic import context
-
-from culture.config import get_settings
-from culture.database import Base
 import culture.models  # noqa: F401  — registers all tables on Base.metadata
+from culture.config import get_settings
+from culture.database import Base, _with_psycopg_driver
 
 config = context.config
 
@@ -18,7 +17,7 @@ target_metadata = Base.metadata
 
 def _database_url() -> str:
     # DATABASE_URL from the environment / .env always wins over alembic.ini.
-    return get_settings().database_url
+    return _with_psycopg_driver(get_settings().database_url)
 
 
 def run_migrations_offline() -> None:
