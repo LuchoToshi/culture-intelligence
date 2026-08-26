@@ -53,7 +53,7 @@
     <h2 class="section" style="margin-top:0">Where activity concentrates</h2>
     {% for city in top_cities %}
       <div class="card">
-        <h3><a href="/cities/{{ city.name }}">{{ city.name }}</a></h3>
+        <h3><a href="/cities/{{ city.name | urlencode }}">{{ city.name }}</a></h3>
         <div class="meta">{{ city.item_count }} evidence items · {{ city.signal_count }} signals · {{ city.recent_count }} new this week</div>
       </div>
     {% endfor %}

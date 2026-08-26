@@ -26,7 +26,7 @@
 <h2 class="section">Where and what</h2>
 {% if signal.cities %}
 <p class="mono muted" style="margin-bottom:0.2rem">CITIES · in order of evidence frequency</p>
-<div class="tagrow">{% for city in signal.cities %}<a href="/cities/{{ city }}">{{ city }}</a>{% endfor %}</div>
+<div class="tagrow">{% for city in signal.cities %}<a href="/cities/{{ city | urlencode }}">{{ city }}</a>{% endfor %}</div>
 {% endif %}
 {% if signal.categories %}
 <p class="mono muted" style="margin:0.8rem 0 0.2rem">THEMES</p>

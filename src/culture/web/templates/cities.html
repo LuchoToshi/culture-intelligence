@@ -18,7 +18,7 @@
   <tbody>
   {% for city in cities %}
     <tr>
-      <td class="cell-primary"><a href="/cities/{{ city.name }}">{{ city.name }}</a></td>
+      <td class="cell-primary"><a href="/cities/{{ city.name | urlencode }}">{{ city.name }}</a></td>
       <td class="num">{{ city.item_count }}</td>
       <td class="num">{{ city.signal_count }}</td>
       <td class="num">{{ city.source_count }}</td>

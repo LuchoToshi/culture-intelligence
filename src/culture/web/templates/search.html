@@ -21,7 +21,7 @@
 
 {% if results.cities %}
 <h2 class="section">Cities</h2>
-<div class="tagrow">{% for city in results.cities %}<a href="/cities/{{ city.name }}">{{ city.name }} · {{ city.item_count }}</a>{% endfor %}</div>
+<div class="tagrow">{% for city in results.cities %}<a href="/cities/{{ city.name | urlencode }}">{{ city.name }} · {{ city.item_count }}</a>{% endfor %}</div>
 {% endif %}
 
 {% if results.archetypes %}
