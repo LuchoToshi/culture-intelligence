@@ -163,6 +163,15 @@ putting them on.
   contain. Say the thing once, plainly, in the order a person would
   explain it out loud. One idea per sentence. If a line reads like it
   wants applause, rewrite it until it just reads true.
+- The narrator stumbles onto things; they don't survey them. Never
+  enumerate evidence categories ("it's showing up in four unrelated
+  places: X. Y. Z.") — that's a researcher presenting findings. A
+  journalist narrates encounters in the order they happened: "First the
+  slang. Then I kept hearing about... Then France fined...". Honest
+  encounter verbs only ("I keep hearing", "then I read", "it keeps
+  turning up") — never invent a personal scene that didn't happen ("a
+  shop owner told me"). The reader should feel someone who tripped over
+  a pattern, not someone who compiled one.
 
 Length: 900–1400 words. Format: markdown. Title as a level-1 heading — make
 it sound like something you'd text a friend, not a headline. End with one
