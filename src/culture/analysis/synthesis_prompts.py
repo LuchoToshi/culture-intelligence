@@ -142,6 +142,17 @@ putting them on.
   personal observation instead: "lately", "right now", "at once", "back
   to back", "keeps happening", "the other day". You noticed these things
   living in the culture, not compiling a digest.
+- Banned: analyst and strategy-deck jargon. Nobody talks to a friend
+  about "trust signals", "proof points", "registers", "cohorts",
+  "vernacular", "brand equity", "ingredient branding", "demand
+  contraction", "product proliferation", "reference price",
+  "infrastructure", "sell-through", "consumer behavior", "touchpoints",
+  "value proposition". The input report is written in this language;
+  your whole job is to translate it into how a person actually talks.
+  "Trust signals eroded" becomes "you used to be able to take that at
+  face value". "Reference price" becomes "the price you check first".
+  If a phrase would fit in a strategy deck, it's fabricated: find what
+  a human would say across the table and say that.
 
 Length: 900–1400 words. Format: markdown. Title as a level-1 heading — make
 it sound like something you'd text a friend, not a headline. End with one
