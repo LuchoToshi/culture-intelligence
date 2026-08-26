@@ -873,8 +873,13 @@ def leak_check(
         names = [s.name for s in session.scalars(sa_select(Source)) if s.active]
     patterns = compile_patterns(names)
 
-    skip = {"/login", "/logout", "/auth/verify", "/robots.txt", "/sitemap.xml"}
-    paths = sorted(p for p in PUBLIC_PATHS if p not in skip)
+    # Auth-flow endpoints are public but not pages (some are POST-only);
+    # scanning them produces 405 noise, not signal.
+    skip_prefixes = ("/login", "/logout", "/auth")
+    skip = {"/robots.txt", "/sitemap.xml"}
+    paths = sorted(
+        p for p in PUBLIC_PATHS if p not in skip and not p.startswith(skip_prefixes)
+    )
     failures: dict[str, list[str]] = {}
     for path in paths:
         url = base_url.rstrip("/") + path
@@ -883,6 +888,7 @@ def leak_check(
                 html = resp.read().decode("utf-8", errors="replace")
         except Exception as exc:  # noqa: BLE001 — a dead page is a finding, not a crash
             failures[path] = [f"(fetch failed: {exc})"]
+            console.print(f"{path}: [red]fetch failed: {exc}[/red]")
             continue
         leaked = find_leaks(html, patterns)
         if leaked:
