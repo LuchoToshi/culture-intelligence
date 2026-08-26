@@ -33,7 +33,7 @@
     <h1>Culture Intelligence</h1>
     <p class="lede">Urban taste intelligence — signed access only.</p>
     {% if sent %}
-      <div class="notice ok">If <strong>{{ sent }}</strong> has access, a sign-in link is on its way — it expires in 15 minutes. If not, this doubles as an access request: we review every one.</div>
+      <div class="notice ok">A sign-in link is on its way to <strong>{{ sent }}</strong> — it expires in 15 minutes.</div>
     {% endif %}
     {% if error %}
       <div class="notice err">{{ error }}</div>
@@ -45,8 +45,8 @@
       <button type="submit">Send sign-in link</button>
     </form>
     <p style="font-size:0.82rem;color:var(--ink-2);margin:1.1rem 0 0">
-      No account? Enter your work email above and we treat it as an access
-      request — approved members get a sign-in link, no password to manage.
+      No account? Submitting your work email records an access request for
+      review. Approved members sign in by email link — no password to manage.
     </p>
     <details style="margin-top:1.2rem;border-top:1px solid var(--hairline);padding-top:1rem">
       <summary style="cursor:pointer;font-size:0.82rem;color:var(--ink-2)">Have demo credentials?</summary>

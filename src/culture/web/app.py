@@ -166,16 +166,28 @@ def _mount_auth_routes(app: FastAPI) -> None:
                         "error": "Could not send the sign-in email. Try again shortly.",
                     },
                 )
-        else:
-            # Unknown email: the durable audit row IS the access request.
-            # The response below stays identical either way, so the
-            # allow-list cannot be probed from the login form.
-            auth.record_event(
-                "access_requested", email=normalized, ip=ip,
-                engine=request.app.state.engine,
+            return templates.TemplateResponse(
+                request, "login.html", {"next": next, "sent": email, "error": None}
             )
+        # Unknown email: explicit rejection, per the 26 Aug access-control
+        # ruling. This trades allow-list enumeration resistance for clarity —
+        # the owner's call, made twice. The audit row doubles as the access
+        # request an admin reviews.
+        auth.record_event(
+            "access_requested", email=normalized, ip=ip,
+            engine=request.app.state.engine,
+        )
         return templates.TemplateResponse(
-            request, "login.html", {"next": next, "sent": email, "error": None}
+            request,
+            "login.html",
+            {
+                "next": next,
+                "sent": None,
+                "error": (
+                    "This address does not have access. Your request has been "
+                    "recorded — if it's approved, your next sign-in attempt will work."
+                ),
+            },
         )
 
     @app.post("/login/demo", response_class=HTMLResponse, include_in_schema=False)

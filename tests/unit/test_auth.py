@@ -59,12 +59,10 @@ def test_login_and_verify_flow_grants_session(client):
     assert now_authenticated.status_code == 200
 
 
-def test_login_response_identical_for_disallowed_email(client):
-    with patch("culture.web.auth.send_login_email") as mock_send:
-        response = client.post("/login", data={"email": "stranger@example.com", "next": "/"})
-    assert response.status_code == 200
-    assert "stranger@example.com" in response.text  # same "check your inbox" copy
-    mock_send.assert_not_called()  # but no email actually sent
+# The original anti-enumeration contract (identical response for unknown
+# emails) was deliberately reversed by the 26 Aug access-control ruling:
+# unknown addresses now get an explicit rejection. That behavior is covered
+# by test_unknown_email_is_rejected_explicitly_and_no_link_is_sent below.
 
 
 def test_email_allow_list_is_case_insensitive(client):
@@ -245,8 +243,39 @@ def test_login_rate_limit_kicks_in(role_client):
     assert any(e == "rate_limited" for e, _ in _audit_events(role_client.app_engine))
 
 
-def test_unknown_email_records_access_request(role_client):
-    response = role_client.post("/login", data={"email": "stranger@example.com"})
-    # Identical response shape to a known email: the list stays unprobeable.
-    assert "doubles as an access request" in response.text
+def test_unknown_email_is_rejected_explicitly_and_no_link_is_sent(role_client):
+    # 26 Aug ruling: explicit rejection over enumeration resistance.
+    with patch("culture.web.auth.send_login_email") as send:
+        response = role_client.post("/login", data={"email": "stranger@example.com"})
+    assert "does not have access" in response.text
+    send.assert_not_called()
     assert ("access_requested", "stranger@example.com") in _audit_events(role_client.app_engine)
+
+
+def test_known_email_gets_link_and_affirmative_message(role_client):
+    with patch("culture.web.auth.send_login_email") as send:
+        response = role_client.post("/login", data={"email": "allowed@example.com"})
+    assert "sign-in link is on its way" in response.text
+    send.assert_called_once()
+    assert ("link_requested", "allowed@example.com") in _audit_events(role_client.app_engine)
+
+
+def test_invite_enforced_even_with_a_valid_token_for_unknown_email(role_client):
+    # A signed token for a non-member must not create a session: the
+    # allow-list is re-checked at verification, not just at request time.
+    token = create_login_token("stranger@example.com", get_settings())
+    response = role_client.get(f"/auth/verify?token={token}")
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login?error=expired"
+    assert role_client.cookies.get("ci_session") is None
+
+
+def test_demo_access_is_read_only_by_construction(role_client):
+    # The demo account cannot modify anything because nothing modifiable is
+    # exposed: the only non-GET routes in the whole app are the login forms.
+    mutating = [
+        route.path
+        for route in role_client.app.routes
+        if hasattr(route, "methods") and (route.methods - {"GET", "HEAD"})
+    ]
+    assert sorted(mutating) == ["/login", "/login/demo"]
