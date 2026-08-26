@@ -26,6 +26,7 @@ from culture.models.report import WeeklyReport
 from culture.models.signal import Signal, SignalEvidence
 from culture.models.source import Source
 from culture.utils.dates import ensure_utc, now_utc
+from culture.utils import citypolicy
 from culture.web import queries
 
 log = get_logger("culture.web.app")
@@ -207,6 +208,8 @@ def create_app(
     templates.env.globals["stage_labels"] = queries.STAGE_LABELS
     templates.env.globals["stage_glyphs"] = queries.STAGE_GLYPHS
     templates.env.filters["dmy"] = _dmy
+    templates.env.filters["public_city_first"] = citypolicy.first_public_city
+    templates.env.filters["public_cities"] = citypolicy.public_cities
     engine = engine or get_engine()
     factory = sessionmaker(bind=engine, expire_on_commit=False)
 
@@ -313,11 +316,14 @@ def create_app(
 
         rows = queries.signal_rows(session, sort="evidence")
         active = queries.active_signals(session)
-        monitored_cities = monitored_city_names(session)
+        # Public city policy: only approved major-city labels reach this page.
+        # Original locations stay available in the gated views.
+        monitored_cities = citypolicy.public_cities(monitored_city_names(session))
+        monitored_set = set(monitored_cities)
 
         def canonical_city(raw: str) -> str | None:
-            name = queries.canonical_city(raw)
-            return name if name in monitored_cities else None
+            name = citypolicy.public_city(raw)
+            return name if name in monitored_set else None
 
         signal_count_by_city: Counter[str] = Counter()
         strengthening_by_city: Counter[str] = Counter()
@@ -341,7 +347,14 @@ def create_app(
         pulse = rows[:2]
         top = rows[0].signal if rows else None
 
-        multi_city = next((r.signal for r in rows if len(r.signal.cities) >= 2), None)
+        multi_city_pair = next(
+            (
+                pair[:2]
+                for r in rows
+                if len(pair := citypolicy.public_cities(r.signal.cities)) >= 2
+            ),
+            None,
+        )
 
         noise_candidates = sorted(
             (r for r in rows if r.signal.source_count == 1), key=lambda r: -r.signal.evidence_count
@@ -367,8 +380,8 @@ def create_app(
                 "pulse_signals": pulse,
                 "featured_signals": featured,
                 "city_rows": city_rows,
-                "city_link_a": multi_city.cities[0] if multi_city else None,
-                "city_link_b": multi_city.cities[1] if multi_city else None,
+                "city_link_a": multi_city_pair[0] if multi_city_pair else None,
+                "city_link_b": multi_city_pair[1] if multi_city_pair else None,
                 "hero_stats": hero_stats(top),
                 "entity_web_nodes": entity_web_nodes,
                 "noise_example": {

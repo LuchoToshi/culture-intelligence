@@ -379,10 +379,32 @@ def test_about_page_is_public(client):
     assert "never name our sources" in response.text
 
 
-def test_the_brief_renders_without_feed_configured(client):
+def test_the_brief_empty_state(client, monkeypatch):
+    # Deterministic: never let a unit test depend on env config or network.
+    import culture.web.publication as publication
+
+    monkeypatch.setattr(publication, "latest_posts", lambda feed_url, limit=20: [])
     response = client.get("/the-brief")
     assert response.status_code == 200
     assert "No posts yet" in response.text
+
+
+def test_the_brief_lists_posts(client, monkeypatch):
+    from datetime import UTC, datetime
+
+    import culture.web.publication as publication
+
+    post = publication.PublicationPost(
+        title="A word left the fabric",
+        url="https://example.substack.com/p/a-word",
+        published_at=datetime(2026, 8, 26, tzinfo=UTC),
+        excerpt="What it means when slang crosses over.",
+        tags=["language"],
+    )
+    monkeypatch.setattr(publication, "latest_posts", lambda feed_url, limit=20: [post])
+    text = client.get("/the-brief").text
+    assert "A word left the fabric" in text
+    assert "language" in text
 
 
 def test_city_compare_page(client):

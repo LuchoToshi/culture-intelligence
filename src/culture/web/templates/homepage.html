@@ -177,7 +177,7 @@
           <div class="pulse-name">{{ row.signal.name }}</div>
           <div class="pulse-meta">
             <span class="stage {{ row.signal.lifecycle_stage }}">{{ stage_labels[row.signal.lifecycle_stage] }}</span>
-            {% if row.signal.cities %}<span>{{ row.signal.cities[0] }}</span>{% endif %}
+            {% set pc = row.signal.cities | public_city_first %}{% if pc %}<span>{{ pc }}</span>{% endif %}
             {% if row.delta_7d %}<span class="momentum">↑ strengthening</span>{% endif %}
           </div>
         </div>
@@ -289,7 +289,7 @@
         </div>
         <div class="body">
           <div class="meta">
-            {% if row.signal.cities %}<span>{{ row.signal.cities[0] }}</span>{% endif %}
+            {% set pc = row.signal.cities | public_city_first %}{% if pc %}<span>{{ pc }}</span>{% endif %}
             <span>Detected {{ row.signal.first_detected_at | dmy }}</span>
           </div>
           <h3>{{ row.signal.name }}</h3>

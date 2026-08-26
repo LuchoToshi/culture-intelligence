@@ -39,7 +39,7 @@
       {% for row in rows %}
       <a class="intel-row" href="/login?next=/signals/{{ row.signal.id }}">
         <span class="name">{{ row.signal.name }}</span>
-        <span class="meta">{{ row.signal.cities[0] if row.signal.cities else "—" }}</span>
+        <span class="meta">{{ (row.signal.cities | public_city_first) or "—" }}</span>
         <span class="meta">{{ row.signal.evidence_count }} obs · {{ row.signal.source_count }} sources</span>
         <span class="stage {{ row.signal.lifecycle_stage }}">{{ stage_labels[row.signal.lifecycle_stage] }}</span>
       </a>
