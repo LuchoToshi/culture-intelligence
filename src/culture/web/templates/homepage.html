@@ -352,6 +352,26 @@
   </div>
 </section>
 
+{% if publication_posts %}
+<section class="pub" id="publication">
+  <div class="wrap">
+    <div class="eyebrow">FIELD NOTES</div>
+    <h2 style="font-family:var(--font-display);font-weight:500;font-size:clamp(1.5rem, 3vw, 2rem);margin:0.5rem 0 0.7rem;">From the publication.</h2>
+    <p style="color:var(--ink-2);max-width:62ch;margin:0 0 2rem;">Weekly editorial on the cultural movement behind the signals — what it means, not just what the evidence shows.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.4rem;">
+      {% for post in publication_posts %}
+      <a href="{{ post.url }}" rel="noopener" style="display:block;background:var(--surface);border:1px solid var(--rule);padding:1.4rem;">
+        {% if post.published_at %}<div class="eyebrow" style="margin-bottom:0.6rem;">{{ post.published_at | dmy }}</div>{% endif %}
+        <h3 style="font-family:var(--font-display);font-weight:500;font-size:1.15rem;line-height:1.3;margin:0 0 0.5rem;">{{ post.title }}</h3>
+        {% if post.excerpt %}<p style="color:var(--ink-2);font-size:0.92rem;margin:0 0 0.8rem;">{{ post.excerpt }}</p>{% endif %}
+        <span class="momentum">Read →</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
 <section class="pub" id="methodology">
   <div class="wrap">
     <div class="section-head">

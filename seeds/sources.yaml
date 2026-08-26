@@ -805,6 +805,19 @@ sources:
     active: true
     notes: Collected automatically via Apify managed actors (operator-authorized 2026-08-25).
 
+  - name: Cyerra Styled It
+    platform: instagram
+    source_type: creator
+    url: https://www.instagram.com/cyerra_styled_it
+    categories: [personal styling, fashion]
+    intelligence_layers: [personal_application, street_adoption]
+    tier: watch
+    active: true
+    notes: >-
+      Personal stylist creator ("Cyerra | Personal Stylist"), operator-added
+      2026-08-26; account existence verified, location not stated on profile.
+      Collected automatically via Apify managed actors.
+
   - name: Yugnat999
     platform: instagram
     source_type: meme_account

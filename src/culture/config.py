@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     # Comma-separated allow-list. Empty = nobody can log in (fail closed, not open).
     allowed_emails: str = ""
 
+    # Public Substack publication feed (e.g. https://<name>.substack.com/feed).
+    # Empty = the homepage publication section stays hidden entirely.
+    substack_feed_url: str = ""
+
     @property
     def allowed_email_set(self) -> set[str]:
         return {e.strip().lower() for e in self.allowed_emails.split(",") if e.strip()}

@@ -767,5 +767,83 @@ def report(
         console.print("Private — rerun with --publish to make it public.")
 
 
+@app.command(name="draft-post")
+def draft_post() -> None:
+    """Draft a public Substack essay from the latest private weekly report.
+
+    The essay is deliberately NOT the report: one editorial story, no source
+    names, no registry/scores/evidence tables — the intelligence depth stays
+    on the platform. Output is a draft for human review; Substack has no
+    write API, so publishing is always a manual paste."""
+    import re
+
+    from sqlalchemy import select
+
+    from culture.analysis.provider import DEFAULT_SYNTHESIS_MODEL, ProviderError, get_provider
+    from culture.analysis.synthesis_prompts import (
+        PUBLIC_BRIEF_SYSTEM_PROMPT,
+        build_public_draft_prompt,
+    )
+    from culture.database import get_engine, session_scope
+    from culture.models.report import WeeklyReport
+    from culture.models.source import Source
+
+    settings = get_settings()
+    try:
+        provider = get_provider(
+            settings, model=settings.ai_synthesis_model or DEFAULT_SYNTHESIS_MODEL
+        )
+    except ProviderError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(1) from exc
+
+    with session_scope(get_engine()) as session:
+        report_row = session.scalar(
+            select(WeeklyReport).order_by(WeeklyReport.iso_week.desc())
+        )
+        if report_row is None:
+            console.print("[red]No weekly report exists yet — run `culture report` first.[/red]")
+            raise typer.Exit(1)
+        source_names = [s.name for s in session.scalars(select(Source)) if len(s.name) > 3]
+
+    match = re.search(r"^# Part 2.*?$", report_row.content_markdown, re.MULTILINE)
+    synthesis = (
+        report_row.content_markdown[match.start() :] if match else report_row.content_markdown
+    )
+
+    console.print(f"Drafting public essay from {report_row.iso_week} ({provider.model})...")
+    draft = provider.generate_text(
+        PUBLIC_BRIEF_SYSTEM_PROMPT,
+        build_public_draft_prompt(synthesis, report_row.iso_week),
+        max_tokens=8000,
+    )
+
+    # Mechanical leak check on top of the prompt rules: the draft must not
+    # name any monitored source. The prompt should prevent this; this catches
+    # it if the model slips anyway.
+    leaked = sorted(
+        {name for name in source_names if re.search(re.escape(name), draft, re.IGNORECASE)}
+    )
+
+    drafts_dir = PROJECT_ROOT / "drafts"
+    drafts_dir.mkdir(exist_ok=True)
+    path = drafts_dir / f"substack-{report_row.iso_week}.md"
+    path.write_text(draft, encoding="utf-8")
+
+    console.print(f"Spend this run: [bold]${provider.spent_usd:.2f}[/bold] ({provider.model})")
+    console.print(f"\nDraft written to:\n[bold]{path}[/bold]")
+    if leaked:
+        console.print(
+            f"[red]LEAK CHECK FAILED — draft names monitored source(s): "
+            f"{', '.join(leaked)}. Edit these out before publishing.[/red]"
+        )
+    else:
+        console.print("[green]Leak check passed — no monitored source names found.[/green]")
+    console.print(
+        "Review and edit, then paste into the Substack editor to publish — "
+        "the homepage picks up published posts automatically via the feed."
+    )
+
+
 if __name__ == "__main__":
     app()

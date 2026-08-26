@@ -28,18 +28,6 @@ from culture.models.source import Source
 from culture.utils.dates import ensure_utc, now_utc
 from culture.web import queries
 
-# Presentation-layer merge only (not a data fix) — the same city shows up
-# under a few spellings in free-text signal.cities because entity
-# extraction isn't normalized. Source.city (the canonical list sources are
-# tagged with) doesn't have this problem, so the public homepage counts
-# signals against that canonical list via these aliases.
-CITY_ALIASES = {
-    "nyc": "New York",
-    "new york city": "New York",
-    "la": "Los Angeles",
-    "los angeles": "Los Angeles",
-}
-
 log = get_logger("culture.web.app")
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
@@ -318,7 +306,7 @@ def create_app(
         monitored_cities = monitored_city_names(session)
 
         def canonical_city(raw: str) -> str | None:
-            name = CITY_ALIASES.get(raw.strip().lower(), raw.strip())
+            name = queries.canonical_city(raw)
             return name if name in monitored_cities else None
 
         signal_count_by_city: Counter[str] = Counter()
@@ -357,11 +345,14 @@ def create_app(
 
         report_row = latest_public_report(session)
 
+        from culture.web.publication import latest_posts
+
         return render(
             request,
             session,
             "homepage.html",
             {
+                "publication_posts": latest_posts(settings.substack_feed_url),
                 "monitored_cities": monitored_cities,
                 "pulse_signals": pulse,
                 "featured_signals": featured,
