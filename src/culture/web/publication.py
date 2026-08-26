@@ -38,9 +38,14 @@ class PublicationPost:
 def _parse_feed(xml_text: str, limit: int) -> list[PublicationPost]:
     # Feed URL is operator-configured, and stdlib ElementTree never resolves
     # external entities — but a legitimate RSS feed has no business carrying
-    # a DTD at all, so reject any outright rather than parsing it.
-    if "<!DOCTYPE" in xml_text or "<!ENTITY" in xml_text:
-        raise ValueError("feed contains a DTD — refusing to parse")
+    # a DTD in its prolog, so reject one there rather than parsing it. Only
+    # the prolog: post bodies inside CDATA legitimately contain HTML (and
+    # its DOCTYPE), and an HTML page served where a feed should be (e.g. a
+    # redirect to a profile page) is also caught by this prolog check.
+    root_pos = xml_text.find("<rss")
+    prolog = xml_text[:root_pos] if root_pos != -1 else xml_text
+    if "<!DOCTYPE" in prolog or "<!ENTITY" in prolog:
+        raise ValueError("feed has a DTD before the root element — refusing to parse")
     root = ET.fromstring(xml_text)
     posts = []
     for item in root.iter("item"):
