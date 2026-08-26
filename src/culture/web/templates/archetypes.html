@@ -19,7 +19,7 @@
   <div class="provenance">
     <span class="kind kind-model"></span>
     <span>{{ obs.source.name }}</span>
-    <span>{{ obs.when.date().isoformat() if obs.when else "?" }}</span>
+    <span>{{ obs.when | dmy("?") }}</span>
     {% if obs.cities %}<span>{{ obs.cities | join(" · ") }}</span>{% endif %}
   </div>
   <p style="margin:0; font-size: 1rem">{{ obs.text }}</p>

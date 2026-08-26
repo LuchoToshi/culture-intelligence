@@ -180,6 +180,31 @@ def _mount_auth_routes(app: FastAPI) -> None:
         return response
 
 
+def _dmy(value: datetime | None, fallback: str = "—") -> str:
+    """User-facing date format is DD-MM-YYYY everywhere (operator standard).
+    Machine timestamps stay ISO/UTC internally — this is display-only."""
+    if value is None:
+        return fallback
+    return value.strftime("%d-%m-%Y")
+
+
+def _demote_report_headings(html: str) -> str:
+    """Report markdown starts its own sections at H1, but the report page
+    already has one H1 (the page title) — multiple H1s were flagged as an
+    accessibility defect. Shift every rendered heading down one level, and
+    drop the report's own title heading (the page H1 already says it)."""
+    import re as _re
+
+    html = _re.sub(
+        r"(</?h)([1-5])(?=[ >])",
+        lambda m: f"{m.group(1)}{int(m.group(2)) + 1}",
+        html,
+    )
+    return _re.sub(
+        r"^\s*<h2>Cultural Intelligence Report[^<]*</h2>\s*", "", html, count=1
+    )
+
+
 def create_app(
     engine: Engine | None = None,
     require_auth: bool = False,
@@ -193,6 +218,7 @@ def create_app(
     templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
     templates.env.globals["stage_labels"] = queries.STAGE_LABELS
     templates.env.globals["stage_glyphs"] = queries.STAGE_GLYPHS
+    templates.env.filters["dmy"] = _dmy
     engine = engine or get_engine()
     factory = sessionmaker(bind=engine, expire_on_commit=False)
 
@@ -224,7 +250,7 @@ def create_app(
     def hero_stats(top: Signal | None) -> dict:
         if top is None:
             return {"observations": 0, "sources": 0, "first_detected": "—", "confidence": "—"}
-        detected = top.first_detected_at.strftime("%-d %b") if top.first_detected_at else "—"
+        detected = _dmy(top.first_detected_at)
         return {
             "observations": top.evidence_count,
             "sources": top.source_count,
@@ -672,7 +698,9 @@ def create_app(
         report_row = session.scalar(select(WeeklyReport).where(WeeklyReport.iso_week == name))
         if report_row is None:
             raise HTTPException(404, "No such report")
-        html = md.markdown(report_row.content_markdown, extensions=["tables"])
+        html = _demote_report_headings(
+            md.markdown(report_row.content_markdown, extensions=["tables"])
+        )
         return render(
             request,
             session,
@@ -691,7 +719,9 @@ def create_app(
         )
         if report_row is None:
             return render(request, session, "brief.html", {"report": None, "footer_stats": stats})
-        html = md.markdown(report_row.content_markdown, extensions=["tables"])
+        html = _demote_report_headings(
+            md.markdown(report_row.content_markdown, extensions=["tables"])
+        )
         return render(
             request,
             session,
@@ -699,7 +729,90 @@ def create_app(
             {"report": report_row, "content": html, "footer_stats": stats},
         )
 
+    @app.get("/methodology", response_class=HTMLResponse)
+    def methodology(request: Request, session: Session = Depends(db)):
+        active = queries.active_signals(session)
+        return render(
+            request,
+            session,
+            "methodology.html",
+            {"footer_stats": public_footer_stats(session, active)},
+        )
+
+    @app.get("/robots.txt", include_in_schema=False)
+    def robots(request: Request):
+        from fastapi.responses import PlainTextResponse
+
+        if _is_preview_deployment():
+            # Preview deployments must never be indexed.
+            return PlainTextResponse("User-agent: *\nDisallow: /\n")
+        sitemap = str(request.base_url).rstrip("/") + "/sitemap.xml"
+        return PlainTextResponse(
+            "User-agent: *\n"
+            "Allow: /$\n"
+            "Allow: /intelligence\n"
+            "Allow: /brief\n"
+            "Allow: /methodology\n"
+            "Disallow: /\n"
+            f"Sitemap: {sitemap}\n"
+        )
+
+    @app.get("/sitemap.xml", include_in_schema=False)
+    def sitemap(request: Request):
+        from fastapi.responses import Response as RawResponse
+
+        base = str(request.base_url).rstrip("/")
+        urls = "".join(
+            f"<url><loc>{base}{path}</loc></url>"
+            for path in ("/", "/intelligence", "/brief", "/methodology")
+        )
+        xml = (
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+            f"{urls}</urlset>"
+        )
+        return RawResponse(content=xml, media_type="application/xml")
+
+    @app.middleware("http")
+    async def _noindex_previews(request: Request, call_next):
+        response = await call_next(request)
+        if _is_preview_deployment():
+            response.headers["X-Robots-Tag"] = "noindex"
+        return response
+
+    def _error_page(request: Request, status_code: int, message: str):
+        return templates.TemplateResponse(
+            request,
+            "error.html",
+            {"status_code": status_code, "message": message, "q": None, "freshness": None},
+            status_code=status_code,
+        )
+
+    @app.exception_handler(HTTPException)
+    async def _http_error(request: Request, exc: HTTPException):
+        # Branded error pages instead of FastAPI's raw {"detail": ...} JSON —
+        # flagged by external review as unacceptable on a customer-facing app.
+        messages = {
+            404: exc.detail if isinstance(exc.detail, str) else "This page doesn't exist.",
+            403: "You don't have access to this page.",
+        }
+        message = messages.get(exc.status_code, "Something went wrong with this request.")
+        return _error_page(request, exc.status_code, message)
+
+    @app.exception_handler(Exception)
+    async def _server_error(request: Request, exc: Exception):
+        log.error("unhandled error on %s", request.url.path, exc_info=exc)
+        return _error_page(
+            request, 500, "Something went wrong on our side. The team has been notified."
+        )
+
     return app
+
+
+def _is_preview_deployment() -> bool:
+    import os
+
+    return os.environ.get("VERCEL_ENV", "") not in ("", "production")
 
 
 def _trailing_month_labels(months: int) -> list[str]:

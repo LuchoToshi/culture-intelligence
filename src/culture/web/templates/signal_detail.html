@@ -9,8 +9,8 @@
 <div class="factline">
   <span class="f"><b>Lifecycle</b> {{ stage_chip(signal.lifecycle_stage) }}</span>
   <span class="f"><b>Evidence</b> <span class="mono">{{ signal.evidence_count }} item{{ "s" if signal.evidence_count != 1 }} · {{ signal.source_count }} source{{ "s" if signal.source_count != 1 }}</span></span>
-  <span class="f"><b>First observed</b> <span class="mono">{{ signal.first_detected_at.date().isoformat() if signal.first_detected_at else "—" }}</span></span>
-  <span class="f"><b>Last observed</b> <span class="mono">{{ signal.last_evidence_at.date().isoformat() if signal.last_evidence_at else "—" }}</span></span>
+  <span class="f"><b>First observed</b> <span class="mono">{{ signal.first_detected_at | dmy }}</span></span>
+  <span class="f"><b>Last observed</b> <span class="mono">{{ signal.last_evidence_at | dmy }}</span></span>
   <span class="f"><b>New this week</b> <span class="mono">{% if delta %}<span class="delta-up">+{{ delta }}</span>{% else %}0{% endif %}</span></span>
 </div>
 
@@ -49,7 +49,7 @@
 <h2 class="section">Who is combining it <span class="note">archetype observations from this signal's evidence</span></h2>
 {% for obs in archetype_observations %}
   <div class="card">
-    <div class="meta">{{ obs.source.name }} · {{ obs.when.date().isoformat() if obs.when else "?" }}{% if obs.cities %} · {{ obs.cities | join(", ") }}{% endif %}</div>
+    <div class="meta">{{ obs.source.name }} · {{ obs.when | dmy("?") }}{% if obs.cities %} · {{ obs.cities | join(", ") }}{% endif %}</div>
     <p style="margin:0">{{ obs.text }}</p>
   </div>
 {% endfor %}
@@ -69,7 +69,7 @@
 <div class="evidence-list">
   {% for step in diffusion_steps %}
   <div class="record">
-    <div class="provenance"><span class="kind kind-inference"></span><span class="mono">{{ step.when.date().isoformat() if step.when else "?" }}</span></div>
+    <div class="provenance"><span class="kind kind-inference"></span><span class="mono">{{ step.when | dmy("?") }}</span></div>
     <p style="margin:0"><strong>{{ step.source_name }}</strong>{% if step.cities %} · {{ step.cities | join(", ") }}{% endif %} — <a href="/items/{{ step.item.id }}">{{ step.item.title or "(untitled)" }}</a></p>
   </div>
   {% endfor %}

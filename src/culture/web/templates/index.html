@@ -19,7 +19,7 @@
     <h2 class="section" style="margin-top:0">Newly detected <span class="note">first seen in the last 14 days</span></h2>
     {% for signal in newly_detected %}
       <div class="card">
-        <div class="meta">first seen {{ signal.first_detected_at.date().isoformat() if signal.first_detected_at else "—" }} · {{ signal.evidence_count }} item{{ "s" if signal.evidence_count != 1 }}</div>
+        <div class="meta">first seen {{ signal.first_detected_at | dmy }} · {{ signal.evidence_count }} item{{ "s" if signal.evidence_count != 1 }}</div>
         <h3><a href="/signals/{{ signal.id }}">{{ signal.name }}</a></h3>
         {{ stage_chip(signal.lifecycle_stage) }}
       </div>
@@ -62,7 +62,7 @@
     <h2 class="section" style="margin-top:0">Latest evidence <span class="note"><a href="/stream">full stream →</a></span></h2>
     {% for r in latest_items %}
       <div class="card">
-        <div class="meta">{{ r.source_name }} · {{ r.when.date().isoformat() if r.when else "?" }}</div>
+        <div class="meta">{{ r.source_name }} · {{ r.when | dmy("?") }}</div>
         <h3><a href="/items/{{ r.item.id }}">{{ r.item.title or "(untitled)" }}</a></h3>
       </div>
     {% endfor %}

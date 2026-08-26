@@ -18,10 +18,13 @@ from culture.models.signal import Signal, SignalEvidence, SignalState
 from culture.models.source import Source
 from culture.utils.dates import ensure_utc, now_utc
 
-# Display vocabulary: internal stage values -> product language.
+# Display vocabulary: internal stage values -> product language. Labels
+# deliberately match the internal values users see in filter URLs
+# (?stage=strengthening) — external review flagged the earlier
+# "Accelerating" label as a confusing mismatch against that URL vocabulary.
 STAGE_LABELS = {
     "emerging": "Emerging",
-    "strengthening": "Accelerating",
+    "strengthening": "Strengthening",
     "mainstream": "Mainstream",
     "saturated": "Saturated",
     "declining": "Declining",
@@ -36,6 +39,32 @@ STAGE_GLYPHS = {
     "unknown": "◌",
 }
 STAGE_ORDER = ["emerging", "strengthening", "mainstream", "saturated", "declining", "unknown"]
+
+# City alias canonicalization. The analyzer stores place names exactly as
+# evidence gives them, so the same city arrives under several names and the
+# city index double-counts ("New York" / "NYC" / "New York City" as three
+# rows — confirmed in production data). Canonicalized at the display/
+# aggregation layer only; stored evidence keeps its original wording. Keys
+# are lowercase aliases; grow this map as new aliases show up in data.
+CITY_ALIASES = {
+    "nyc": "New York",
+    "new york city": "New York",
+    "la": "Los Angeles",
+    "philly": "Philadelphia",
+    "sf": "San Francisco",
+    "amsterdam-oost": "Amsterdam",
+    "bk": "Brooklyn",
+}
+
+
+def canonical_city(name: str) -> str:
+    name = name.strip()
+    return CITY_ALIASES.get(name.lower(), name)
+
+
+def _city_matches(name: str, cities: list[str] | None) -> bool:
+    target = canonical_city(name).lower()
+    return any(canonical_city(c).lower() == target for c in (cities or []))
 
 
 def item_time(item: ContentItem) -> datetime | None:
@@ -292,7 +321,7 @@ def city_rows(session: Session, min_items: int = 2) -> list[CityRow]:
         if item is None:
             continue
         for city in analysis.cities or []:
-            city = city.strip()
+            city = canonical_city(city)
             if not city:
                 continue
             per_city_items[city].add(item.id)
@@ -303,7 +332,7 @@ def city_rows(session: Session, min_items: int = 2) -> list[CityRow]:
                 per_city_recent[city] += 1
     signal_cities: Counter[str] = Counter()
     for signal in active_signals(session):
-        for city in signal.cities:
+        for city in {canonical_city(c) for c in signal.cities}:
             signal_cities[city] += 1
     rows = [
         CityRow(
@@ -330,8 +359,7 @@ def city_detail(session: Session, name: str) -> dict:
     neighborhoods: Counter[str] = Counter()
     seen_items: set[int] = set()
     for analysis in analyses:
-        cities_lower = [c.lower() for c in (analysis.cities or [])]
-        if name.lower() not in cities_lower:
+        if not _city_matches(name, analysis.cities):
             continue
         item = items.get(analysis.content_item_id)
         if item is None or item.id in seen_items:
@@ -342,9 +370,12 @@ def city_detail(session: Session, name: str) -> dict:
             archetypes.append((archetype, item.id))
         neighborhoods.update(analysis.neighborhoods or [])
     matching_items.sort(key=lambda pair: item_time(pair[0]) or now_utc(), reverse=True)
-    signals = [s for s in active_signals(session) if name.lower() in [c.lower() for c in s.cities]]
+    signals = [s for s in active_signals(session) if _city_matches(name, s.cities)]
     signals.sort(key=lambda s: s.evidence_count, reverse=True)
-    local_sources = [s for s in sources.values() if (s.city or "").lower() == name.lower()]
+    target = canonical_city(name).lower()
+    local_sources = [
+        s for s in sources.values() if canonical_city(s.city or "").lower() == target
+    ]
     return {
         "items": matching_items[:40],
         "sources_map": sources,

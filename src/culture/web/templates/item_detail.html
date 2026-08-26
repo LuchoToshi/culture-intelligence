@@ -8,8 +8,8 @@
 <div class="factline">
   <span class="f"><b>Source</b> {{ source.name }}</span>
   <span class="f"><b>Type</b> {{ item.content_type }}</span>
-  <span class="f"><b>Published</b> <span class="mono">{{ when.date().isoformat() if when else "unknown" }}</span></span>
-  <span class="f"><b>Collected</b> <span class="mono">{{ item.discovered_at.date().isoformat() if item.discovered_at else "—" }}</span></span>
+  <span class="f"><b>Published</b> <span class="mono">{{ when | dmy("unknown") }}</span></span>
+  <span class="f"><b>Collected</b> <span class="mono">{{ item.discovered_at | dmy }}</span></span>
   {% if item.author %}<span class="f"><b>Author</b> {{ item.author }}</span>{% endif %}
   <span class="f"><b>Original</b> <a href="{{ item.url }}" rel="noopener">open ↗</a></span>
 </div>
@@ -17,7 +17,7 @@
 {% for l in limitations %}<p class="limitation">{{ l }}</p>{% endfor %}
 
 {% if analysis %}
-<h2 class="section">Model analysis <span class="note">{{ analysis.analysis_provider }}/{{ analysis.analysis_model }} · analyzed {{ analysis.analyzed_at.date().isoformat() if analysis.analyzed_at else "?" }}</span></h2>
+<h2 class="section">Model analysis <span class="note">{{ analysis.analysis_provider }}/{{ analysis.analysis_model }} · analyzed {{ analysis.analyzed_at | dmy("?") }}</span></h2>
 <article class="record">
   <div class="provenance"><span class="kind kind-model"></span></div>
   <p style="font-size:1rem">{{ analysis.summary }}</p>

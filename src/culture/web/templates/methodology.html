@@ -1,0 +1,89 @@
+{% extends "public_base.html" %}
+{% block title %}Methodology — Urban Taste Intelligence{% endblock %}
+{% block meta_description %}How Urban Taste Intelligence turns fragmented cultural evidence into inspectable signals: source diversity, independent confirmation, provenance, confidence, and explicit editorial judgment.{% endblock %}
+
+{% block extra_style %}
+<style>
+  .meth-wrap { max-width: var(--measure); margin: 0 auto; }
+  .meth-wrap h1 { font-family: var(--font-display); font-weight: 500;
+                  font-size: clamp(1.8rem, 4vw, 2.6rem); line-height: 1.15;
+                  letter-spacing: -0.01em; margin: 0.6rem 0 1rem; }
+  .meth-wrap .lede { color: var(--ink-2); font-size: 1.05rem; margin: 0 0 2.5rem; }
+  .meth-wrap h2 { font-family: var(--font-display); font-weight: 500;
+                  font-size: 1.35rem; margin: 2.8rem 0 0.6rem; }
+  .meth-wrap p { color: var(--ink-2); }
+  .meth-wrap p strong { color: var(--ink); }
+  .meth-steps { border: 1px solid var(--rule); background: var(--surface); margin: 1.2rem 0; }
+  .meth-steps .step { display: flex; gap: 1.2rem; padding: 0.9rem 1.1rem;
+                      border-bottom: 1px solid var(--rule); }
+  .meth-steps .step:last-child { border-bottom: none; }
+  .meth-steps .k { font: 500 0.72rem var(--font-data); letter-spacing: 0.1em;
+                   color: var(--ink-3); white-space: nowrap; min-width: 9.5rem; padding-top: 0.15rem; }
+  .meth-steps .v { color: var(--ink-2); font-size: 0.95rem; }
+  .meth-callout { border-left: 3px solid var(--signal); background: var(--surface);
+                  padding: 1rem 1.2rem; margin: 1.6rem 0; }
+  .meth-callout .k { font: 500 0.72rem var(--font-data); letter-spacing: 0.1em;
+                     text-transform: uppercase; color: var(--ink); }
+  .meth-callout p { margin: 0.4rem 0 0; }
+  .meth-note { font-size: 0.9rem; color: var(--ink-2); border-top: 1px solid var(--rule);
+               padding-top: 1.2rem; margin-top: 2.5rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="pub">
+  <div class="wrap">
+    <div class="meth-wrap">
+      <div class="eyebrow">METHOD</div>
+      <h1>Culture is noisy. Evidence should not be.</h1>
+      <p class="lede">We preserve the path from original observation to cultural interpretation
+      so every signal can be inspected rather than simply believed. This page explains how the
+      intelligence is made — and, just as importantly, what it cannot claim.</p>
+
+      <h2>From observation to intelligence</h2>
+      <div class="meth-steps">
+        <div class="step"><span class="k">01 SOURCES</span><span class="v">Publications, creators, street observation, newsletters, video, communities. Different types of cultural evidence, never one platform treated as reality.</span></div>
+        <div class="step"><span class="k">02 CONTENT</span><span class="v">Articles, posts, videos, interviews, images — collected continuously and stored with their original source, date and context.</span></div>
+        <div class="step"><span class="k">03 STRUCTURE</span><span class="v">Each item is analyzed into people, brands, objects, places, scenes and themes, with facts kept strictly separate from interpretation.</span></div>
+        <div class="step"><span class="k">04 SIGNALS</span><span class="v">Recurring cultural patterns across items become provisional signals. One observation is never a signal on its own.</span></div>
+        <div class="step"><span class="k">05 CONFIRMATION</span><span class="v">A signal strengthens only through independent evidence — different sources, and different <em>types</em> of source.</span></div>
+        <div class="step"><span class="k">06 INTELLIGENCE</span><span class="v">What is forming, where, who carries it, how early — with the evidence trail attached.</span></div>
+      </div>
+
+      <div class="meth-callout">
+        <span class="k">Independence matters</span>
+        <p>Ten posts from one publication are ten observations, but still only one source.
+        Multiple channels from the same organization do not count as independent confirmation.</p>
+      </div>
+
+      <h2>Source diversity</h2>
+      <p>We combine editorial publications, independent creators, newsletters, video and
+      community evidence rather than treating one platform as a proxy for culture. The
+      composition of the source network is itself part of the method: signals confirmed
+      across <strong>different kinds</strong> of source carry more weight than volume
+      inside one kind.</p>
+
+      <h2>Provenance</h2>
+      <p>Every observation retains its original source, date and context. Analysis output is
+      always labeled by its basis — full text, transcript, image and caption, or metadata
+      only — so a conclusion can never look stronger than the material behind it.</p>
+
+      <h2>Confidence and lifecycle</h2>
+      <p>Signals carry visible confidence based on evidence strength, diversity and recency —
+      never an unexplained percentage. Confidence is separate from lifecycle: a signal can be
+      early <em>and</em> well-evidenced, or mainstream <em>and</em> thinly supported. Where the
+      evidence does not support a judgment, the field is left blank rather than guessed.</p>
+
+      <h2>Editorial judgment</h2>
+      <p>Automation helps detect patterns. Cultural interpretation remains explicit, editable
+      and open to contradiction. The platform distinguishes observed fact from inference, and
+      inference from editorial judgment — and treats disagreement with its own earlier
+      conclusions as information, not error.</p>
+
+      <p class="meth-note">Public digital behavior is evidence, not a complete representation
+      of a population or city. Under-covered places may simply be under-observed. We would
+      rather show you a small, honest number than a large, invented one.</p>
+    </div>
+  </div>
+</section>
+{% endblock %}

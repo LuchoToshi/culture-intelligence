@@ -15,7 +15,8 @@
     --recessed: #EFEFEB;
     --ink: #1A1B1E;
     --ink-2: #5F6167;
-    --ink-3: #94969C;
+    /* 4.63:1 on porcelain — the previous #94969C measured 2.73:1 (WCAG AA fail) */
+    --ink-3: #6D6F76;
     --hairline: #E3E3DE;
     --hairline-strong: #C9C9C2;
     /* single interactive accent */
@@ -274,7 +275,7 @@
 </main>
 <footer class="pagefoot">
   {% if freshness %}
-  <span>Last collection: {{ freshness.last_check.strftime("%Y-%m-%d %H:%M") if freshness.last_check else "never" }}</span>
+  <span>Last collection: {{ freshness.last_check.strftime("%d-%m-%Y %H:%M") if freshness.last_check else "never" }}</span>
   <span>{% if freshness.pending %}<span class="live">{{ freshness.pending }} items in analysis</span>{% else %}Analysis up to date{% endif %}</span>
   {% endif %}
   <span>Read-only view · pipeline is the only writer</span>

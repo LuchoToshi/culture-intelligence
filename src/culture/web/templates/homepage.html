@@ -19,7 +19,7 @@
   .pulse-head { display: flex; justify-content: space-between; align-items: center;
                 padding: 0.9rem 1.2rem; border-bottom: 1px solid var(--rule); }
   .pulse-head .eyebrow { margin: 0; }
-  .pulse-head .live { font: 500 0.72rem var(--font-data); color: var(--signal); }
+  .pulse-head .live { font: 500 0.72rem var(--font-data); color: var(--signal-text); }
   .pulse-body { padding: 1.2rem; }
   .pulse-signal + .pulse-signal { margin-top: 1.1rem; padding-top: 1.1rem; border-top: 1px solid var(--rule); }
   .pulse-num { font-family: var(--font-data); color: var(--ink-3); font-size: 0.82rem; }
@@ -58,14 +58,14 @@
   .signal-card .evidence { font: 500 0.76rem var(--font-data); color: var(--ink-3); margin-bottom: 0.7rem; }
   .signal-card p.interp { color: var(--ink-2); font-size: 0.89rem; margin: 0 0 0.9rem; flex: 1; }
   .signal-card .foot { font: 600 0.82rem var(--font-ui); color: var(--ink); margin-top: auto; }
-  .signal-card:hover .foot { color: var(--signal); }
+  .signal-card:hover .foot { color: var(--signal-text); }
 
   /* ── principles ──────────────────────────────────────── */
   .principle { display: grid; grid-template-columns: 0.9fr 1.4fr; gap: 2.5rem; align-items: center;
                padding: 2.4rem 0; border-top: 1px solid var(--rule); }
   .principle:first-of-type { border-top: none; padding-top: 0; }
   @media (max-width: 860px) { .principle { grid-template-columns: 1fr; gap: 1.2rem; } }
-  .principle .num { font: 500 0.76rem var(--font-data); color: var(--signal); }
+  .principle .num { font: 500 0.76rem var(--font-data); color: var(--signal-text); }
   .principle h3 { font-family: var(--font-display); font-weight: 500; font-size: 1.35rem;
                   margin: 0.4rem 0 0.6rem; }
   .principle p { color: var(--ink-2); margin: 0; max-width: 46ch; }
@@ -80,7 +80,7 @@
                       color: var(--ink-3); margin: 0 0 0.5rem; }
   .compare .col .big { font-family: var(--font-display); font-size: 1.9rem; margin: 0; }
   .compare .col.weak .big { color: var(--ink-3); }
-  .compare .col.strong .big { color: var(--signal); }
+  .compare .col.strong .big { color: var(--signal-text); }
   .compare .col p { margin: 0.2rem 0 0; font-size: 0.82rem; color: var(--ink-3); }
   .stagepath { display: flex; flex-wrap: wrap; gap: 0.4rem; font: 500 0.76rem var(--font-data); }
   .stagepath span { padding: 0.3rem 0.6rem; border: 1px solid var(--rule); color: var(--ink-3); }
@@ -101,12 +101,12 @@
   @media (max-width: 780px) { .city-index > .city-row { padding-left: 0 !important; padding-right: 0 !important; } }
   .city-row .name { font-family: var(--font-display); font-size: 1.15rem; }
   .city-row .stat { font: 500 0.82rem var(--font-data); color: var(--ink-2); text-align: right; }
-  .city-row .stat .strengthening { color: var(--signal); }
+  .city-row .stat .strengthening { color: var(--signal-text); }
 
   /* ── weekly intelligence ─────────────────────────────── */
   .week-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 3rem; align-items: start; }
   @media (max-width: 860px) { .week-grid { grid-template-columns: 1fr; gap: 2rem; } }
-  .week-date { font: 600 0.78rem var(--font-data); color: var(--signal); letter-spacing: 0.06em;
+  .week-date { font: 600 0.78rem var(--font-data); color: var(--signal-text); letter-spacing: 0.06em;
                margin-bottom: 0.8rem; }
   .week-excerpt { font-family: var(--font-display); font-size: 1.2rem; line-height: 1.5;
                   color: var(--ink); margin: 0 0 1.6rem; }
@@ -123,12 +123,12 @@
   .method-flow { display: flex; flex-wrap: wrap; gap: 0; align-items: center; margin-bottom: 2.6rem; }
   .method-flow .stepbox { background: var(--surface); border: 1px solid var(--rule); padding: 1rem 1.2rem;
                            min-width: 140px; }
-  .method-flow .stepbox .k { font: 600 0.68rem var(--font-data); color: var(--signal); letter-spacing: 0.08em; }
+  .method-flow .stepbox .k { font: 600 0.68rem var(--font-data); color: var(--signal-text); letter-spacing: 0.08em; }
   .method-flow .stepbox .v { font-size: 0.86rem; color: var(--ink-2); margin-top: 0.3rem; }
   .method-flow .marrow { color: var(--ink-3); padding: 0 0.6rem; font-size: 1.1rem; }
   @media (max-width: 900px) { .method-flow .marrow { display: none; } .method-flow .stepbox { width: 100%; } }
   .callout { background: var(--ink); color: var(--paper); padding: 1.8rem 2rem; margin-bottom: 2.2rem; }
-  .callout .k { font: 600 0.78rem var(--font-data); color: var(--signal); text-transform: uppercase;
+  .callout .k { font: 600 0.78rem var(--font-data); color: var(--signal-text); text-transform: uppercase;
                 letter-spacing: 0.08em; margin-bottom: 0.5rem; display: block; }
   .callout p { margin: 0; font-size: 1.02rem; max-width: 62ch; }
   .principles-list { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1.2rem; }
@@ -213,7 +213,7 @@
         <div class="body">
           <div class="meta">
             {% if row.signal.cities %}<span>{{ row.signal.cities[0] }}</span>{% endif %}
-            <span>Detected {{ row.signal.first_detected_at.strftime("%-d %b %Y") if row.signal.first_detected_at else "—" }}</span>
+            <span>Detected {{ row.signal.first_detected_at | dmy }}</span>
           </div>
           <h3>{{ row.signal.name }}</h3>
           <div class="stagerow">

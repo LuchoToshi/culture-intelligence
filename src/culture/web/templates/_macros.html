@@ -43,7 +43,7 @@
     <span class="kind kind-observed"></span>
     <span>{{ source.name if source else "?" }}</span>
     <span>{{ item.content_type }}</span>
-    <span>{{ when.date().isoformat() if when else "date unknown" }}</span>
+    <span>{{ when | dmy("date unknown") }}</span>
   </div>
   <div class="headline"><a href="/items/{{ item.id }}">{{ item.title or "(untitled)" }}</a></div>
   {% if limitations %}{% for l in limitations %}<div class="limitation">{{ l }}</div>{% endfor %}{% endif %}

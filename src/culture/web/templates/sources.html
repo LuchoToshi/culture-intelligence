@@ -19,7 +19,7 @@
       <td class="mono">{{ s.tier }}</td>
       <td>{{ [s.city, s.country] | select | join(", ") }}</td>
       <td class="num">{{ item_counts.get(s.id, 0) }}</td>
-      <td class="mono">{{ s.last_successful_check_at.date().isoformat() if s.last_successful_check_at else "—" }}</td>
+      <td class="mono">{{ s.last_successful_check_at | dmy }}</td>
       <td>{% if not s.active %}<span class="muted">inactive</span>{% elif not s.feed_url %}<span class="limitation">needs collection method</span>{% else %}collecting{% endif %}</td>
     </tr>
   {% endfor %}

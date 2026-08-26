@@ -217,7 +217,7 @@ def test_search_spans_entities(client):
 def test_reports_render_markdown(client):
     assert "2026-W35" in client.get("/reports").text
     view = client.get("/reports/2026-W35")
-    assert "<h2>Executive Brief</h2>" in view.text
+    assert "<h3>Executive Brief</h3>" in view.text  # markdown headings demoted one level
     assert client.get("/reports/nope").status_code == 404
     assert client.get("/reports/..%2Fsecret").status_code == 404
 
@@ -243,3 +243,79 @@ def test_stream_and_sources_still_work(client):
 
 def test_footer_shows_pipeline_freshness(client):
     assert "Analysis up to date" in client.get("/dashboard").text
+
+
+# ── external-review fixes (26-08-2026 audit) ─────────────────────────────
+
+
+def test_methodology_page_is_public_and_complete(client):
+    response = client.get("/methodology")
+    assert response.status_code == 200
+    assert "Independence matters" in response.text
+    assert "not a complete representation" in response.text
+
+
+def test_invalid_signal_renders_branded_error_not_json(client):
+    response = client.get("/signals/999999")
+    assert response.status_code == 404
+    assert response.headers["content-type"].startswith("text/html")
+    assert "detail" not in response.text[:200]  # not FastAPI's raw JSON shape
+    assert "doesn't exist" in response.text
+
+
+def test_invalid_report_renders_branded_error(client):
+    response = client.get("/reports/1999-W01")
+    assert response.status_code == 404
+    assert response.headers["content-type"].startswith("text/html")
+
+
+def test_robots_and_sitemap_exist(client):
+    robots = client.get("/robots.txt")
+    assert robots.status_code == 200
+    assert "Sitemap:" in robots.text
+    sitemap = client.get("/sitemap.xml")
+    assert sitemap.status_code == 200
+    assert "<urlset" in sitemap.text
+    assert "/methodology" in sitemap.text
+
+
+def test_dates_render_dd_mm_yyyy(client):
+    response = client.get(f"/signals/{client.ids['signal']}")
+    import re
+
+    # first/last observed dates on the signal profile
+    assert re.search(r"\b\d{2}-\d{2}-\d{4}\b", response.text)
+    assert "date().isoformat" not in response.text
+
+
+def test_report_page_has_single_h1(client):
+    response = client.get("/reports/2026-W35")
+    assert response.status_code == 200
+    assert response.text.count("<h1") == 1  # page title only; report H1s demoted
+
+
+def test_city_aliases_are_merged(client):
+    # Fixture analysis tags "London" — an "LDN"-style alias test needs alias
+    # data, so assert the canonicalization function directly plus the page.
+    from culture.web.queries import canonical_city
+
+    assert canonical_city("NYC") == "New York"
+    assert canonical_city("New York City") == "New York"
+    assert canonical_city("LA") == "Los Angeles"
+    assert canonical_city("Philly") == "Philadelphia"
+    assert canonical_city("London") == "London"  # unknown names pass through
+    # /cities/NYC and /cities/New York resolve to the same evidence set
+    assert client.get("/cities/London").status_code == 200
+
+
+def test_stage_label_matches_internal_vocabulary(client):
+    # ?stage=strengthening must show "Strengthening", not "Accelerating".
+    response = client.get("/signals?stage=strengthening")
+    assert "Strengthening" in response.text
+    assert "Accelerating" not in response.text
+
+
+def test_public_mobile_menu_exists(client):
+    response = client.get("/")
+    assert 'aria-label="Open site menu"' in response.text
+    assert 'id="mobile-menu"' in response.text

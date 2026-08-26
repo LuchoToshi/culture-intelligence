@@ -13,11 +13,16 @@
     --paper: #F2F0EA;
     --surface: #FFFFFF;
     --ink: #111111;
-    --ink-2: #6F6E69;
-    --ink-3: #9A9890;
+    /* Contrast-corrected on paper (#F2F0EA): ink-2 6.06:1 (was 4.48),
+       ink-3 4.77:1 (was 2.54). WCAG AA requires 4.5:1 for body-size text. */
+    --ink-2: #5B5A55;
+    --ink-3: #6B6A63;
     --rule: #D4D1C9;
     --rule-strong: #BFBBAF;
     --signal: #FF4B00;
+    /* Text-weight variant of the signal accent: 4.63:1 on paper. #FF4B00
+       itself is 2.94:1 — fine for large graphics, a fail for small text. */
+    --signal-text: #C53A00;
     --st-emerging: #1F7A50;
     --st-strengthening: #B04E12;
     --st-mainstream: #5B6470;
@@ -78,9 +83,20 @@
   .pubnav .login-link { font-size: 0.9rem; font-weight: 500; color: var(--ink);
                          border: 1px solid var(--rule-strong); padding: 0.4rem 0.95rem; }
   .pubnav .login-link:hover { border-color: var(--ink); }
+  .menu-toggle { display: none; margin-left: auto; background: none; border: 1px solid var(--rule-strong);
+                 padding: 0.5rem 0.7rem; cursor: pointer; color: var(--ink); min-width: 44px; min-height: 44px; }
+  .menu-toggle:hover { border-color: var(--ink); }
+  .mobile-menu { display: none; }
   @media (max-width: 780px) {
     .pubnav-inner { min-height: 58px; gap: 1rem; }
     .pubnav nav.pmenu { display: none; }
+    .pubnav .login-link { display: none; }
+    .menu-toggle { display: inline-flex; align-items: center; justify-content: center; }
+    .mobile-menu[data-open="true"] { display: block; background: var(--paper);
+                                     border-bottom: 1px solid var(--rule); }
+    .mobile-menu a { display: block; padding: 0.9rem 1.25rem; font-weight: 500;
+                     color: var(--ink); border-top: 1px solid var(--rule); }
+    .mobile-menu a[aria-current="page"] { color: var(--signal-text); }
   }
 
   /* ── sections ────────────────────────────────────────── */
@@ -110,7 +126,7 @@
   .stage.saturated { color: var(--st-saturated); }
   .stage.declining { color: var(--st-declining); }
   .stage.unknown { color: var(--st-unknown); }
-  .momentum { font: 500 0.78rem var(--font-data); color: var(--signal); }
+  .momentum { font: 500 0.78rem var(--font-data); color: var(--signal-text); }
 
   footer.pubfoot { border-top: 1px solid var(--rule); padding: 3rem 0 2.5rem; }
   .foot-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 2rem; }
@@ -134,10 +150,22 @@
       <a href="/#signals">Signals</a>
       <a href="/#cities">Cities</a>
       <a href="/brief">The Brief</a>
-      <a href="/#methodology">Methodology</a>
+      <a href="/methodology">Methodology</a>
     </nav>
     <a class="login-link" href="/login">Log in</a>
+    <button class="menu-toggle" id="menu-toggle" aria-label="Open site menu"
+            aria-expanded="false" aria-controls="mobile-menu">
+      <svg width="18" height="14" viewBox="0 0 18 14" aria-hidden="true" fill="none">
+        <path d="M1 1h16M1 7h16M1 13h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
   </div>
+  <nav class="mobile-menu" id="mobile-menu" data-open="false" aria-label="Site menu">
+    <a href="/intelligence">Intelligence</a>
+    <a href="/brief">The Brief</a>
+    <a href="/methodology">Methodology</a>
+    <a href="/login">Log in</a>
+  </nav>
 </header>
 <main id="content">
 {% block content %}{% endblock %}
@@ -175,6 +203,27 @@
     };
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
+  }
+  var toggle = document.getElementById('menu-toggle');
+  var menu = document.getElementById('mobile-menu');
+  if (toggle && menu) {
+    var setOpen = function (open) {
+      menu.setAttribute('data-open', open ? 'true' : 'false');
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      toggle.setAttribute('aria-label', open ? 'Close site menu' : 'Open site menu');
+    };
+    toggle.addEventListener('click', function () {
+      setOpen(menu.getAttribute('data-open') !== 'true');
+    });
+    menu.addEventListener('click', function (e) {
+      if (e.target.tagName === 'A') { setOpen(false); }
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && menu.getAttribute('data-open') === 'true') {
+        setOpen(false);
+        toggle.focus();
+      }
+    });
   }
 </script>
 {% block extra_script %}{% endblock %}
