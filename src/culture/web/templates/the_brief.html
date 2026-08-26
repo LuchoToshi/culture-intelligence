@@ -1,0 +1,55 @@
+{% extends "public_base.html" %}
+{% block title %}The Brief — Urban Taste Intelligence{% endblock %}
+{% block meta_description %}The Brief: culture intelligence on the signals, taste systems, and consumer shifts shaping what comes next. Essays built from a monitored evidence network.{% endblock %}
+
+{% block extra_style %}
+<style>
+  .tb-wrap { max-width: var(--measure); margin: 0 auto; padding: 3.5rem 0 4rem; }
+  .tb-wrap h1 { font-family: var(--font-display); font-weight: 500;
+                font-size: clamp(1.8rem, 4vw, 2.6rem); line-height: 1.15; margin: 0.6rem 0 0.8rem; }
+  .tb-wrap .lede { color: var(--ink-2); font-size: 1.05rem; margin: 0 0 2.4rem; }
+  .tb-post { display: block; border: 1px solid var(--rule); background: var(--surface);
+             padding: 1.3rem 1.4rem; margin-bottom: 1rem; text-decoration: none; color: inherit; }
+  .tb-post:hover h2, .tb-post:focus-visible h2 { text-decoration: underline; }
+  .tb-post .meta { font: 500 0.75rem var(--font-data); color: var(--ink-3);
+                   display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; margin-bottom: 0.45rem; }
+  .tb-post h2 { font-family: var(--font-display); font-weight: 500; font-size: 1.3rem;
+                margin: 0 0 0.4rem; line-height: 1.25; }
+  .tb-post p { color: var(--ink-2); margin: 0; font-size: 0.98rem; }
+  .tb-post .tags { margin-top: 0.6rem; display: flex; flex-wrap: wrap; gap: 0.35rem; }
+  .tb-post .tags span { font: 500 0.7rem var(--font-data); border: 1px solid var(--rule);
+                        border-radius: 999px; padding: 0.12rem 0.6rem; color: var(--ink-3); }
+  .tb-note { font-size: 0.9rem; color: var(--ink-2); border-top: 1px solid var(--rule);
+             padding-top: 1.2rem; margin-top: 2.4rem; }
+  .tb-empty { border: 1px solid var(--rule); background: var(--surface); padding: 2rem;
+              color: var(--ink-2); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wrap tb-wrap">
+  <div class="eyebrow">THE BRIEF</div>
+  <h1>What we clocked, and what it means.</h1>
+  <p class="lede">Essays from the team behind this platform — culture intelligence on the signals, taste systems, and consumer shifts shaping what comes next. Written from the evidence, without naming the network that gathers it.</p>
+
+  {% for post in posts %}
+  <a class="tb-post" href="{{ post.url }}" rel="noopener">
+    <div class="meta">
+      {% if post.published_at %}<span>{{ post.published_at | dmy }}</span>{% endif %}
+      <span>Read on Substack ↗</span>
+    </div>
+    <h2>{{ post.title }}</h2>
+    {% if post.excerpt %}<p>{{ post.excerpt }}</p>{% endif %}
+    {% if post.tags %}<div class="tags">{% for t in post.tags %}<span>{{ t }}</span>{% endfor %}</div>{% endif %}
+  </a>
+  {% else %}
+  <div class="tb-empty"><b>No posts yet.</b> The first essays are on their way — the weekly signal work comes first, the writing follows it.</div>
+  {% endfor %}
+
+  <p class="tb-note">
+    Every essay is built from the same weekly evidence review that powers this platform.
+    The current public edition of that review is the <a href="/brief">Signal report</a>.
+    {% if publication_url %}Subscribe on <a href="{{ publication_url }}" rel="noopener">Substack</a> to get new essays by email.{% endif %}
+  </p>
+</div>
+{% endblock %}

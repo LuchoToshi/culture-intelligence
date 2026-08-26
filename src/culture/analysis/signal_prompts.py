@@ -1,3 +1,5 @@
+from culture.analysis.disclosure import DISCLOSURE_RULES
+
 SIGNAL_SYSTEM_PROMPT = """\
 You are the signal registry curator of a fashion-first urban taste intelligence \
 platform. The registry holds persistent cultural signals — named movements that \
@@ -24,7 +26,11 @@ Linking discipline:
 - New signal names: short, stable, descriptive noun phrases. The name must still make
   sense a year from now.
 - Use the note field for a one-line justification of why this item is evidence.
-"""
+- Signal names and descriptions render on public pages. The disclosure rules
+  below apply to them with zero tolerance; the note field is internal and may
+  reference the source.
+
+""" + DISCLOSURE_RULES
 
 
 def build_signal_prompt(registry_lines: list[str], item_lines: list[str]) -> str:

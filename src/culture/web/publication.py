@@ -13,7 +13,7 @@ import contextlib
 import time
 import urllib.request
 import xml.etree.ElementTree as ET
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from email.utils import parsedate_to_datetime
 
@@ -33,6 +33,12 @@ class PublicationPost:
     url: str
     published_at: datetime | None
     excerpt: str
+    tags: list[str] = field(default_factory=list)
+
+
+def publication_home(feed_url: str) -> str:
+    """The publication's own site, derived from its feed URL."""
+    return feed_url.removesuffix("/feed").rstrip("/")
 
 
 def _parse_feed(xml_text: str, limit: int) -> list[PublicationPost]:
@@ -66,9 +72,18 @@ def _parse_feed(xml_text: str, limit: int) -> list[PublicationPost]:
             if end == -1:
                 break
             excerpt = excerpt[:start] + excerpt[end + 1 :]
+        tags = [
+            (c.text or "").strip()
+            for c in item.findall("category")
+            if (c.text or "").strip()
+        ][:4]
         posts.append(
             PublicationPost(
-                title=title, url=url, published_at=published_at, excerpt=excerpt[:220]
+                title=title,
+                url=url,
+                published_at=published_at,
+                excerpt=excerpt[:220],
+                tags=tags,
             )
         )
         if len(posts) >= limit:

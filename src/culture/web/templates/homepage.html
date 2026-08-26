@@ -196,40 +196,6 @@
   </div>
 </section>
 
-<section class="pub" id="signals">
-  <div class="wrap">
-    <div class="section-head">
-      <div class="eyebrow">NOW</div>
-      <h2>Signals worth paying attention to.</h2>
-      <p>Not everything receiving attention is culturally meaningful. These are signals gaining credible evidence across the network.</p>
-    </div>
-    <div class="signal-grid">
-      {% for row in featured_signals %}
-      <a class="signal-card" href="/login?next=/signals/{{ row.signal.id }}">
-        <div class="art">
-          <span class="tag">Fashion</span>
-          <span class="n">{{ "%02d" | format(loop.index) }}</span>
-        </div>
-        <div class="body">
-          <div class="meta">
-            {% if row.signal.cities %}<span>{{ row.signal.cities[0] }}</span>{% endif %}
-            <span>Detected {{ row.signal.first_detected_at | dmy }}</span>
-          </div>
-          <h3>{{ row.signal.name }}</h3>
-          <div class="stagerow">
-            <span class="stage {{ row.signal.lifecycle_stage }}">{{ stage_labels[row.signal.lifecycle_stage] }}</span>
-            {% if row.delta_7d %}<span class="momentum">↑ strengthening</span>{% endif %}
-          </div>
-          <div class="evidence">{{ row.signal.evidence_count }} observation{{ "s" if row.signal.evidence_count != 1 }} · {{ row.signal.source_count }} independent source{{ "s" if row.signal.source_count != 1 }}</div>
-          <p class="interp">{{ (row.signal.description or "")[:150] }}{% if (row.signal.description or "") | length > 150 %}…{% endif %}</p>
-          <span class="foot">View evidence →</span>
-        </div>
-      </a>
-      {% endfor %}
-    </div>
-  </div>
-</section>
-
 <section class="pub">
   <div class="wrap">
     <div class="section-head">
@@ -302,6 +268,41 @@
           {% endfor %}
         </div>
       </div>
+    </div>
+  </div>
+</section>
+
+
+<section class="pub" id="signals">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">NOW</div>
+      <h2>Signals worth paying attention to.</h2>
+      <p>Not everything receiving attention is culturally meaningful. These are signals gaining credible evidence across the network.</p>
+    </div>
+    <div class="signal-grid">
+      {% for row in featured_signals %}
+      <a class="signal-card" href="/login?next=/signals/{{ row.signal.id }}">
+        <div class="art">
+          <span class="tag">Fashion</span>
+          <span class="n">{{ "%02d" | format(loop.index) }}</span>
+        </div>
+        <div class="body">
+          <div class="meta">
+            {% if row.signal.cities %}<span>{{ row.signal.cities[0] }}</span>{% endif %}
+            <span>Detected {{ row.signal.first_detected_at | dmy }}</span>
+          </div>
+          <h3>{{ row.signal.name }}</h3>
+          <div class="stagerow">
+            <span class="stage {{ row.signal.lifecycle_stage }}">{{ stage_labels[row.signal.lifecycle_stage] }}</span>
+            {% if row.delta_7d %}<span class="momentum">↑ strengthening</span>{% endif %}
+          </div>
+          <div class="evidence">{{ row.signal.evidence_count }} observation{{ "s" if row.signal.evidence_count != 1 }} · {{ row.signal.source_count }} independent source{{ "s" if row.signal.source_count != 1 }}</div>
+          <p class="interp">{{ (row.signal.description or "")[:150] }}{% if (row.signal.description or "") | length > 150 %}…{% endif %}</p>
+          <span class="foot">View evidence →</span>
+        </div>
+      </a>
+      {% endfor %}
     </div>
   </div>
 </section>

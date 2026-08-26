@@ -368,7 +368,21 @@ def test_taste_systems_relationship_labels(client):
 def test_archetypes_grouped_with_recurrence_state(client):
     text = client.get("/archetypes").text
     assert "Single sighting" in text
-    assert "evidence 1" in text
+    # Ruling of 26 Aug 2026: no evidence deep links on insight pages.
+    assert "/items/" not in text
+    assert "1 observation" in text
+
+
+def test_about_page_is_public(client):
+    response = client.get("/about")
+    assert response.status_code == 200
+    assert "never name our sources" in response.text
+
+
+def test_the_brief_renders_without_feed_configured(client):
+    response = client.get("/the-brief")
+    assert response.status_code == 200
+    assert "No posts yet" in response.text
 
 
 def test_city_compare_page(client):

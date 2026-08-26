@@ -70,7 +70,7 @@
   {% for step in diffusion_steps %}
   <div class="record">
     <div class="provenance"><span class="kind kind-inference"></span><span class="mono">{{ step.when | dmy("?") }}</span></div>
-    <p style="margin:0"><strong>{{ step.source_name }}</strong>{% if step.cities %} · {{ step.cities | join(", ") }}{% endif %} — <a href="/items/{{ step.item.id }}">{{ step.item.title or "(untitled)" }}</a></p>
+    <p style="margin:0"><strong>{{ step.source_name }}</strong>{% if step.cities %} · {{ step.cities | join(", ") }}{% endif %} — {{ step.item.title or "(untitled)" }}</p>
   </div>
   {% endfor %}
 </div>

@@ -32,6 +32,8 @@ PUBLIC_PATHS = {
     "/auth/verify",
     "/logout",
     "/",
+    "/about",
+    "/the-brief",
     "/intelligence",
     "/brief",
     "/methodology",

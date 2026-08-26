@@ -1,3 +1,4 @@
+from culture.analysis.disclosure import DISCLOSURE_RULES
 from culture.models.content import ContentItem, TranscriptStatus
 from culture.models.source import Source
 
@@ -63,7 +64,8 @@ support only a few):
 
 lifecycle_stage: provisional judgment from this single item only — unknown, emerging,
 strengthening, mainstream, saturated, or declining. Use null when there is no basis.
-"""
+
+""" + DISCLOSURE_RULES
 
 
 def build_item_prompt(

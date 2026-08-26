@@ -63,7 +63,7 @@
     {% for r in latest_items %}
       <div class="card">
         <div class="meta">{{ r.source_name }} · {{ r.when | dmy("?") }}</div>
-        <h3><a href="/items/{{ r.item.id }}">{{ r.item.title or "(untitled)" }}</a></h3>
+        <h3>{{ r.item.title or "(untitled)" }}</h3>
       </div>
     {% endfor %}
   </div>

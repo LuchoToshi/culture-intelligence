@@ -1,37 +1,73 @@
 {% extends "base.html" %}
-{% from "_macros.html" import stage_chip %}
 {% block title %}Archetypes — Culture Intelligence{% endblock %}
 {% block content %}
 <p class="eyebrow">Archetypes</p>
 <h1>Archetype observations</h1>
-<p class="lede">Identity descriptions observed in the evidence — who is combining which signals, where. These are observations, not established personas: an archetype earns standing only by recurring across <em>independent</em> sources, and each row below is labeled with exactly how far it has gotten.</p>
+<p class="lede">Identity descriptions observed in the evidence — who is combining which signals, where. These are observations, not established personas: an archetype earns standing only by recurring across <em>independent</em> sources, and the page is grouped by exactly how far each one has gotten.</p>
 
-<form class="filterbar" method="get" action="/archetypes">
-  <span class="label">Filter</span>
-  <input name="q" type="search" placeholder="e.g. runner, curator, Berlin…" value="{{ q or '' }}"
-         style="font:0.85rem var(--font-ui); border:1px solid var(--hairline); border-radius:999px; padding:0.25rem 0.8rem">
-  <button type="submit">Apply</button>
-  {% if q or city %}<a class="clear" href="/archetypes">Clear</a>{% endif %}
-</form>
+{# Sticky summary + filters: the numbers a reader needs while scrolling. #}
+<div style="position:sticky; top:0; z-index:5; background:var(--paper, #fff); border-bottom:1px solid var(--hairline); padding:0.6rem 0; margin-bottom:1rem">
+  <div class="mono" style="font-size:0.78rem; display:flex; flex-wrap:wrap; gap:0.4rem 1.2rem; margin-bottom:0.55rem">
+    <span><b>{{ summary.total }}</b> archetypes</span>
+    <span class="delta-up"><b>{{ summary.recurring }}</b> recurring</span>
+    <span><b>{{ summary.repeated }}</b> repeated</span>
+    <span class="muted"><b>{{ summary.single }}</b> single sighting</span>
+    {% if summary.cities %}<span>{{ summary.cities }} cities</span>{% endif %}
+    {% if summary.newest %}<span>{{ summary.oldest | dmy("?") }} – {{ summary.newest | dmy("?") }}</span>{% endif %}
+  </div>
+  <form class="filterbar" method="get" action="/archetypes" style="margin:0">
+    <span class="label">Filter</span>
+    <input name="q" type="search" placeholder="e.g. runner, curator, Berlin…" value="{{ q or '' }}"
+           style="font:0.85rem var(--font-ui); border:1px solid var(--hairline); border-radius:999px; padding:0.25rem 0.8rem">
+    <select name="sort" style="font:0.85rem var(--font-ui); border:1px solid var(--hairline); border-radius:999px; padding:0.25rem 0.8rem">
+      <option value="recurrence" {% if sort == "recurrence" %}selected{% endif %}>Most corroborated first</option>
+      <option value="recency" {% if sort == "recency" %}selected{% endif %}>Most recent first</option>
+      <option value="corroboration" {% if sort == "corroboration" %}selected{% endif %}>Most sources first</option>
+    </select>
+    <button type="submit">Apply</button>
+    {% if q or city %}<a class="clear" href="/archetypes">Clear</a>{% endif %}
+  </form>
+</div>
 
-{% for g in groups %}
-<article class="record">
-  <div class="provenance">
-    <span class="kind kind-model"></span>
-    {% if g.state == "recurring" %}<span class="delta-up">Recurring — {{ g.sightings }} sightings · {{ g.source_count }} independent sources</span>
-    {% elif g.sightings > 1 %}<span>{{ g.state | capitalize }} — {{ g.sightings }} sightings</span>
-    {% else %}<span class="muted">Single sighting</span>{% endif %}
-    <span>{{ g.latest | dmy("?") }}</span>
-    {% if g.cities %}<span>{{ g.cities | join(" · ") }}</span>{% endif %}
-  </div>
-  <p style="margin:0; font-size: 1rem">{{ g.text }}</p>
-  <div class="tagrow" style="margin-top:0.5rem">
-    {% set shown = [] %}
-    {% for obs in g.observations %}{% for signal in obs.signals %}{% if signal.id not in shown %}{% set _ = shown.append(signal.id) %}<a href="/signals/{{ signal.id }}">{{ signal.name }}</a>{% endif %}{% endfor %}{% endfor %}
-    {% for obs in g.observations %}<a href="/items/{{ obs.item.id }}" class="mono">evidence {{ loop.index }} →</a>{% endfor %}
-  </div>
-</article>
-{% else %}
+{% set total_shown = summary.total %}
+{% if total_shown == 0 %}
 <div class="empty"><b>No archetype observations match.</b> {% if q %}Try a broader term or <a href="/archetypes">clear the filter</a>.{% else %}Observations appear as analysis runs.{% endif %}</div>
+{% endif %}
+
+{% for key, label, open_default in sections %}
+{% set groups = by_state[key] %}
+{% if groups %}
+<details {% if open_default %}open{% endif %} style="margin-bottom:1.4rem">
+  <summary style="cursor:pointer; padding:0.4rem 0; border-bottom:2px solid var(--hairline)">
+    <span class="eyebrow" style="display:inline">{{ label }}</span>
+    <span class="mono muted" style="font-size:0.78rem"> · {{ groups | length }}</span>
+  </summary>
+  {% for g in groups %}
+  <article class="record" id="a-{{ key }}-{{ loop.index }}">
+    <div class="provenance">
+      <span class="kind kind-model"></span>
+      {% if g.state_key == "recurring" %}<span class="delta-up">{{ g.sightings }} observations · {{ g.source_count }} independent sources</span>
+      {% elif g.state_key == "repeated" %}<span>{{ g.sightings }} observations · 1 source</span>
+      {% else %}<span class="muted">1 observation</span>{% endif %}
+      <span>{{ g.latest | dmy("?") }}</span>
+      {% if g.cities %}<span>{{ g.cities | join(" · ") }}</span>{% endif %}
+    </div>
+    <p style="margin:0; font-size: 1rem">{{ g.text }}</p>
+    {% set shown = [] %}
+    {% set signal_links = [] %}
+    {% for obs in g.observations %}{% for signal in obs.signals %}{% if signal.id not in shown %}{% set _ = shown.append(signal.id) %}{% set _ = signal_links.append(signal) %}{% endif %}{% endfor %}{% endfor %}
+    {% if signal_links %}
+    <div class="tagrow" style="margin-top:0.5rem">
+      {% for signal in signal_links %}<a href="/signals/{{ signal.id }}">{{ signal.name }}</a>{% endfor %}
+    </div>
+    {% endif %}
+  </article>
+  {% endfor %}
+</details>
+{% endif %}
 {% endfor %}
+
+{% if total_shown > 8 %}
+<p><a class="mono" href="#top" onclick="window.scrollTo({top:0,behavior:'smooth'});return false">↑ Back to top</a></p>
+{% endif %}
 {% endblock %}

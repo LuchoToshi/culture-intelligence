@@ -562,13 +562,45 @@ def create_app(
         session: Session = Depends(db),
         q: str | None = None,
         city: str | None = None,
+        standing: str | None = None,
+        sort: str = "recurrence",
     ):
-        groups = queries.archetype_groups(session, query=q, city=city)
+        groups = queries.archetype_groups(session, query=q, city=city, sort=sort)
+        # Grouped by standing so the page leads with what is corroborated.
+        # The single-sighting section is collapsed by default: most
+        # observations live there, and one sighting is not a consumer group.
+        sections = [
+            ("recurring", "Recurring — independently corroborated", True),
+            ("repeated", "Repeated — one observer, seen more than once", True),
+            ("single", "Single sighting — not yet corroborated", False),
+        ]
+        by_state: dict[str, list] = {"recurring": [], "repeated": [], "single": []}
+        for g in groups:
+            by_state[g.state_key].append(g)
+        stamps = [g.latest for g in groups if g.latest]
+        summary = {
+            "total": len(groups),
+            "recurring": len(by_state["recurring"]),
+            "repeated": len(by_state["repeated"]),
+            "single": len(by_state["single"]),
+            "cities": len({c for g in groups for c in g.cities}),
+            "oldest": min(stamps) if stamps else None,
+            "newest": max(stamps) if stamps else None,
+        }
         return render(
             request,
             session,
             "archetypes.html",
-            {"groups": groups, "q": q, "city": city, "active_nav": "archetypes"},
+            {
+                "sections": sections,
+                "by_state": by_state,
+                "summary": summary,
+                "q": q,
+                "city": city,
+                "standing": standing if standing in {"recurring", "repeated", "single"} else None,
+                "sort": sort if sort in {"recurrence", "recency", "corroboration"} else "recurrence",
+                "active_nav": "archetypes",
+            },
         )
 
     @app.get("/cities", response_class=HTMLResponse)
@@ -821,6 +853,35 @@ def create_app(
             {"report": report_row, "content": html, "footer_stats": stats},
         )
 
+    @app.get("/about", response_class=HTMLResponse)
+    def about(request: Request, session: Session = Depends(db)):
+        active = queries.active_signals(session)
+        return render(
+            request,
+            session,
+            "about.html",
+            {"footer_stats": public_footer_stats(session, active)},
+        )
+
+    @app.get("/the-brief", response_class=HTMLResponse)
+    def the_brief(request: Request, session: Session = Depends(db)):
+        from culture.config import get_settings
+        from culture.web.publication import latest_posts, publication_home
+
+        settings = get_settings()
+        feed = settings.substack_feed_url
+        active = queries.active_signals(session)
+        return render(
+            request,
+            session,
+            "the_brief.html",
+            {
+                "posts": latest_posts(feed, limit=20) if feed else [],
+                "publication_url": publication_home(feed) if feed else None,
+                "footer_stats": public_footer_stats(session, active),
+            },
+        )
+
     @app.get("/methodology", response_class=HTMLResponse)
     def methodology(request: Request, session: Session = Depends(db)):
         active = queries.active_signals(session)
@@ -856,7 +917,7 @@ def create_app(
         base = str(request.base_url).rstrip("/")
         urls = "".join(
             f"<url><loc>{base}{path}</loc></url>"
-            for path in ("/", "/intelligence", "/brief", "/methodology")
+            for path in ("/", "/about", "/the-brief", "/intelligence", "/brief", "/methodology")
         )
         xml = (
             '<?xml version="1.0" encoding="UTF-8"?>'

@@ -804,7 +804,7 @@ def draft_post() -> None:
         if report_row is None:
             console.print("[red]No weekly report exists yet — run `culture report` first.[/red]")
             raise typer.Exit(1)
-        source_names = [s.name for s in session.scalars(select(Source)) if len(s.name) > 3]
+        source_names = [s.name for s in session.scalars(select(Source)) if s.active]
 
     match = re.search(r"^# Part 2.*?$", report_row.content_markdown, re.MULTILINE)
     synthesis = (
@@ -821,9 +821,9 @@ def draft_post() -> None:
     # Mechanical leak check on top of the prompt rules: the draft must not
     # name any monitored source. The prompt should prevent this; this catches
     # it if the model slips anyway.
-    leaked = sorted(
-        {name for name in source_names if re.search(re.escape(name), draft, re.IGNORECASE)}
-    )
+    from culture.utils.leakcheck import compile_patterns, find_leaks
+
+    leaked = find_leaks(draft, compile_patterns(source_names))
 
     drafts_dir = PROJECT_ROOT / "drafts"
     drafts_dir.mkdir(exist_ok=True)
@@ -844,6 +844,57 @@ def draft_post() -> None:
         "the homepage picks up published posts automatically via the feed."
     )
 
+
+
+@app.command(name="leak-check")
+def leak_check(
+    base_url: str = typer.Option(
+        "https://culture-intelligence.vercel.app",
+        "--base-url",
+        help="Deployment to scan. Public paths are taken from the auth allowlist.",
+    ),
+) -> None:
+    """Fetch every public page and fail if any names a monitored source.
+
+    Exit code 1 on any hit, so this can gate a deploy. Scans rendered HTML,
+    not templates — generated text stored in the database is exactly what
+    template review cannot catch.
+    """
+    import urllib.request
+
+    from sqlalchemy import select as sa_select
+
+    from culture.database import get_engine, session_scope
+    from culture.models.source import Source
+    from culture.utils.leakcheck import compile_patterns, find_leaks
+    from culture.web.auth import PUBLIC_PATHS
+
+    with session_scope(get_engine()) as session:
+        names = [s.name for s in session.scalars(sa_select(Source)) if s.active]
+    patterns = compile_patterns(names)
+
+    skip = {"/login", "/logout", "/auth/verify", "/robots.txt", "/sitemap.xml"}
+    paths = sorted(p for p in PUBLIC_PATHS if p not in skip)
+    failures: dict[str, list[str]] = {}
+    for path in paths:
+        url = base_url.rstrip("/") + path
+        try:
+            with urllib.request.urlopen(url, timeout=15) as resp:  # noqa: S310
+                html = resp.read().decode("utf-8", errors="replace")
+        except Exception as exc:  # noqa: BLE001 — a dead page is a finding, not a crash
+            failures[path] = [f"(fetch failed: {exc})"]
+            continue
+        leaked = find_leaks(html, patterns)
+        if leaked:
+            failures[path] = leaked
+        console.print(
+            f"{path}: " + (f"[red]{', '.join(leaked)}[/red]" if leaked else "[green]clean[/green]")
+        )
+
+    if failures:
+        console.print(f"\n[red]LEAK CHECK FAILED — {len(failures)} public page(s) affected.[/red]")
+        raise typer.Exit(1)
+    console.print(f"\n[green]Leak check passed: {len(paths)} public pages, {len(patterns)} monitored names.[/green]")
 
 if __name__ == "__main__":
     app()

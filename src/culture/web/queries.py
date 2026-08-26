@@ -7,7 +7,7 @@ template labels it as such.
 
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -530,13 +530,34 @@ class ArchetypeGroup:
             return "repeated (single source)"
         return "single sighting"
 
+    @property
+    def state_key(self) -> str:
+        """Stable slug for filtering and section grouping."""
+        if self.sightings >= 2 and self.source_count >= 2:
+            return "recurring"
+        if self.sightings >= 2:
+            return "repeated"
+        return "single"
+
 
 def archetype_groups(
-    session: Session, query: str | None = None, city: str | None = None
+    session: Session,
+    query: str | None = None,
+    city: str | None = None,
+    standing: str | None = None,
+    sort: str = "recurrence",
 ) -> list[ArchetypeGroup]:
     grouped: dict[str, list[ArchetypeObservation]] = defaultdict(list)
     for obs in archetype_observations(session, query=query, city=city, limit=500):
         grouped[obs.text.strip().lower()].append(obs)
     groups = [ArchetypeGroup(text=v[0].text, observations=v) for v in grouped.values()]
-    groups.sort(key=lambda g: (g.source_count, g.sightings), reverse=True)
+    if standing in {"recurring", "repeated", "single"}:
+        groups = [g for g in groups if g.state_key == standing]
+    epoch = datetime(1970, 1, 1, tzinfo=UTC)
+    if sort == "recency":
+        groups.sort(key=lambda g: g.latest or epoch, reverse=True)
+    elif sort == "corroboration":
+        groups.sort(key=lambda g: (g.source_count, g.latest or epoch), reverse=True)
+    else:  # recurrence — the default and the page's argument
+        groups.sort(key=lambda g: (g.source_count, g.sightings), reverse=True)
     return groups
