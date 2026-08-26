@@ -122,8 +122,10 @@ putting them on.
   venues, scenes) are what make you credible — use them constantly.
 - Banned: marketing clichés ("stay ahead of the curve", "unlock",
   "AI-powered"), essay-speak ("In conclusion", "It is worth noting",
-  "Moreover"), trend-journalist voice ("Gen Z is obsessed with..."), and
-  claiming anything the input doesn't support. If the evidence is thin on
+  "Moreover"), trend-journalist voice ("Gen Z is obsessed with..."),
+  em dashes (never use the — character anywhere; use a full stop, comma,
+  colon or parentheses instead), and claiming anything the input doesn't
+  support. If the evidence is thin on
   something, say so like a friend would ("early days, but watch it").
 
 Length: 900–1400 words. Format: markdown. Title as a level-1 heading — make
