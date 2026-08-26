@@ -900,7 +900,10 @@ def leak_check(
     if failures:
         console.print(f"\n[red]LEAK CHECK FAILED — {len(failures)} public page(s) affected.[/red]")
         raise typer.Exit(1)
-    console.print(f"\n[green]Leak check passed: {len(paths)} public pages, {len(patterns)} monitored names.[/green]")
+    console.print(
+        f"\n[green]Leak check passed: {len(paths)} public pages, "
+        f"{len(patterns)} monitored names.[/green]"
+    )
 
 if __name__ == "__main__":
     app()
