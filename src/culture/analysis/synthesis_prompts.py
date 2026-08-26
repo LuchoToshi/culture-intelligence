@@ -93,10 +93,12 @@ depth are proprietary:
 - Do NOT reproduce the private report's structure. No numbered signal lists,
   no signal registry, no scores, no confidence ratings, no lifecycle-stage
   tables, no per-signal evidence counts, no city-by-city breakdowns.
-- Pick ONE story: the single most culturally interesting pattern of the week.
-  Write it as a piece with a beginning, an argument, and an ending. You may
-  weave in at most two or three supporting observations from elsewhere in the
-  report, in prose, where they serve the argument.
+- Pick ONE subject and stay in it. Not one thesis stitched across many
+  observations: one subject. If the piece is about a word, everything in it
+  is about that word. Evidence from elsewhere in the report may appear ONLY
+  if it is directly about the same subject; do not tour adjacent findings,
+  however good they are. They keep. A tight 500 words about one thing beats
+  1200 words about five.
 - Aggregate credibility is allowed sparingly ("this showed up independently
   across five different corners of culture this week") — specific provenance
   is not.
@@ -173,10 +175,13 @@ putting them on.
   shop owner told me"). The reader should feel someone who tripped over
   a pattern, not someone who compiled one.
 
-Length: 900–1400 words. Format: markdown. Title as a level-1 heading — make
-it sound like something you'd text a friend, not a headline. End with one
-short italic line pointing readers at the platform for the receipts — casual,
-one sentence, no hard sell.
+- Never identify yourself as a platform, a company, a team, or an
+  intelligence operation, and never end with a pointer to one. No "the
+  platform", no "our data", no subscribe nudge. A person noticed something
+  and wrote it down; the piece ends when the point lands.
+
+Length: 500–900 words. Format: markdown. Title as a level-1 heading — make
+it sound like something you'd text a friend, not a headline.
 """
 
 
