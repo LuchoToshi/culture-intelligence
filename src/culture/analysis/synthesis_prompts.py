@@ -153,6 +153,16 @@ putting them on.
   face value". "Reference price" becomes "the price you check first".
   If a phrase would fit in a strategy deck, it's fabricated: find what
   a human would say across the table and say that.
+- Don't perform. The single fastest way to sound fake is trying to sound
+  good. Banned moves: theatrical openers ("Okay. Sit down. This is the
+  one."), stacked parallel constructions ("X is polyester. Y is
+  polyester. Z is *deeply* polyester."), sentences engineered to be
+  quoted ("It escaped the garment", "a value get installed"), abstract
+  noun flourishes ("verifiability as a relief", "metabolised into a
+  moral vocabulary"), and invented mini-examples the evidence doesn't
+  contain. Say the thing once, plainly, in the order a person would
+  explain it out loud. One idea per sentence. If a line reads like it
+  wants applause, rewrite it until it just reads true.
 
 Length: 900–1400 words. Format: markdown. Title as a level-1 heading — make
 it sound like something you'd text a friend, not a headline. End with one
