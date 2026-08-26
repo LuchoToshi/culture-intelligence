@@ -30,13 +30,21 @@ from dataclasses import dataclass
 # deliberately — every addition is a public-vocabulary decision, not a data
 # import. Keyed by exact display form.
 APPROVED_CITIES: set[str] = {
-    # Policy's own examples
-    "Los Angeles", "New York", "London", "Seoul", "Tokyo", "Amsterdam", "Stockholm",
-    # Majors present in production evidence
-    "Paris", "Berlin", "Copenhagen", "Madrid", "Milan", "Marseille", "Manchester",
-    "San Francisco", "Chicago", "Miami", "Boston", "Philadelphia", "Dallas",
-    "Austin", "Las Vegas", "Osaka", "Kyoto", "Hong Kong", "Dubai",
-    "Toronto", "Vancouver", "Montreal",
+    # Core global cities (deepest continuous monitoring)
+    "London", "Paris", "Milan", "New York", "Tokyo", "Seoul", "Los Angeles",
+    # European core
+    "Copenhagen", "Stockholm", "Amsterdam", "Berlin", "Antwerp", "Brussels",
+    # European watch network
+    "Tbilisi", "Lisbon", "Madrid", "Barcelona", "Manchester", "Helsinki",
+    "Florence", "Istanbul", "Warsaw", "Vienna",
+    # Early-signal watch cities
+    "Osaka", "Hong Kong", "Bangkok", "Taipei", "São Paulo", "Lagos",
+    "Johannesburg", "Cape Town", "Buenos Aires", "Montreal",
+    # Core urban taste cities
+    "Shanghai", "Mexico City", "Melbourne", "Sydney",
+    # Majors present in production evidence, retained from the initial policy
+    "Marseille", "San Francisco", "Chicago", "Miami", "Boston", "Philadelphia",
+    "Dallas", "Austin", "Las Vegas", "Kyoto", "Dubai", "Toronto", "Vancouver",
 }
 
 
@@ -67,6 +75,14 @@ _ROWS: list[CityMapping] = [
                 "Alias of an approved city", "San Francisco", "", "2026-08-26"),
     CityMapping("Amsterdam-Oost", "Amsterdam", "NL", "direct", "high",
                 "Neighborhood of an approved city", "Amsterdam", "", "2026-08-26"),
+    CityMapping("Sao Paulo", "São Paulo", "BR", "direct", "high",
+                "ASCII spelling of an approved city", "São Paulo", "", "2026-08-26"),
+    CityMapping("İstanbul", "Istanbul", "TR", "direct", "high",
+                "Local spelling of an approved city", "Istanbul", "", "2026-08-26"),
+    CityMapping("CDMX", "Mexico City", "MX", "direct", "high",
+                "Alias of an approved city", "Mexico City", "", "2026-08-26"),
+    CityMapping("Ciudad de México", "Mexico City", "MX", "direct", "high",
+                "Local name of an approved city", "Mexico City", "", "2026-08-26"),
     # Metro normalization: locale genuinely inside a major metro.
     CityMapping("Brooklyn", "New York", "US", "metro", "high",
                 "Borough of an approved city", "New York", "", "2026-08-26"),
@@ -80,7 +96,8 @@ _ROWS: list[CityMapping] = [
     CityMapping("Bedford, New York", "New York", "US", "metro", "medium",
                 "NY metro area locale", "New York", "Retain original in admin only", "2026-08-26"),
     CityMapping("Gary, Indiana", "Chicago", "US", "metro", "medium",
-                "Chicago metro area locale", "Chicago", "Retain original in admin only", "2026-08-26"),
+                "Chicago metro area locale", "Chicago", "Retain original in admin only",
+                "2026-08-26"),
     CityMapping("Yokohama", "Tokyo", "JP", "metro", "medium",
                 "Greater Tokyo area", "Tokyo", "Retain original in admin only", "2026-08-26"),
     CityMapping("Napa Valley", "San Francisco", "US", "metro", "low",

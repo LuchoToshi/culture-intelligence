@@ -67,3 +67,12 @@ def test_every_mapping_row_is_schema_complete():
         assert row.mapping_type in {"direct", "metro", "omit"}
         assert row.confidence in {"high", "medium", "low"}
         assert row.rationale and row.last_updated
+
+
+def test_expanded_vocabulary_tiers_are_approved():
+    # 26 Aug expansion: watch-network and early-signal cities.
+    for city in ("Antwerp", "Tbilisi", "Lisbon", "Taipei", "São Paulo",
+                 "Lagos", "Cape Town", "Shanghai", "Mexico City", "Sydney"):
+        assert public_city(city) == city, city
+    assert public_city("Sao Paulo") == "São Paulo"
+    assert public_city("CDMX") == "Mexico City"
