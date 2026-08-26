@@ -62,7 +62,7 @@
     <h2 class="section" style="margin-top:0">Latest evidence <span class="note"><a href="/stream">full stream →</a></span></h2>
     {% for r in latest_items %}
       <div class="card">
-        <div class="meta">{{ r.source_name }} · {{ r.when | dmy("?") }}</div>
+        <div class="meta">{{ "Monitored source" if user_role == "demo" else r.source_name }} · {{ r.when | dmy("?") }}</div>
         <h3>{{ r.item.title or "(untitled)" }}</h3>
       </div>
     {% endfor %}

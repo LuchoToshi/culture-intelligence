@@ -33,7 +33,7 @@
     <h1>Culture Intelligence</h1>
     <p class="lede">Urban taste intelligence — signed access only.</p>
     {% if sent %}
-      <div class="notice ok">If <strong>{{ sent }}</strong> has access, a sign-in link is on its way. Check your inbox — it expires in 15 minutes.</div>
+      <div class="notice ok">If <strong>{{ sent }}</strong> has access, a sign-in link is on its way — it expires in 15 minutes. If not, this doubles as an access request: we review every one.</div>
     {% endif %}
     {% if error %}
       <div class="notice err">{{ error }}</div>
@@ -44,6 +44,21 @@
       <input type="hidden" name="next" value="{{ next or '/' }}">
       <button type="submit">Send sign-in link</button>
     </form>
+    <p style="font-size:0.82rem;color:var(--ink-2);margin:1.1rem 0 0">
+      No account? Enter your work email above and we treat it as an access
+      request — approved members get a sign-in link, no password to manage.
+    </p>
+    <details style="margin-top:1.2rem;border-top:1px solid var(--hairline);padding-top:1rem">
+      <summary style="cursor:pointer;font-size:0.82rem;color:var(--ink-2)">Have demo credentials?</summary>
+      <form method="post" action="/login/demo" style="margin-top:0.8rem">
+        <label for="demo-email">Demo email</label>
+        <input id="demo-email" name="email" type="email" required>
+        <label for="demo-password">Demo password</label>
+        <input id="demo-password" name="password" type="password" required
+               style="width:100%;font:inherit;padding:0.6rem 0.8rem;border:1px solid var(--hairline);border-radius:4px;margin-bottom:1rem">
+        <button type="submit">Enter demo</button>
+      </form>
+    </details>
   </div>
 </body>
 </html>

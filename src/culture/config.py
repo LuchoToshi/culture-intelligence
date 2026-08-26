@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     email_from: str = "Culture Intelligence <onboarding@resend.dev>"
     # Comma-separated allow-list. Empty = nobody can log in (fail closed, not open).
     allowed_emails: str = ""
+    # Demo account: fixed credentials for demos and testing. Empty = disabled.
+    # The password is stored as a sha256 hex digest, never plaintext.
+    demo_email: str = ""
+    demo_password_sha256: str = ""
 
     # Public Substack publication feed (e.g. https://<name>.substack.com/feed).
     # Empty = the homepage publication section stays hidden entirely.

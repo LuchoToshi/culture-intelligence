@@ -41,7 +41,7 @@
 <article class="record">
   <div class="provenance">
     <span class="kind kind-observed"></span>
-    <span>{{ source.name if source else "?" }}</span>
+    <span>{{ ("Monitored source" if user_role == "demo" else source.name) if source else "?" }}</span>
     <span>{{ item.content_type }}</span>
     <span>{{ when | dmy("date unknown") }}</span>
   </div>

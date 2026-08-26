@@ -1,10 +1,31 @@
-"""Magic-link, invite-only auth for the web viewer.
+"""Magic-link, invite-only auth for the web viewer, with roles.
 
-No user table: identity is just "an email on the allow-list". A login token
-proves the holder received the email; a session cookie proves they clicked a
-valid, unexpired link. Both are signed, stateless tokens — nothing to store,
-nothing to clean up, nothing that can leak from a database.
+No user table: identity is "an email on the allow-list", and the role is
+derived from configuration at login time and carried inside the signed
+session payload. A login token proves the holder received the email; a
+session cookie proves they clicked a valid, unexpired link.
+
+Roles:
+- admin  — everything, including the source registry and operational views.
+- member — product views; the source registry and admin surfaces are denied
+           at the route, not just hidden in the nav.
+- demo   — fixed-credential account for demos: member surfaces minus the
+           operational/evidence views, with source identities hidden in
+           templates. The whole app is read-only over HTTP (writes happen in
+           the pipeline CLI), so demo cannot modify production data by
+           construction.
+
+Auth events are audited to the auth_events table best-effort; login attempts
+are rate-limited per IP per warm instance (a determined attacker can spread
+across instances — the limit exists to stop email-bombing the Resend quota
+and casual probing, not to be a WAF).
 """
+
+import hashlib
+import hmac
+import time
+from collections import defaultdict, deque
+from dataclasses import dataclass
 
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -29,6 +50,7 @@ SESSION_MAX_AGE = 30 * 24 * 60 * 60  # 30 days
 # the full private archive stays at /reports, behind login.
 PUBLIC_PATHS = {
     "/login",
+    "/login/demo",
     "/auth/verify",
     "/logout",
     "/",
@@ -40,6 +62,81 @@ PUBLIC_PATHS = {
     "/robots.txt",
     "/sitemap.xml",
 }
+
+
+ROLE_ADMIN = "admin"
+ROLE_MEMBER = "member"
+ROLE_DEMO = "demo"
+
+# Route-level enforcement. Hiding a nav link is not access control.
+ADMIN_ONLY_PREFIXES = ("/sources", "/admin")
+DEMO_BLOCKED_PREFIXES = ("/sources", "/admin", "/stream", "/search", "/items", "/reports")
+
+
+@dataclass(frozen=True)
+class SessionInfo:
+    email: str
+    role: str
+
+
+def role_for(email: str, settings: Settings) -> str:
+    return ROLE_ADMIN if settings.is_admin(email) else ROLE_MEMBER
+
+
+def demo_credentials_valid(email: str, password: str, settings: Settings) -> bool:
+    if not settings.demo_email or not settings.demo_password_sha256:
+        return False
+    digest = hashlib.sha256(password.encode()).hexdigest()
+    return hmac.compare_digest(
+        email.strip().lower(), settings.demo_email.strip().lower()
+    ) and hmac.compare_digest(digest, settings.demo_password_sha256.lower())
+
+
+# --- login rate limiting: per-IP sliding window, per warm instance ---------
+_RATE_BUCKETS: dict[str, deque[float]] = defaultdict(deque)
+
+
+def rate_limited(key: str, limit: int, window_seconds: int) -> bool:
+    now = time.monotonic()
+    bucket = _RATE_BUCKETS[key]
+    while bucket and now - bucket[0] > window_seconds:
+        bucket.popleft()
+    if len(bucket) >= limit:
+        return True
+    bucket.append(now)
+    return False
+
+
+# --- audit -----------------------------------------------------------------
+def record_event(
+    event: str,
+    email: str | None = None,
+    ip: str | None = None,
+    path: str | None = None,
+    detail: str | None = None,
+    engine=None,
+) -> None:
+    """Best-effort durable audit write. Never raises: an audit failure must
+    not turn into an authentication failure.
+
+    The engine is passed explicitly so the write always lands in the app's
+    own database — with settings loading .env, a get_engine() default here
+    would make the unit-test suite write audit rows into production."""
+    try:
+        from culture.database import get_engine, session_scope
+        from culture.models.auth_event import AuthEvent
+
+        with session_scope(engine or get_engine()) as session:
+            session.add(AuthEvent(event=event, email=email, ip=ip, path=path, detail=detail))
+    except Exception:  # noqa: BLE001
+        log.error("audit write failed for event=%s", event, exc_info=True)
+
+
+def client_ip(request: Request) -> str | None:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else None
 
 
 def _serializer(settings: Settings, salt: str) -> URLSafeTimedSerializer:
@@ -62,15 +159,21 @@ def verify_login_token(token: str, settings: Settings) -> str | None:
         return None
 
 
-def create_session_value(email: str, settings: Settings) -> str:
-    return _serializer(settings, "session").dumps(email.strip().lower())
+def create_session_value(email: str, settings: Settings, role: str | None = None) -> str:
+    payload = {"e": email.strip().lower(), "r": role or role_for(email, settings)}
+    return _serializer(settings, "session").dumps(payload)
 
 
-def verify_session_value(value: str, settings: Settings) -> str | None:
+def verify_session_value(value: str, settings: Settings) -> SessionInfo | None:
     try:
-        return _serializer(settings, "session").loads(value, max_age=SESSION_MAX_AGE)
+        payload = _serializer(settings, "session").loads(value, max_age=SESSION_MAX_AGE)
     except (BadSignature, SignatureExpired):
         return None
+    if isinstance(payload, str):  # pre-role session cookies stay valid
+        return SessionInfo(email=payload, role=role_for(payload, settings))
+    if isinstance(payload, dict) and payload.get("e"):
+        return SessionInfo(email=payload["e"], role=payload.get("r") or ROLE_MEMBER)
+    return None
 
 
 def send_login_email(email: str, token: str, base_url: str, settings: Settings) -> None:
@@ -102,21 +205,36 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         settings = get_settings()
         cookie = request.cookies.get(SESSION_COOKIE)
-        email = verify_session_value(cookie, settings) if cookie else None
-        if email is None:
+        info = verify_session_value(cookie, settings) if cookie else None
+        if info is None:
             next_param = request.url.path
             if request.url.query:
                 next_param += f"?{request.url.query}"
             return RedirectResponse(f"/login?next={next_param}", status_code=303)
 
-        request.state.user_email = email
+        path = request.url.path
+        blocked = (
+            info.role != ROLE_ADMIN and path.startswith(ADMIN_ONLY_PREFIXES)
+        ) or (info.role == ROLE_DEMO and path.startswith(DEMO_BLOCKED_PREFIXES))
+        if blocked:
+            record_event(
+                "access_denied", email=info.email, ip=client_ip(request), path=path,
+                detail=f"role={info.role}",
+                engine=getattr(request.app.state, "engine", None),
+            )
+            return RedirectResponse("/dashboard", status_code=303)
+
+        request.state.user_email = info.email
+        request.state.user_role = info.role
         return await call_next(request)
 
 
-def set_session_cookie(response: Response, email: str, settings: Settings) -> None:
+def set_session_cookie(
+    response: Response, email: str, settings: Settings, role: str | None = None
+) -> None:
     response.set_cookie(
         SESSION_COOKIE,
-        create_session_value(email, settings),
+        create_session_value(email, settings, role=role),
         max_age=SESSION_MAX_AGE,
         httponly=True,
         secure=True,

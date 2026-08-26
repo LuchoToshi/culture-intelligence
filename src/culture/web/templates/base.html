@@ -250,6 +250,11 @@
 </style>
 </head>
 <body>
+{% if user_role == "demo" %}
+<div style="background:#FFF3D6;color:#6b4a00;border-bottom:1px solid #E8D9A8;padding:0.45rem 1rem;font:600 0.78rem system-ui;letter-spacing:0.04em;text-align:center">
+  DEMO ACCOUNT — sample member view. Operational panels and source identities are hidden.
+</div>
+{% endif %}
 <a class="skip-link" href="#content">Skip to content</a>
 <header class="topbar">
   <div class="topbar-inner">

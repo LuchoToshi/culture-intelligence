@@ -25,8 +25,8 @@ from culture.models.content import ContentItem, ExtractionStatus, TranscriptStat
 from culture.models.report import WeeklyReport
 from culture.models.signal import Signal, SignalEvidence
 from culture.models.source import Source
-from culture.utils.dates import ensure_utc, now_utc
 from culture.utils import citypolicy
+from culture.utils.dates import ensure_utc, now_utc
 from culture.web import queries
 
 log = get_logger("culture.web.app")
@@ -131,11 +131,30 @@ def _mount_auth_routes(app: FastAPI) -> None:
     def login_submit(request: Request, email: str = Form(...), next: str = Form("/dashboard")):
         settings = get_settings()
         normalized = email.strip().lower()
+        ip = auth.client_ip(request)
+        if auth.rate_limited(f"login:{ip}", limit=5, window_seconds=15 * 60):
+            auth.record_event(
+                "rate_limited", email=normalized, ip=ip, path="/login",
+                engine=request.app.state.engine,
+            )
+            return templates.TemplateResponse(
+                request,
+                "login.html",
+                {
+                    "next": next,
+                    "sent": None,
+                    "error": "Too many attempts from this address. Try again in a few minutes.",
+                },
+            )
         if normalized in settings.allowed_email_set:
             token = auth.create_login_token(normalized, settings)
             base_url = str(request.base_url)
             try:
                 auth.send_login_email(normalized, token, base_url, settings)
+                auth.record_event(
+                    "link_requested", email=normalized, ip=ip,
+                    engine=request.app.state.engine,
+                )
             except Exception:
                 log.error("failed to send login email to %s", normalized, exc_info=True)
                 return templates.TemplateResponse(
@@ -147,23 +166,82 @@ def _mount_auth_routes(app: FastAPI) -> None:
                         "error": "Could not send the sign-in email. Try again shortly.",
                     },
                 )
-        # Same response whether or not the email is allow-listed — don't leak the list.
+        else:
+            # Unknown email: the durable audit row IS the access request.
+            # The response below stays identical either way, so the
+            # allow-list cannot be probed from the login form.
+            auth.record_event(
+                "access_requested", email=normalized, ip=ip,
+                engine=request.app.state.engine,
+            )
         return templates.TemplateResponse(
             request, "login.html", {"next": next, "sent": email, "error": None}
         )
 
+    @app.post("/login/demo", response_class=HTMLResponse, include_in_schema=False)
+    def demo_login(request: Request, email: str = Form(...), password: str = Form(...)):
+        settings = get_settings()
+        ip = auth.client_ip(request)
+        if not settings.demo_email:
+            return RedirectResponse("/login", status_code=303)
+        if auth.rate_limited(f"demo:{ip}", limit=5, window_seconds=15 * 60):
+            auth.record_event(
+                "rate_limited", email=email, ip=ip, path="/login/demo",
+                engine=request.app.state.engine,
+            )
+            return templates.TemplateResponse(
+                request,
+                "login.html",
+                {
+                    "next": "/dashboard",
+                    "sent": None,
+                    "error": "Too many attempts from this address. Try again in a few minutes.",
+                },
+            )
+        if not auth.demo_credentials_valid(email, password, settings):
+            auth.record_event(
+                "demo_login_failed", email=email, ip=ip, engine=request.app.state.engine
+            )
+            return templates.TemplateResponse(
+                request,
+                "login.html",
+                {"next": "/dashboard", "sent": None, "error": "Demo credentials not recognized."},
+            )
+        auth.record_event(
+            "demo_login", email=settings.demo_email, ip=ip, engine=request.app.state.engine
+        )
+        response = RedirectResponse("/dashboard", status_code=303)
+        auth.set_session_cookie(response, settings.demo_email, settings, role=auth.ROLE_DEMO)
+        return response
+
     @app.get("/auth/verify", include_in_schema=False)
-    def verify(token: str, next: str = "/dashboard"):
+    def verify(request: Request, token: str, next: str = "/dashboard"):
         settings = get_settings()
         email = auth.verify_login_token(token, settings)
         if email is None or email not in settings.allowed_email_set:
+            auth.record_event(
+                "login_expired", email=email, path="/auth/verify",
+                engine=request.app.state.engine,
+            )
             return RedirectResponse("/login?error=expired", status_code=303)
+        role = auth.role_for(email, settings)
+        auth.record_event(
+            "login_success", email=email, detail=f"role={role}",
+            engine=request.app.state.engine,
+        )
         response = RedirectResponse(next or "/dashboard", status_code=303)
-        auth.set_session_cookie(response, email, settings)
+        auth.set_session_cookie(response, email, settings, role=role)
         return response
 
     @app.get("/logout", include_in_schema=False)
-    def logout():
+    def logout(request: Request):
+        settings = get_settings()
+        cookie = request.cookies.get(auth.SESSION_COOKIE)
+        info = auth.verify_session_value(cookie, settings) if cookie else None
+        if info:
+            auth.record_event(
+                "logout", email=info.email, engine=request.app.state.engine
+            )
         response = RedirectResponse("/login", status_code=303)
         auth.clear_session_cookie(response)
         return response
@@ -211,6 +289,7 @@ def create_app(
     templates.env.filters["public_city_first"] = citypolicy.first_public_city
     templates.env.filters["public_cities"] = citypolicy.public_cities
     engine = engine or get_engine()
+    app.state.engine = engine  # audit writes and middleware use the app's own DB
     factory = sessionmaker(bind=engine, expire_on_commit=False)
 
     def db() -> Iterator[Session]:
@@ -225,13 +304,13 @@ def create_app(
         # is inherently the operator; hosted mode checks the session email.
         if not require_auth:
             return True
-        from culture.config import get_settings
 
-        return get_settings().is_admin(getattr(request.state, "user_email", None))
+        return getattr(request.state, "user_role", None) == "admin"
 
     def render(request: Request, session: Session | None, template: str, context: dict):
         context.setdefault("q", None)
         context.setdefault("is_admin", _request_is_admin(request))
+        context.setdefault("user_role", getattr(request.state, "user_role", None))
         context.setdefault(
             "freshness", queries.pipeline_status(session) if session is not None else None
         )
@@ -611,7 +690,9 @@ def create_app(
                 "q": q,
                 "city": city,
                 "standing": standing if standing in {"recurring", "repeated", "single"} else None,
-                "sort": sort if sort in {"recurrence", "recency", "corroboration"} else "recurrence",
+                "sort": (
+                    sort if sort in {"recurrence", "recency", "corroboration"} else "recurrence"
+                ),
                 "active_nav": "archetypes",
             },
         )
