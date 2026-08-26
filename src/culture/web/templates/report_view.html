@@ -4,4 +4,11 @@
 <p class="eyebrow"><a href="/reports">Reports</a> <span aria-hidden="true">/</span> <span>{{ name }}</span></p>
 <h1>Cultural Intelligence Report — {{ name }}</h1>
 <div class="prose">{{ content | safe }}</div>
+{% if appendix %}
+<details class="disclosure" style="margin-top:1.5rem;">
+  <summary>Research appendix — complete source roundup</summary>
+  <p class="lede" style="margin-top:0.6rem;">Every monitored source's items for the reporting window, in full. Kept for transparency and inspection; the synthesis above is the report.</p>
+  <div class="prose">{{ appendix | safe }}</div>
+</details>
+{% endif %}
 {% endblock %}

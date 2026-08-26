@@ -217,8 +217,18 @@ def create_app(
         finally:
             session.close()
 
+    def _request_is_admin(request: Request) -> bool:
+        # Local unauthenticated mode (culture web on the operator's machine)
+        # is inherently the operator; hosted mode checks the session email.
+        if not require_auth:
+            return True
+        from culture.config import get_settings
+
+        return get_settings().is_admin(getattr(request.state, "user_email", None))
+
     def render(request: Request, session: Session | None, template: str, context: dict):
         context.setdefault("q", None)
+        context.setdefault("is_admin", _request_is_admin(request))
         context.setdefault(
             "freshness", queries.pipeline_status(session) if session is not None else None
         )
@@ -539,7 +549,9 @@ def create_app(
         for a_id, b_id, shared in raw_pairs[:20]:
             a, b = session.get(Signal, a_id), session.get(Signal, b_id)
             if a and b:
-                pairs.append((a, b, shared))
+                a_cities = {queries.canonical_city(c) for c in a.cities}
+                b_cities = {queries.canonical_city(c) for c in b.cities}
+                pairs.append((a, b, shared, sorted(a_cities & b_cities)[:3]))
         return render(
             request, session, "taste_systems.html", {"pairs": pairs, "active_nav": "taste-systems"}
         )
@@ -551,12 +563,12 @@ def create_app(
         q: str | None = None,
         city: str | None = None,
     ):
-        observations = queries.archetype_observations(session, query=q, city=city)
+        groups = queries.archetype_groups(session, query=q, city=city)
         return render(
             request,
             session,
             "archetypes.html",
-            {"observations": observations, "q": q, "city": city, "active_nav": "archetypes"},
+            {"groups": groups, "q": q, "city": city, "active_nav": "archetypes"},
         )
 
     @app.get("/cities", response_class=HTMLResponse)
@@ -566,6 +578,46 @@ def create_app(
             session,
             "cities.html",
             {"cities": queries.city_rows(session), "active_nav": "cities"},
+        )
+
+    @app.get("/cities/compare", response_class=HTMLResponse)
+    def cities_compare(
+        request: Request,
+        session: Session = Depends(db),
+        a: str | None = None,
+        b: str | None = None,
+    ):
+        all_cities = [c.name for c in queries.city_rows(session)]
+        comparison = None
+        if a and b:
+            a, b = queries.canonical_city(a), queries.canonical_city(b)
+            active = queries.active_signals(session)
+            in_a = [s for s in active if queries._city_matches(a, s.cities)]
+            in_b = [s for s in active if queries._city_matches(b, s.cities)]
+            ids_a, ids_b = {s.id for s in in_a}, {s.id for s in in_b}
+            comparison = {
+                "shared": sorted(
+                    (s for s in in_a if s.id in ids_b),
+                    key=lambda s: s.evidence_count,
+                    reverse=True,
+                ),
+                "only_a": sorted(
+                    (s for s in in_a if s.id not in ids_b),
+                    key=lambda s: s.evidence_count,
+                    reverse=True,
+                )[:10],
+                "only_b": sorted(
+                    (s for s in in_b if s.id not in ids_a),
+                    key=lambda s: s.evidence_count,
+                    reverse=True,
+                )[:10],
+            }
+        return render(
+            request,
+            session,
+            "city_compare.html",
+            {"a": a, "b": b, "all_cities": all_cities, "comparison": comparison,
+             "active_nav": "cities"},
         )
 
     @app.get("/cities/{name}", response_class=HTMLResponse)
@@ -635,15 +687,28 @@ def create_app(
         )
 
     @app.get("/stream", response_class=HTMLResponse)
-    def stream(request: Request, session: Session = Depends(db)):
-        items = list(
-            session.scalars(
-                select(ContentItem)
-                .order_by(func.coalesce(ContentItem.published_at, ContentItem.discovered_at).desc())
-                .limit(60)
-            )
-        )
+    def stream(
+        request: Request,
+        session: Session = Depends(db),
+        platform: str | None = None,
+        kind: str | None = None,
+        days: int | None = None,
+    ):
         sources = {s.id: s for s in session.scalars(select(Source))}
+        query = select(ContentItem).order_by(
+            func.coalesce(ContentItem.published_at, ContentItem.discovered_at).desc()
+        )
+        if kind:
+            query = query.where(ContentItem.content_type == kind)
+        if platform:
+            platform_ids = [s.id for s in sources.values() if s.platform == platform]
+            query = query.where(ContentItem.source_id.in_(platform_ids))
+        if days:
+            since = now_utc() - timedelta(days=days)
+            query = query.where(
+                func.coalesce(ContentItem.published_at, ContentItem.discovered_at) >= since
+            )
+        items = list(session.scalars(query.limit(60)))
         analyses = queries.latest_analyses(session, [i.id for i in items])
         rows = [
             {
@@ -655,24 +720,43 @@ def create_app(
             }
             for item in items
         ]
-        return render(request, session, "stream.html", {"rows": rows, "active_nav": None})
+        platforms = sorted({s.platform for s in sources.values() if s.active})
+        kinds = sorted(
+            {k for (k,) in session.execute(select(ContentItem.content_type).distinct())}
+        )
+        return render(
+            request,
+            session,
+            "stream.html",
+            {
+                "rows": rows,
+                "platforms": platforms,
+                "kinds": kinds,
+                "platform": platform,
+                "kind": kind,
+                "days": days,
+                "active_nav": None,
+            },
+        )
 
     @app.get("/sources", response_class=HTMLResponse)
     def sources(request: Request, session: Session = Depends(db)):
-        rows = list(session.scalars(select(Source).order_by(Source.tier, Source.name)))
-        item_counts: dict[int, int] = {
-            source_id: count
-            for source_id, count in session.execute(
-                select(ContentItem.source_id, func.count(ContentItem.id)).group_by(
-                    ContentItem.source_id
-                )
-            )
-        }
+        # The source registry is proprietary — admin-only by explicit role,
+        # not just by login (operator directive; reviewer §8/§9).
+        if not _request_is_admin(request):
+            raise HTTPException(403, "The source registry is restricted to administrators.")
+        rows, state_counts = queries.source_health_rows(session)
         return render(
             request,
             session,
             "sources.html",
-            {"sources": rows, "item_counts": item_counts, "active_nav": "sources"},
+            {
+                "rows": rows,
+                "state_counts": state_counts,
+                "state_labels": queries.SOURCE_HEALTH_LABELS,
+                "state_order": queries.SOURCE_HEALTH_ORDER,
+                "active_nav": "sources",
+            },
         )
 
     @app.get("/reports", response_class=HTMLResponse)
@@ -686,17 +770,34 @@ def create_app(
 
     @app.get("/reports/{name}", response_class=HTMLResponse)
     def report_view(name: str, request: Request, session: Session = Depends(db)):
+        import re as _re
+
         report_row = session.scalar(select(WeeklyReport).where(WeeklyReport.iso_week == name))
         if report_row is None:
             raise HTTPException(404, "No such report")
-        html = _demote_report_headings(
-            md.markdown(report_row.content_markdown, extensions=["tables"])
+        # Reader-first split (reviewer §25): the cross-source synthesis
+        # (Part 2 onward) is the report; the exhaustive per-source roundup
+        # (Part 1) becomes a collapsed research appendix below it. Reports
+        # without the Part markers render whole, unchanged.
+        markdown_text = report_row.content_markdown
+        part2 = _re.search(r"^# Part 2.*?$", markdown_text, _re.MULTILINE)
+        part1 = _re.search(r"^# Part 1.*?$", markdown_text, _re.MULTILINE)
+        if part2 and part1 and part1.start() < part2.start():
+            reader_md = markdown_text[: part1.start()] + markdown_text[part2.start() :]
+            appendix_md = markdown_text[part1.start() : part2.start()]
+        else:
+            reader_md, appendix_md = markdown_text, None
+        content = _demote_report_headings(md.markdown(reader_md, extensions=["tables"]))
+        appendix = (
+            _demote_report_headings(md.markdown(appendix_md, extensions=["tables"]))
+            if appendix_md
+            else None
         )
         return render(
             request,
             session,
             "report_view.html",
-            {"name": name, "content": html, "active_nav": "reports"},
+            {"name": name, "content": content, "appendix": appendix, "active_nav": "reports"},
         )
 
     @app.get("/brief", response_class=HTMLResponse)

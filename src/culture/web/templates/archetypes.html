@@ -4,7 +4,7 @@
 {% block content %}
 <p class="eyebrow">Archetypes</p>
 <h1>Archetype observations</h1>
-<p class="lede">Identity descriptions observed in the evidence — who is combining which signals, where. These are observations, not established personas: an archetype earns standing by recurring across independent sources. None has recurred enough yet to be considered established, so treat each as a single sighting with its evidence attached.</p>
+<p class="lede">Identity descriptions observed in the evidence — who is combining which signals, where. These are observations, not established personas: an archetype earns standing only by recurring across <em>independent</em> sources, and each row below is labeled with exactly how far it has gotten.</p>
 
 <form class="filterbar" method="get" action="/archetypes">
   <span class="label">Filter</span>
@@ -14,18 +14,21 @@
   {% if q or city %}<a class="clear" href="/archetypes">Clear</a>{% endif %}
 </form>
 
-{% for obs in observations %}
+{% for g in groups %}
 <article class="record">
   <div class="provenance">
     <span class="kind kind-model"></span>
-    <span>{{ obs.source.name }}</span>
-    <span>{{ obs.when | dmy("?") }}</span>
-    {% if obs.cities %}<span>{{ obs.cities | join(" · ") }}</span>{% endif %}
+    {% if g.state == "recurring" %}<span class="delta-up">Recurring — {{ g.sightings }} sightings · {{ g.source_count }} independent sources</span>
+    {% elif g.sightings > 1 %}<span>{{ g.state | capitalize }} — {{ g.sightings }} sightings</span>
+    {% else %}<span class="muted">Single sighting</span>{% endif %}
+    <span>{{ g.latest | dmy("?") }}</span>
+    {% if g.cities %}<span>{{ g.cities | join(" · ") }}</span>{% endif %}
   </div>
-  <p style="margin:0; font-size: 1rem">{{ obs.text }}</p>
+  <p style="margin:0; font-size: 1rem">{{ g.text }}</p>
   <div class="tagrow" style="margin-top:0.5rem">
-    {% for signal in obs.signals %}<a href="/signals/{{ signal.id }}">{{ signal.name }}</a>{% endfor %}
-    <a href="/items/{{ obs.item.id }}" class="mono">evidence →</a>
+    {% set shown = [] %}
+    {% for obs in g.observations %}{% for signal in obs.signals %}{% if signal.id not in shown %}{% set _ = shown.append(signal.id) %}<a href="/signals/{{ signal.id }}">{{ signal.name }}</a>{% endif %}{% endfor %}{% endfor %}
+    {% for obs in g.observations %}<a href="/items/{{ obs.item.id }}" class="mono">evidence {{ loop.index }} →</a>{% endfor %}
   </div>
 </article>
 {% else %}

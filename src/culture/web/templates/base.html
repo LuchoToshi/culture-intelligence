@@ -261,7 +261,7 @@
       <a href="/archetypes" {% if active_nav == "archetypes" %}aria-current="page"{% endif %}>Archetypes</a>
       <a href="/cities" {% if active_nav == "cities" %}aria-current="page"{% endif %}>Cities</a>
       <a href="/reports" {% if active_nav == "reports" %}aria-current="page"{% endif %}>Reports</a>
-      <a href="/sources" {% if active_nav == "sources" %}aria-current="page"{% endif %}>Sources</a>
+      {% if is_admin %}<a href="/sources" {% if active_nav == "sources" %}aria-current="page"{% endif %}>Sources</a>{% endif %}
     </nav>
     <form class="searchbox" action="/search" method="get" role="search">
       <label for="q" class="skip-link">Search the intelligence</label>

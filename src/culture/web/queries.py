@@ -427,3 +427,116 @@ def pipeline_status(session: Session) -> dict:
         "last_check": ensure_utc(last_check),
         "latest_item": ensure_utc(latest_item),
     }
+
+
+# ── source collection health (admin view) ────────────────────────────────
+
+SOURCE_HEALTH_LABELS = {
+    "collecting": "Collecting",
+    "stale": "Stale",
+    "failing": "Failing",
+    "never_collected": "Never collected",
+    "needs_method": "Needs collection method",
+    "paused": "Paused / inactive",
+}
+SOURCE_HEALTH_ORDER = [
+    "failing", "stale", "never_collected", "needs_method", "collecting", "paused",
+]
+
+STALE_AFTER_DAYS = 7
+
+
+def source_health_state(source: Source) -> str:
+    """Deterministic collection state from fields the pipeline already
+    maintains — no new bookkeeping. 'Failing' means the collector has been
+    trying (recent check) without a recent success; 'stale' means nothing
+    has been attempted or landed lately; social platforms collect via Apify
+    and legitimately have no feed_url."""
+    if not source.active:
+        return "paused"
+    needs_feed = source.platform not in ("instagram", "tiktok")
+    if needs_feed and not source.feed_url:
+        return "needs_method"
+    if source.last_successful_check_at is None:
+        return "never_collected"
+    now = now_utc()
+    last_success = ensure_utc(source.last_successful_check_at)
+    last_check = ensure_utc(source.last_checked_at) if source.last_checked_at else None
+    if last_success and (now - last_success).days >= STALE_AFTER_DAYS:
+        if last_check and (now - last_check).days < STALE_AFTER_DAYS:
+            return "failing"  # recently attempted, no recent success
+        return "stale"
+    return "collecting"
+
+
+def source_health_rows(session: Session) -> tuple[list[dict], Counter]:
+    item_counts = {
+        source_id: count
+        for source_id, count in session.execute(
+            select(ContentItem.source_id, func.count(ContentItem.id)).group_by(
+                ContentItem.source_id
+            )
+        )
+    }
+    rows = []
+    state_counts: Counter[str] = Counter()
+    for source in session.scalars(select(Source).order_by(Source.tier, Source.name)):
+        state = source_health_state(source)
+        state_counts[state] += 1
+        rows.append({"source": source, "state": state, "items": item_counts.get(source.id, 0)})
+    rows.sort(key=lambda r: (SOURCE_HEALTH_ORDER.index(r["state"]), str(r["source"].name)))
+    return rows, state_counts
+
+
+@dataclass
+class ArchetypeGroup:
+    """Identical archetype descriptions grouped into one row, so a repeated
+    observation reads as recurrence instead of as N unrelated sightings —
+    and, critically, so one sighting can never masquerade as an established
+    consumer group (reviewer §23)."""
+
+    text: str
+    observations: list[ArchetypeObservation]
+
+    @property
+    def sightings(self) -> int:
+        return len(self.observations)
+
+    @property
+    def source_count(self) -> int:
+        return len({o.source.id for o in self.observations})
+
+    @property
+    def cities(self) -> list[str]:
+        seen: dict[str, None] = {}
+        for o in self.observations:
+            for c in o.cities:
+                seen.setdefault(canonical_city(c), None)
+        return list(seen)[:4]
+
+    @property
+    def latest(self) -> datetime | None:
+        stamps = [o.when for o in self.observations if o.when]
+        return max(stamps) if stamps else None
+
+    @property
+    def state(self) -> str:
+        # Recurrence requires independent sources, not just repetition —
+        # the same account describing the same person twice is one sighting
+        # of one observer's view, not corroboration.
+        if self.sightings >= 2 and self.source_count >= 2:
+            return "recurring"
+        if self.sightings >= 2:
+            return "repeated (single source)"
+        return "single sighting"
+
+
+def archetype_groups(
+    session: Session, query: str | None = None, city: str | None = None
+) -> list[ArchetypeGroup]:
+    grouped: dict[str, list[ArchetypeObservation]] = defaultdict(list)
+    for obs in archetype_observations(session, query=query, city=city, limit=500):
+        grouped[obs.text.strip().lower()].append(obs)
+    groups = [ArchetypeGroup(text=v[0].text, observations=v) for v in grouped.values()]
+    groups.sort(key=lambda g: (g.source_count, g.sightings), reverse=True)
+    return groups

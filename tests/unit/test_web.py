@@ -319,3 +319,63 @@ def test_public_mobile_menu_exists(client):
     response = client.get("/")
     assert 'aria-label="Open site menu"' in response.text
     assert 'id="mobile-menu"' in response.text
+
+
+# ── backlog tranche (roles, health, reader split, filters, compare) ───────
+
+
+def test_sources_admin_gate_open_in_local_unauthenticated_mode(client):
+    # require_auth=False (local operator) counts as admin.
+    assert client.get("/sources").status_code == 200
+
+
+def test_sources_shows_collection_health_states(client):
+    text = client.get("/sources").text
+    assert "admin only" in text
+    # Fixture source has no last_successful_check_at -> never collected...
+    # unless it lacks a feed_url first (needs_method). Either way, a state renders.
+    assert ("Never collected" in text) or ("Needs collection method" in text)
+
+
+def test_report_reader_appendix_split(client):
+    view = client.get("/reports/2026-W35")
+    assert view.status_code == 200
+    assert "Research appendix" in view.text
+    assert "<details" in view.text
+    # Part 2 content is in the main body
+    assert "Executive Brief" in view.text
+
+
+def test_stream_filters(client):
+    ids = client.ids
+    all_rows = client.get("/stream")
+    assert "Tokyo workwear moves west" in all_rows.text
+    filtered = client.get("/stream?kind=video")
+    assert "Tokyo workwear moves west" not in filtered.text
+    assert "Untranscribed video" in filtered.text
+    none_match = client.get("/stream?platform=tiktok")
+    assert "Nothing matches these filters" in none_match.text
+    assert ids  # silence unused warnings
+
+
+def test_taste_systems_relationship_labels(client):
+    text = client.get("/taste-systems").text
+    assert "co-occurs in evidence with" in text
+    assert "Single co-occurrence" in text  # fixture pair shares exactly one item
+    assert "not affinity" in text
+
+
+def test_archetypes_grouped_with_recurrence_state(client):
+    text = client.get("/archetypes").text
+    assert "Single sighting" in text
+    assert "evidence 1" in text
+
+
+def test_city_compare_page(client):
+    empty = client.get("/cities/compare")
+    assert empty.status_code == 200
+    assert "Pick two cities" in empty.text
+    both = client.get("/cities/compare?a=London&b=Tokyo")
+    assert both.status_code == 200
+    # Fixture signal names both London and Tokyo -> shared
+    assert "Japanese workwear in London menswear" in both.text

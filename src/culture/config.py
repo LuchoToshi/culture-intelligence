@@ -40,9 +40,26 @@ class Settings(BaseSettings):
     # Empty = the homepage publication section stays hidden entirely.
     substack_feed_url: str = ""
 
+    # Comma-separated admin allow-list: admins additionally see /sources
+    # (the proprietary source registry + collection health). Empty means
+    # every allowed email is an admin — correct for today's single-operator
+    # deployment, and the value to set the day a first customer is invited.
+    admin_emails: str = ""
+
     @property
     def allowed_email_set(self) -> set[str]:
         return {e.strip().lower() for e in self.allowed_emails.split(",") if e.strip()}
+
+    @property
+    def admin_email_set(self) -> set[str]:
+        return {e.strip().lower() for e in self.admin_emails.split(",") if e.strip()}
+
+    def is_admin(self, email: str | None) -> bool:
+        if email is None:
+            return False
+        if not self.admin_email_set:
+            return email.strip().lower() in self.allowed_email_set
+        return email.strip().lower() in self.admin_email_set
 
 
 @lru_cache
