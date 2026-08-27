@@ -1,17 +1,20 @@
 {% extends "base.html" %}
-{% from "_macros.html" import stage_chip, evidence_record with context %}
+{% from "_macros.html" import stage_chip, evidence_record, score_meter, stat_block, divergence with context %}
 {% block title %}{{ signal.name }} — Culture Intelligence{% endblock %}
 {% block content %}
 <p class="eyebrow"><a href="/signals">Signals</a> <span aria-hidden="true">/</span> <span>Signal profile</span></p>
-<h1>{{ signal.name }}</h1>
+<h1>{{ signal.name }}{{ divergence(signal) }}</h1>
 {% if signal.description %}<p class="lede">{{ signal.description }}</p>{% endif %}
 
-<div class="factline">
-  <span class="f"><b>Lifecycle</b> {{ stage_chip(signal.lifecycle_stage) }}</span>
-  <span class="f"><b>Evidence</b> <span class="mono">{{ signal.evidence_count }} item{{ "s" if signal.evidence_count != 1 }} · {{ signal.source_count }} source{{ "s" if signal.source_count != 1 }}</span></span>
-  <span class="f"><b>First observed</b> <span class="mono">{{ signal.first_detected_at | dmy }}</span></span>
-  <span class="f"><b>Last observed</b> <span class="mono">{{ signal.last_evidence_at | dmy }}</span></span>
-  <span class="f"><b>New this week</b> <span class="mono">{% if delta %}<span class="delta-up">+{{ delta }}</span>{% else %}0{% endif %}</span></span>
+<div class="eyebrow">
+  {{ stage_chip(signal.lifecycle_stage) }}
+  <span>First observed {{ signal.first_detected_at | dmy }}</span>
+  <span>Last observed {{ signal.last_evidence_at | dmy }}</span>
+</div>
+<div class="statline">
+  {{ stat_block(signal.evidence_count, "Evidence items") }}
+  {{ stat_block(signal.source_count, "Sources") }}
+  {{ stat_block(("+" ~ delta) if delta else "0", "New this week") }}
 </div>
 
 <p class="mono muted">{{ stage_reason }}</p>
@@ -59,8 +62,7 @@
 <div class="scoregrid">
   {% for label, value in scores %}
     <div class="row"><span>{{ label }}</span>
-      {% if value %}<span class="dots" aria-label="{{ value }} of 5">{{ "●" * value }}<span class="off">{{ "●" * (5 - value) }}</span></span>
-      {% else %}<span class="muted">no evidence</span>{% endif %}</div>
+      {{ score_meter(value, accent=(label == "Saturation risk"), none_text="no evidence") }}</div>
   {% endfor %}
 </div>
 

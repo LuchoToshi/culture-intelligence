@@ -1,5 +1,37 @@
 {% macro stage_chip(stage) -%}
-<span class="stage {{ stage }}"><span class="g" aria-hidden="true">{{ stage_glyphs[stage] }}</span> {{ stage_labels[stage] }}</span>
+<span class="stage {{ stage }}"><span class="dot" aria-hidden="true"></span>{{ stage_labels[stage] }}</span>
+{%- endmacro %}
+
+{# Five-cell typographic score meter (design: ScoreMeter). Never blend the three
+   registry scores into one number; accent renders oxblood only at value >= 4
+   (saturation semantics). #}
+{% macro score_meter(value, max=5, accent=False, show_numeral=True, none_text="—") -%}
+{% if value %}<span class="meter{{ ' hot' if accent and value >= 4 }}" role="img" aria-label="{{ value }} of {{ max }}"><span class="cells" aria-hidden="true">{% for i in range(max) %}<span class="cell{{ ' on' if i < value }}"></span>{% endfor %}</span>{% if show_numeral %}<span class="n" aria-hidden="true">{{ value }}/{{ max }}</span>{% endif %}</span>{% else %}<span class="muted">{{ none_text }}</span>{% endif %}
+{%- endmacro %}
+
+{# The † divergence dagger: editorial momentum exceeds adoption by >= 2.
+   Auto-renders from the scores — never suppress it (design rule). #}
+{% macro divergence(signal) -%}
+{% if signal.editorial_momentum_score and signal.urban_adoption_score and signal.editorial_momentum_score - signal.urban_adoption_score >= 2 %} <span class="dagger" role="img" aria-label="Editorial attention exceeds adoption" title="Editorial attention exceeds adoption — hype risk, verify before acting">†</span>{% endif %}
+{%- endmacro %}
+
+{% macro tier_badge(tier) -%}
+<span class="tier-badge {{ tier }}">{{ tier }}</span>
+{%- endmacro %}
+
+{# Square collection-health mark (deliberately square, unlike the round stage dot).
+   The label carries the mechanism, e.g. "failing · feed truncated since W33". #}
+{% macro health_mark(state, label=None) -%}
+<span class="health {{ state }}"><span class="sq" aria-hidden="true"></span>{% if label %}<span class="hl">{{ label }}</span>{% endif %}</span>
+{%- endmacro %}
+
+{% macro stat_block(value, label, accent=False) -%}
+<div class="stat{{ ' accent' if accent }}"><div class="v">{{ value }}</div><div class="l">{{ label }}</div></div>
+{%- endmacro %}
+
+{# Failure is a fact, not an alarm: the band never animates or pulses. #}
+{% macro alert_band(label, text) -%}
+<div class="alert-band"><span class="sq" aria-hidden="true"></span><span class="abl">{{ label }}</span><span class="abt">{{ text }}</span></div>
 {%- endmacro %}
 
 {% macro signal_table(rows, caption=None) -%}
@@ -14,12 +46,15 @@
     <th scope="col" class="num">Sources</th>
     <th scope="col" class="num">New this week</th>
     <th scope="col">Cities</th>
+    <th scope="col"><abbr title="Editorial momentum, 1–5">Edit.</abbr></th>
+    <th scope="col"><abbr title="Urban adoption, 1–5">Adopt.</abbr></th>
+    <th scope="col"><abbr title="Saturation risk, 1–5">Sat.</abbr></th>
   </tr></thead>
   <tbody>
   {% for row in rows %}
     <tr>
       <td class="cell-primary">
-        <a href="/signals/{{ row.signal.id }}">{{ row.signal.name }}</a>
+        <a href="/signals/{{ row.signal.id }}">{{ row.signal.name }}</a>{{ divergence(row.signal) }}
         {% if row.related_count %}<span class="desc">Connected to {{ row.related_count }} other signal{{ "s" if row.related_count != 1 }}</span>{% endif %}
       </td>
       <td>{{ stage_chip(row.signal.lifecycle_stage) }}</td>
@@ -28,9 +63,12 @@
       <td class="num">{{ row.signal.source_count }}</td>
       <td class="num">{% if row.delta_7d %}<span class="delta-up">+{{ row.delta_7d }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
       <td class="mono muted">{{ row.signal.cities[:2] | join(", ") }}</td>
+      <td>{{ score_meter(row.signal.editorial_momentum_score, show_numeral=False) }}</td>
+      <td>{{ score_meter(row.signal.urban_adoption_score, show_numeral=False) }}</td>
+      <td>{{ score_meter(row.signal.saturation_risk_score, accent=True, show_numeral=False) }}</td>
     </tr>
   {% else %}
-    <tr><td colspan="7"><div class="empty" style="border:none">Nothing matches. <a href="/signals">Clear filters</a>.</div></td></tr>
+    <tr><td colspan="10"><div class="empty">Nothing matches. <a href="/signals">Clear filters</a>.</div></td></tr>
   {% endfor %}
   </tbody>
 </table>

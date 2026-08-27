@@ -14,9 +14,9 @@
 <h2 class="section">Moving this week <span class="note">signals with new evidence in the last 7 days</span></h2>
 {{ signal_table(movers) }}
 
-<div class="grid-2" style="margin-top: 2.4rem">
+<div class="grid-2 mt-section">
   <div>
-    <h2 class="section" style="margin-top:0">Newly detected <span class="note">first seen in the last 14 days</span></h2>
+    <h2 class="section mt-0">Newly detected <span class="note">first seen in the last 14 days</span></h2>
     {% for signal in newly_detected %}
       <div class="card">
         <div class="meta">first seen {{ signal.first_detected_at | dmy }} · {{ signal.evidence_count }} item{{ "s" if signal.evidence_count != 1 }}</div>
@@ -28,7 +28,7 @@
     {% endfor %}
   </div>
   <div>
-    <h2 class="section" style="margin-top:0">Needs more evidence <span class="note">single observations — early or noise</span></h2>
+    <h2 class="section mt-0">Needs more evidence <span class="note">single observations — early or noise</span></h2>
     {% for signal in weak_signals %}
       <div class="card">
         <div class="meta">{{ signal.evidence_count }} item · {{ signal.cities[:2] | join(", ") or "no city yet" }}</div>
@@ -48,9 +48,9 @@
 <div class="empty">No signal currently classifies as mainstream or saturated. When one does, it appears here — usually the moment to stop calling it early.</div>
 {% endif %}
 
-<div class="grid-2" style="margin-top: 2.4rem">
+<div class="grid-2 mt-section">
   <div>
-    <h2 class="section" style="margin-top:0">Where activity concentrates</h2>
+    <h2 class="section mt-0">Where activity concentrates</h2>
     {% for city in top_cities %}
       <div class="card">
         <h3><a href="/cities/{{ city.name | urlencode }}">{{ city.name }}</a></h3>
@@ -59,7 +59,7 @@
     {% endfor %}
   </div>
   <div>
-    <h2 class="section" style="margin-top:0">Latest evidence <span class="note"><a href="/stream">full stream →</a></span></h2>
+    <h2 class="section mt-0">Latest evidence <span class="note"><a href="/stream">full stream →</a></span></h2>
     {% for r in latest_items %}
       <div class="card">
         <div class="meta">{{ "Monitored source" if user_role == "demo" else r.source_name }} · {{ r.when | dmy("?") }}</div>
