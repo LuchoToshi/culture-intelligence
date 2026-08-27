@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% from "_macros.html" import signal_table %}
-{% block title %}Signals — Culture Intelligence{% endblock %}
+{% block title %}Signals - Culture Intelligence{% endblock %}
 {% block content %}
 <p class="eyebrow">Signal registry</p>
 <h1>Signals</h1>
-<p class="lede">Objects, aesthetics, behaviors, places and references that are appearing across the monitored universe. Each signal is a persistent entity accumulating evidence — the ledger shows twelve months of observations.</p>
+<p class="lede">Objects, aesthetics, behaviors, places and references that are appearing across the monitored universe. Each signal is a persistent entity accumulating evidence: the ledger shows twelve months of observations.</p>
 
 <form class="filterbar" method="get" action="/signals">
   <span class="label">Lifecycle</span>
@@ -22,5 +22,5 @@
 </form>
 
 {{ signal_table(rows) }}
-<p class="mono muted">{{ rows | length }} signal{{ "s" if rows | length != 1 }} shown · lifecycle stages are computed from evidence counts, source spread, time span and score averages — <a href="/taste-systems#method">how staging works</a></p>
+<p class="mono muted">{{ rows | length }} signal{{ "s" if rows | length != 1 }} shown · lifecycle stages are computed from evidence counts, source spread, time span and score averages: <a href="/taste-systems#method">how staging works</a></p>
 {% endblock %}

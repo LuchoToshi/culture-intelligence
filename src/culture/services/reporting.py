@@ -59,7 +59,7 @@ def _limitations(item: ContentItem) -> list[str]:
             notes.append("Analysis used the video transcript.")
         else:
             notes.append(
-                f"Transcript {item.transcript_status} — analysis is metadata-only; "
+                f"Transcript {item.transcript_status}: analysis is metadata-only; "
                 "the video's spoken content is unknown."
             )
     elif item.extraction_status == ExtractionStatus.PARTIAL.value:
@@ -182,7 +182,7 @@ def build_digest(
                 if values:
                     entity_bits.append(f"{label}: {', '.join(values[:8])}")
             if entity_bits:
-                parts.append("  Entities — " + " | ".join(entity_bits))
+                parts.append("  Entities: " + " | ".join(entity_bits))
             if analysis.possible_signals:
                 parts.append("  Signals: " + " / ".join(analysis.possible_signals))
             if analysis.consumer_archetypes:
@@ -254,14 +254,14 @@ def build_registry_changes(session: Session, since) -> list[str]:
         ):
             d = source.discovery_json
             new_candidates.append(
-                f"- **{source.name}** ({source.platform}) — cited by "
+                f"- **{source.name}** ({source.platform}): cited by "
                 f"{len(d.get('citing_sources', []))} sources, {d.get('mentions', '?')} mentions"
             )
 
     if transitions:
         lines.append("**Tier changes this window:**")
         for name, entry in transitions:
-            lines.append(f"- **{name}**: {entry['from']} → {entry['to']} — {entry['reason']}")
+            lines.append(f"- **{name}**: {entry['from']} → {entry['to']} ({entry['reason']})")
         lines.append("")
     if new_candidates:
         lines.append("**Newly discovered candidates (unverified, not yet collected):**")
@@ -270,10 +270,10 @@ def build_registry_changes(session: Session, since) -> list[str]:
     flagged = quiet_core_sources(session)
     if flagged:
         lines.append(
-            "**Core sources gone quiet (recommendation only — core is never auto-retired):**"
+            "**Core sources gone quiet (recommendation only, core is never auto-retired):**"
         )
         for source, quiet in flagged:
-            lines.append(f"- **{source.name}** — no new content in {quiet} days")
+            lines.append(f"- **{source.name}**: no new content in {quiet} days")
         lines.append("")
     if not lines:
         lines = ["No registry changes this window.", ""]
@@ -282,7 +282,7 @@ def build_registry_changes(session: Session, since) -> list[str]:
 
 def render_signal_appendix(rows: list) -> list[str]:
     lines = [
-        "# Part 3 — Signal Registry",
+        "# Part 3. Signal Registry",
         "",
         "_Persistent signals with accumulated evidence. Stages are computed from"
         " evidence (sources, time span, scores), not asserted weekly._",
@@ -291,11 +291,11 @@ def render_signal_appendix(rows: list) -> list[str]:
         "|---|---|---|---|---|---|---|",
     ]
     for signal, delta in rows:
-        first = signal.first_detected_at.date().isoformat() if signal.first_detected_at else "—"
+        first = signal.first_detected_at.date().isoformat() if signal.first_detected_at else "-"
         lines.append(
             f"| {signal.name} | {signal.lifecycle_stage} | {signal.evidence_count} "
             f"| {signal.source_count} | +{delta} "
-            f"| {', '.join(signal.cities[:3]) or '—'} | {first} |"
+            f"| {', '.join(signal.cities[:3]) or '-'} | {first} |"
         )
     return lines
 
@@ -360,19 +360,19 @@ def generate_report(
     )
 
     header = [
-        f"# Cultural Intelligence Report — {filename.removesuffix('.md')}",
+        f"# Cultural Intelligence Report: {filename.removesuffix('.md')}",
         "",
         f"_Window: {since.date().isoformat()} to {now.date().isoformat()} · "
         f"{len(sources)} monitored sources · {len(all_items)} content items · "
         f"synthesis model: {provider.model}_",
         "",
-        "# Part 1 — Complete Source Roundup",
+        "# Part 1. Complete Source Roundup",
         "",
     ]
     part1 = [
         render_source_section(source, items_by_source[source.id], analyses) for source in sources
     ]
-    part2 = ["# Part 2 — Weekly Cultural Intelligence", "", synthesis, ""]
+    part2 = ["# Part 2. Weekly Cultural Intelligence", "", synthesis, ""]
     part3 = render_signal_appendix(registry_rows) if registry_rows else []
     part3 += [""] + build_registry_changes(session, since)
 

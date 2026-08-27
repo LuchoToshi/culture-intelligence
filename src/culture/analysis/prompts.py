@@ -32,6 +32,8 @@ Core discipline — these rules override everything else:
   separate from interpretation. Never describe visuals that were not provided.
 - If the text is a short paywalled teaser, treat it as headline-level evidence and note the
   limitation in the summary.
+- summary and why_it_matters render on the site. Never use the em dash character (—)
+  anywhere in them; use a full stop, comma, colon or parentheses instead.
 
 Field guidance:
 - summary: 3-6 sentences on what the item actually says or shows.

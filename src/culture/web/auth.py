@@ -187,7 +187,7 @@ def send_login_email(email: str, token: str, base_url: str, settings: Settings) 
             "to": [email],
             "subject": "Sign in to Culture Intelligence",
             "html": (
-                f'<p>Click to sign in — this link works for 15 minutes:</p>'
+                f'<p>Click to sign in: this link works for 15 minutes.</p>'
                 f'<p><a href="{link}">{link}</a></p>'
                 f"<p>Didn't request this? Ignore this email.</p>"
             ),

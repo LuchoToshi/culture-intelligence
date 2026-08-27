@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros.html" import stage_chip %}
-{% block title %}Search — Culture Intelligence{% endblock %}
+{% block title %}Search - Culture Intelligence{% endblock %}
 {% block content %}
 <p class="eyebrow">Search</p>
 <h1>{% if q %}Results for “{{ q }}”{% else %}Search the intelligence{% endif %}</h1>
@@ -45,7 +45,7 @@
 {% endif %}
 
 {% if not (results.signals or results.cities or results.archetypes or results["items"] or results.sources) %}
-<div class="empty"><b>Nothing found for “{{ q }}”.</b> Try a shorter term — search matches names, descriptions and titles, not full text.</div>
+<div class="empty"><b>Nothing found for “{{ q }}”.</b> Try a shorter term. Search matches names, descriptions and titles, not full text.</div>
 {% endif %}
 {% endif %}
 {% endblock %}

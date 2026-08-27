@@ -4,7 +4,7 @@
 # on 2026-08-24 (automated probe: feed fetched and confirmed as RSS/Atom;
 # YouTube channel IDs resolved from the channel page and feed titles checked
 # against the expected channel name). Sources with no verified feed have blank
-# collection fields and an explanatory note — configuration is never invented.
+# collection fields and an explanatory note: configuration is never invented.
 #
 # Instagram sources are stored for future phases only. No Instagram collector
 # exists in V0 and none of them are active.
@@ -228,7 +228,7 @@ sources:
       RSS feed verified 2026-08-25 (70 entries via /rss.xml link tag).
       Japanese-language content. The site's Street Style section carries
       structured street-adoption evidence (person, occupation, city, brand
-      worn) beyond what the current per-item analysis schema extracts —
+      worn) beyond what the current per-item analysis schema extracts,
       flagged as a separate future feature, not built as part of this add.
 
   - name: HOUYHNHNM
@@ -247,7 +247,7 @@ sources:
     collection_method: rss
     notes: >-
       RSS feed verified 2026-08-25 (18 entries). The /en/ URL path is a site
-      section, not an English translation — content is Japanese-language.
+      section, not an English translation: content is Japanese-language.
 
   - name: EYESMAG
     platform: web
@@ -284,7 +284,7 @@ sources:
       feed discovery before ingestion can start. Operator instruction
       2026-08-25: MUSINSA's website, Instagram, YouTube and TikTok are one
       source producing evidence through multiple channels, not independent
-      confirmations — only the website is registered here; do not add the
+      confirmations: only the website is registered here; do not add the
       social channels as separate source rows.
 
   - name: 1 Granary
@@ -315,7 +315,7 @@ sources:
     tier: core
     active: true
     notes: >-
-      No working RSS feed found during verification on 2026-08-25 — RA's
+      No working RSS feed found during verification on 2026-08-25: RA's
       old public RSS endpoints (e.g. /xml/rss/news) now 404. Needs a custom
       collector or manual feed discovery before ingestion can start.
 
@@ -349,7 +349,7 @@ sources:
     active: true
     notes: >-
       No RSS feed found during verification on 2026-08-25. Has a MUNDIAL
-      Weekly email newsletter — worth checking for a subscriber-facing feed
+      Weekly email newsletter: worth checking for a subscriber-facing feed
       as a follow-up. Needs a custom collector or manual feed discovery
       before ingestion can start.
 
@@ -589,11 +589,11 @@ sources:
     collection_method: rss
     notes: >-
       RSS feed verified 2026-08-25 (19 entries). Also active on TikTok and
-      Instagram as @oldloserinbrooklyn — Substack is the primary channel;
+      Instagram as @oldloserinbrooklyn: Substack is the primary channel;
       the social accounts are not registered as separate sources (same
       operator instruction as MUSINSA: one organization, one source row).
-      Candidate for a future "leading indicator" score — whether her early
-      calls later get picked up by institutional media — not built yet.
+      Candidate for a future "leading indicator" score: whether her early
+      calls later get picked up by institutional media, not built yet.
 
   # ── Podcasts (feeds verified via Apple Podcasts lookup 2026-08-24) ───────
   - name: Blamo!
@@ -845,12 +845,12 @@ sources:
     notes: >-
       Collected automatically via Apify managed actors, same as the other
       Instagram sources (operator-authorized 2026-08-25). Johnny Cirillo's
-      street-style documentary project — observational counterweight to
+      street-style documentary project: observational counterweight to
       editorial/insider fashion media. Operator instruction 2026-08-25: do
-      not infer occupation, income, or social identity from appearance —
+      not infer occupation, income, or social identity from appearance:
       describe clothing, styling and objects only, as visual evidence.
 
-  # ── Discovery candidates (handles not verified — no URL on purpose) ──────
+  # ── Discovery candidates (handles not verified, no URL on purpose) ──────
   - name: Dalston Superstoned
     platform: instagram
     source_type: meme_account
@@ -861,7 +861,7 @@ sources:
     tier: candidate
     active: false
     notes: >-
-      Discovery candidate from the spec. Handle/URL not verified — do not
+      Discovery candidate from the spec. Handle/URL not verified: do not
       assume the account URL. Verify before promoting to watch.
 
   - name: West LA Memes
@@ -874,5 +874,5 @@ sources:
     tier: candidate
     active: false
     notes: >-
-      Discovery candidate from the spec. Handle/URL not verified — do not
+      Discovery candidate from the spec. Handle/URL not verified: do not
       assume the account URL. Verify before promoting to watch.

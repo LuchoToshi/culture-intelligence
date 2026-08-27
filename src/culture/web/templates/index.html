@@ -6,7 +6,7 @@
   <h1>What is moving in urban taste</h1>
   <p class="freshness">
     Tracking {{ counts.signals }} signals across {{ counts.sources }} sources.
-    {% if freshness.pending %}<span class="live">{{ freshness.pending }} new items are being analyzed right now</span> — figures will sharpen as they land.{% else %}All collected evidence is analyzed.{% endif %}
+    {% if freshness.pending %}<span class="live">{{ freshness.pending }} new items are being analyzed right now</span>. Figures will sharpen as they land.{% else %}All collected evidence is analyzed.{% endif %}
     {% if latest_report %} Weekly synthesis: <a href="/reports/{{ latest_report }}">{{ latest_report }}</a>.{% endif %}
   </p>
 </div>
@@ -28,7 +28,7 @@
     {% endfor %}
   </div>
   <div>
-    <h2 class="section mt-0">Needs more evidence <span class="note">single observations — early or noise</span></h2>
+    <h2 class="section mt-0">Needs more evidence <span class="note">single observations, early or noise</span></h2>
     {% for signal in weak_signals %}
       <div class="card">
         <div class="meta">{{ signal.evidence_count }} item · {{ signal.cities[:2] | join(", ") or "no city yet" }}</div>
@@ -45,7 +45,7 @@
 {% if approaching %}
 {{ signal_table(approaching) }}
 {% else %}
-<div class="empty">No signal currently classifies as mainstream or saturated. When one does, it appears here — usually the moment to stop calling it early.</div>
+<div class="empty">No signal currently classifies as mainstream or saturated. When one does, it appears here, usually the moment to stop calling it early.</div>
 {% endif %}
 
 <div class="grid-2 mt-section">

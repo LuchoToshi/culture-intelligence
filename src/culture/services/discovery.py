@@ -253,7 +253,7 @@ def run_discovery(
                 collection_notes=(
                     f"Discovered automatically ({candidate.via}): cited by "
                     f"{len(candidate.citing_source_ids)} independent sources across "
-                    f"{len(candidate.item_ids)} items. Verify before activating — "
+                    f"{len(candidate.item_ids)} items. Verify before activating: "
                     "URL/handle is inferred, not confirmed."
                 ),
                 discovery_json=discovery,

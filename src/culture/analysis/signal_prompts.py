@@ -29,6 +29,8 @@ Linking discipline:
 - Signal names and descriptions render on public pages. The disclosure rules
   below apply to them with zero tolerance; the note field is internal and may
   reference the source.
+- Never use the em dash character (—) in a name or description; use a full
+  stop, comma, colon or parentheses instead.
 
 """ + DISCLOSURE_RULES
 

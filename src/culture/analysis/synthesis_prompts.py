@@ -27,6 +27,8 @@ Discipline:
 - Be specific. "Watch running" is worthless. "Watch whether technical running apparel
   moves beyond run clubs into everyday creative wardrobes in London and Amsterdam" is
   the standard.
+- This report renders on the site. Never use the em dash character (—) anywhere in it;
+  use a full stop, comma, colon or parentheses instead.
 
 Write the report as Markdown with exactly these ## sections, in this order:
 Executive Brief (the 5-10 developments that mattered most, numbered),

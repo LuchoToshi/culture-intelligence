@@ -1,20 +1,20 @@
 {% extends "base.html" %}
 {% from "_macros.html" import stage_chip %}
-{% block title %}Taste Systems — Culture Intelligence{% endblock %}
+{% block title %}Taste Systems - Culture Intelligence{% endblock %}
 {% block content %}
 <p class="eyebrow">Taste systems</p>
 <h1>Taste systems are forming</h1>
-<p class="lede">A taste system is a coherent combination of products, aesthetics, places, behaviors and references adopted together by a recognizable group — the unit brands actually need to see. Detecting one requires signals to repeatedly co-occur across independent evidence. The registry is young: what follows is the real connective tissue observed so far, not named systems.</p>
+<p class="lede">A taste system is a coherent combination of products, aesthetics, places, behaviors and references adopted together by a recognizable group: the unit brands actually need to see. Detecting one requires signals to repeatedly co-occur across independent evidence. The registry is young: what follows is the real connective tissue observed so far, not named systems.</p>
 
 <h2 class="section">Signal pairs sharing evidence <span class="note">computed from items that evidence both signals</span></h2>
-<p class="finetext">Co-occurrence is not affinity, causality or influence — it only means the same evidence items support both signals. Strength reflects how often that has recurred: a single shared item is the weakest possible connection.</p>
+<p class="finetext">Co-occurrence is not affinity, causality or influence: it only means the same evidence items support both signals. Strength reflects how often that has recurred: a single shared item is the weakest possible connection.</p>
 {% if pairs %}
 {% for a, b, shared, shared_cities in pairs %}
   <div class="card">
     <div class="meta">
       {% if shared >= 5 %}<span class="delta-up">Recurring connection</span>
       {% elif shared >= 2 %}<span>Repeated co-occurrence</span>
-      {% else %}<span class="muted">Single co-occurrence — weakest possible link</span>{% endif %}
+      {% else %}<span class="muted">Single co-occurrence, weakest possible link</span>{% endif %}
       · {{ shared }} shared evidence item{{ "s" if shared != 1 }}
       {% if shared_cities %} · shared cities: {{ shared_cities | join(", ") }}{% endif %}
     </div>
@@ -33,6 +33,6 @@
   co-occurring signals, archetypes and places into named taste systems. Everything above
   is computed directly from stored evidence; nothing is invented. When enough signals
   share evidence across independent sources and cities, a dedicated analysis stage will
-  propose named systems here — with their full evidence trail, exactly like signals today.
+  propose named systems here, with their full evidence trail, exactly like signals today.
 </div>
 {% endblock %}

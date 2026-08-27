@@ -5,14 +5,14 @@
 {# Five-cell typographic score meter (design: ScoreMeter). Never blend the three
    registry scores into one number; accent renders oxblood only at value >= 4
    (saturation semantics). #}
-{% macro score_meter(value, max=5, accent=False, show_numeral=True, none_text="—") -%}
+{% macro score_meter(value, max=5, accent=False, show_numeral=True, none_text="-") -%}
 {% if value %}<span class="meter{{ ' hot' if accent and value >= 4 }}" role="img" aria-label="{{ value }} of {{ max }}"><span class="cells" aria-hidden="true">{% for i in range(max) %}<span class="cell{{ ' on' if i < value }}"></span>{% endfor %}</span>{% if show_numeral %}<span class="n" aria-hidden="true">{{ value }}/{{ max }}</span>{% endif %}</span>{% else %}<span class="muted">{{ none_text }}</span>{% endif %}
 {%- endmacro %}
 
 {# The † divergence dagger. The rule lives in queries.signal_diverges — one
    definition everywhere. Auto-renders — never suppress it (design rule). #}
 {% macro divergence(signal) -%}
-{% if signal_diverges(signal) %} <span class="dagger" role="img" aria-label="Editorial attention exceeds adoption" title="Editorial attention exceeds adoption — hype risk, verify before acting">†</span>{% endif %}
+{% if signal_diverges(signal) %} <span class="dagger" role="img" aria-label="Editorial attention exceeds adoption" title="Editorial attention exceeds adoption: hype risk, verify before acting">†</span>{% endif %}
 {%- endmacro %}
 
 {% macro tier_badge(tier) -%}
@@ -61,7 +61,7 @@
       <td>{{ row.spark | safe }}</td>
       <td class="num">{{ row.signal.evidence_count }}</td>
       <td class="num">{{ row.signal.source_count }}</td>
-      <td class="num">{% if row.delta_7d %}<span class="delta-up">+{{ row.delta_7d }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+      <td class="num">{% if row.delta_7d %}<span class="delta-up">+{{ row.delta_7d }}</span>{% else %}<span class="muted">-</span>{% endif %}</td>
       <td class="mono muted">{{ row.signal.cities[:2] | join(", ") }}</td>
       <td>{{ score_meter(row.signal.editorial_momentum_score, show_numeral=False) }}</td>
       <td>{{ score_meter(row.signal.urban_adoption_score, show_numeral=False) }}</td>
@@ -86,7 +86,7 @@
   <div class="headline"><a href="/items/{{ item.id }}">{{ item.title or "(untitled)" }}</a></div>
   {% if limitations %}{% for l in limitations %}<div class="limitation">{{ l }}</div>{% endfor %}{% endif %}
   {% if summary %}<p>{{ summary }}</p>{% endif %}
-  {% if note %}<div class="curator"><span class="mono muted">WHY IT'S EVIDENCE</span> — {{ note }}</div>{% endif %}
+  {% if note %}<div class="curator"><span class="mono muted">WHY IT'S EVIDENCE</span>: {{ note }}</div>{% endif %}
   {% if show_link and item.url %}<p class="mono"><a href="{{ item.url }}" rel="noopener">Open original ↗</a></p>{% endif %}
 </article>
 {%- endmacro %}

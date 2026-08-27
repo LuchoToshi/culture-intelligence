@@ -227,7 +227,7 @@ def test_report_includes_signal_registry(session, tmp_path):
     result = generate_report(session, provider, days=7, reports_dir=tmp_path)
     text = result.path.read_text()
 
-    assert "# Part 3 — Signal Registry" in text
+    assert "# Part 3. Signal Registry" in text
     assert "| Workwear entering mainstream London menswear |" in text
     # synthesis prompt received the registry with the weekly delta
     assert "PERSISTENT SIGNAL REGISTRY" in provider.prompts[0]

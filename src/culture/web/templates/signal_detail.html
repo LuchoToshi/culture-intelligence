@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros.html" import stage_chip, evidence_record, score_meter, stat_block, divergence with context %}
-{% block title %}{{ signal.name }} — Culture Intelligence{% endblock %}
+{% block title %}{{ signal.name }} - Culture Intelligence{% endblock %}
 {% block content %}
 <p class="eyebrow"><a href="/signals">Signals</a> <span aria-hidden="true">/</span> <span>Signal profile</span></p>
 <h1>{{ signal.name }}{{ divergence(signal) }}</h1>
@@ -38,7 +38,7 @@
 {% endif %}
 
 {% if related %}
-<h2 class="section">Appears alongside <span class="note">signals sharing evidence items — computed, not asserted</span></h2>
+<h2 class="section">Appears alongside <span class="note">signals sharing evidence items, computed, not asserted</span></h2>
 {% for other, shared in related %}
   <div class="card">
     <div class="meta">{{ shared }} shared evidence item{{ "s" if shared != 1 }}</div>
@@ -66,13 +66,13 @@
   {% endfor %}
 </div>
 
-<h2 class="section">Diffusion story <span class="note">order of appearance in monitored media — not proof of adoption order</span></h2>
+<h2 class="section">Diffusion story <span class="note">order of appearance in monitored media, not proof of adoption order</span></h2>
 {% if diffusion_steps %}
 <div class="evidence-list">
   {% for step in diffusion_steps %}
   <div class="record">
     <div class="provenance"><span class="kind kind-inference"></span><span class="mono">{{ step.when | dmy("?") }}</span></div>
-    <p style="margin:0"><strong>{{ "Monitored source" if user_role == "demo" else step.source_name }}</strong>{% if step.cities %} · {{ step.cities | join(", ") }}{% endif %} — {{ step.item.title or "(untitled)" }}</p>
+    <p style="margin:0"><strong>{{ "Monitored source" if user_role == "demo" else step.source_name }}</strong>{% if step.cities %} · {{ step.cities | join(", ") }}{% endif %}: {{ step.item.title or "(untitled)" }}</p>
   </div>
   {% endfor %}
 </div>

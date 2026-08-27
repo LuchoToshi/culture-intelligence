@@ -1,7 +1,7 @@
-/* Culture Intelligence design tokens — runtime copy.
+/* Culture Intelligence design tokens: runtime copy.
    Source of truth: design/tokens/*.css (Claude Design export). Keep in sync both ways.
    Fonts (Newsreader + Archivo) load via <link> in the base templates instead of the
-   @import in design/tokens/fonts.css — same families, faster with preconnect. */
+   @import in design/tokens/fonts.css; same families, faster with preconnect. */
 :root {
   /* base */
   --ci-paper: #FAFAF7;

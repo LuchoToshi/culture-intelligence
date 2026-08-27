@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros.html" import stage_chip %}
-{% block title %}{{ item.title or "Evidence" }} — Culture Intelligence{% endblock %}
+{% block title %}{{ item.title or "Evidence" }} - Culture Intelligence{% endblock %}
 {% block content %}
 <p class="eyebrow"><a href="/stream">Evidence</a> <span aria-hidden="true">/</span> <span>Source record</span></p>
 <h1>{{ item.title or "(untitled)" }}</h1>
@@ -21,7 +21,7 @@
 <article class="record">
   <div class="provenance"><span class="kind kind-model"></span></div>
   <p class="reading">{{ analysis.summary }}</p>
-  {% if analysis.why_it_matters %}<div class="curator"><span class="mono muted">WHY IT MATTERS</span> — {{ analysis.why_it_matters }}</div>{% endif %}
+  {% if analysis.why_it_matters %}<div class="curator"><span class="mono muted">WHY IT MATTERS</span>: {{ analysis.why_it_matters }}</div>{% endif %}
 </article>
 
 {% if analysis.facts_json.claims %}
@@ -45,7 +45,7 @@
 </div>
 {% endif %}
 {% else %}
-<div class="empty"><b>Not analyzed yet.</b> This item is in the analysis queue — its extraction and interpretation will appear here once the pipeline processes it.</div>
+<div class="empty"><b>Not analyzed yet.</b> This item is in the analysis queue: its extraction and interpretation will appear here once the pipeline processes it.</div>
 {% endif %}
 
 {% if signals %}
@@ -59,7 +59,7 @@
 {% endif %}
 
 {% if item.raw_text %}
-<h2 class="section">Stored text <span class="note">exactly as extracted — never edited</span></h2>
+<h2 class="section">Stored text <span class="note">exactly as extracted, never edited</span></h2>
 <details class="disclosure">
   <summary>Show extracted text ({{ item.raw_text | length }} characters)</summary>
   <article class="record"><div class="provenance"><span class="kind kind-observed"></span></div>

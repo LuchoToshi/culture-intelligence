@@ -1,6 +1,6 @@
 {% extends "public_base.html" %}
 
-{% block title %}Urban Taste Intelligence — Understand the scene before it becomes a trend{% endblock %}
+{% block title %}Urban Taste Intelligence - Understand the scene before it becomes a trend{% endblock %}
 
 {% block extra_style %}
 <style>
@@ -184,7 +184,7 @@
         {% endfor %}
       </div>
       {% if city_link_a and city_link_b %}
-      <div class="pulse-cities"><span class="path">{{ city_link_a }} → {{ city_link_b }}</span> — signals appearing across both cities</div>
+      <div class="pulse-cities"><span class="path">{{ city_link_a }} → {{ city_link_b }}</span>: signals appearing across both cities</div>
       {% endif %}
       <div class="pulse-evidence">
         <div class="stat"><b>{{ hero_stats.observations }}</b><span>Observations</span></div>
@@ -347,7 +347,7 @@
     </div>
     {% else %}
     <div class="week-empty">
-      <p>The first public brief is coming soon — a weekly field report on the fashion signals, scenes, people, places and cultural identities shaping influential cities.</p>
+      <p>The first public brief is coming soon: a weekly field report on the fashion signals, scenes, people, places and cultural identities shaping influential cities.</p>
     </div>
     {% endif %}
   </div>
@@ -358,7 +358,7 @@
   <div class="wrap">
     <div class="eyebrow">CLOCKED</div>
     <h2 style="font-family:var(--font-display);font-weight:500;font-size:clamp(1.5rem, 3vw, 2rem);margin:0.5rem 0 0.7rem;">From the publication.</h2>
-    <p style="color:var(--ink-2);max-width:62ch;margin:0 0 2rem;">Clocked — the weekly editorial on the cultural movement behind the signals. What it means, not just what the evidence shows.</p>
+    <p style="color:var(--ink-2);max-width:62ch;margin:0 0 2rem;">Clocked: the weekly editorial on the cultural movement behind the signals. What it means, not just what the evidence shows.</p>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.4rem;">
       {% for post in publication_posts %}
       <a href="{{ post.url }}" rel="noopener" style="display:block;background:var(--surface);border:1px solid var(--rule);padding:1.4rem;">

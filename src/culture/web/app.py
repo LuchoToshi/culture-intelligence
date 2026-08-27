@@ -82,18 +82,18 @@ def item_limitations(item: ContentItem) -> list[str]:
     notes = []
     if item.content_type == "post":
         if item.metadata_json.get("images"):
-            notes.append("Manually submitted social post — analysis includes the attached image.")
+            notes.append("Manually submitted social post: analysis includes the attached image.")
         else:
-            notes.append("Manually submitted social post — caption only, visual not captured.")
+            notes.append("Manually submitted social post: caption only, visual not captured.")
     elif item.content_type == "podcast":
-        notes.append("Podcast episode — analysis is based on show notes only.")
+        notes.append("Podcast episode: analysis is based on show notes only.")
     elif item.content_type == "video":
         if item.transcript_status != TranscriptStatus.AVAILABLE.value:
-            notes.append("No transcript — analysis is metadata-only; spoken content unknown.")
+            notes.append("No transcript: analysis is metadata-only; spoken content unknown.")
     elif item.extraction_status == ExtractionStatus.PARTIAL.value:
-        notes.append("Partial extraction — likely a teaser or paywall stub.")
+        notes.append("Partial extraction: likely a teaser or paywall stub.")
     elif item.extraction_status == ExtractionStatus.FAILED.value:
-        notes.append("Text could not be extracted — analysis is metadata-only.")
+        notes.append("Text could not be extracted: analysis is metadata-only.")
     return notes
 
 
@@ -108,7 +108,7 @@ def stage_reason(signal: Signal) -> str:
         f"across {signal.source_count} source{'s' if signal.source_count != 1 else ''}{span}."
     )
     if signal.evidence_count <= 2:
-        base += " Early classification — treat as provisional until more sources corroborate."
+        base += " Early classification: treat as provisional until more sources corroborate."
     return base
 
 
@@ -259,7 +259,7 @@ def _mount_auth_routes(app: FastAPI) -> None:
         return response
 
 
-def _dmy(value: datetime | None, fallback: str = "—") -> str:
+def _dmy(value: datetime | None, fallback: str = "-") -> str:
     """User-facing date format is DD-MM-YYYY everywhere (operator standard).
     Machine timestamps stay ISO/UTC internally — this is display-only."""
     if value is None:
@@ -342,7 +342,7 @@ def create_app(
 
     def hero_stats(top: Signal | None) -> dict:
         if top is None:
-            return {"observations": 0, "sources": 0, "first_detected": "—", "confidence": "—"}
+            return {"observations": 0, "sources": 0, "first_detected": "-", "confidence": "-"}
         detected = _dmy(top.first_detected_at)
         return {
             "observations": top.evidence_count,
@@ -675,9 +675,9 @@ def create_app(
         # The single-sighting section is collapsed by default: most
         # observations live there, and one sighting is not a consumer group.
         sections = [
-            ("recurring", "Recurring — independently corroborated", True),
-            ("repeated", "Repeated — one observer, seen more than once", True),
-            ("single", "Single sighting — not yet corroborated", False),
+            ("recurring", "Recurring: independently corroborated", True),
+            ("repeated", "Repeated: one observer, seen more than once", True),
+            ("single", "Single sighting: not yet corroborated", False),
         ]
         by_state: dict[str, list] = {"recurring": [], "repeated": [], "single": []}
         for g in groups:

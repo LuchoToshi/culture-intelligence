@@ -1,6 +1,6 @@
 {% extends "public_base.html" %}
 
-{% block title %}{% if report %}{{ report.iso_week }} — {% endif %}Signal report — Urban Taste Intelligence{% endblock %}
+{% block title %}{% if report %}{{ report.iso_week }} - {% endif %}Signal report - Urban Taste Intelligence{% endblock %}
 
 {% block extra_style %}
 <style>
@@ -28,7 +28,7 @@
     <div class="brief-meta">{{ report.sources_covered }} sources · {{ report.items_covered }} items covered · generated {{ report.generated_at | dmy }}</div>
     {% else %}
     <h1>The first public signal report is coming soon.</h1>
-    <p style="color:var(--ink-2);max-width:60ch;">We publish a weekly field report on the fashion signals, scenes, people, places and cultural identities shaping influential cities. Check back shortly — or <a href="/intelligence" style="color:var(--ink);text-decoration:underline;">explore the live signal registry</a> in the meantime.</p>
+    <p style="color:var(--ink-2);max-width:60ch;">We publish a weekly field report on the fashion signals, scenes, people, places and cultural identities shaping influential cities. Check back shortly, or <a href="/intelligence" style="color:var(--ink);text-decoration:underline;">explore the live signal registry</a> in the meantime.</p>
     {% endif %}
   </div>
 </section>

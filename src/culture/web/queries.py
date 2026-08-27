@@ -402,7 +402,7 @@ def _city_assessment(
         )
     if gap == "under_sourced":
         return (
-            f"{signals} signals against {local} local source{'s' if local != 1 else ''} — "
+            f"{signals} signals against {local} local source{'s' if local != 1 else ''}: "
             "coverage lags the activity."
         )
     if signals == 0:

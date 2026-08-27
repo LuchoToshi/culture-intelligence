@@ -1,6 +1,6 @@
 {% extends "public_base.html" %}
 
-{% block title %}Intelligence — Urban Taste Intelligence{% endblock %}
+{% block title %}Intelligence - Urban Taste Intelligence{% endblock %}
 
 {% block extra_style %}
 <style>
@@ -29,7 +29,7 @@
   <div class="wrap">
     <div class="eyebrow">INTELLIGENCE</div>
     <h1>Signals currently moving through fashion and urban culture.</h1>
-    <p>A public preview of the active signal registry — name, city, lifecycle stage and evidence weight. Full source-level evidence, historical timelines and the relationship graph are available to logged-in users.</p>
+    <p>A public preview of the active signal registry: name, city, lifecycle stage and evidence weight. Full source-level evidence, historical timelines and the relationship graph are available to logged-in users.</p>
   </div>
 </section>
 
@@ -39,7 +39,7 @@
       {% for row in rows %}
       <a class="intel-row" href="/login?next=/signals/{{ row.signal.id }}">
         <span class="name">{{ row.signal.name }}</span>
-        <span class="meta">{{ (row.signal.cities | public_city_first) or "—" }}</span>
+        <span class="meta">{{ (row.signal.cities | public_city_first) or "-" }}</span>
         <span class="meta">{{ row.signal.evidence_count }} obs · {{ row.signal.source_count }} sources</span>
         <span class="stage {{ row.signal.lifecycle_stage }}">{{ stage_labels[row.signal.lifecycle_stage] }}</span>
       </a>

@@ -1,5 +1,5 @@
 {% extends "public_base.html" %}
-{% block title %}The Brief — Urban Taste Intelligence{% endblock %}
+{% block title %}The Brief - Urban Taste Intelligence{% endblock %}
 {% block meta_description %}The Brief: culture intelligence on the signals, taste systems, and consumer shifts shaping what comes next. Essays built from a monitored evidence network.{% endblock %}
 
 {% block extra_style %}
@@ -30,7 +30,7 @@
 <div class="wrap tb-wrap">
   <div class="eyebrow">THE BRIEF</div>
   <h1>What we clocked, and what it means.</h1>
-  <p class="lede">Essays from the team behind this platform — culture intelligence on the signals, taste systems, and consumer shifts shaping what comes next. Written from the evidence, without naming the network that gathers it.</p>
+  <p class="lede">Essays from the team behind this platform: culture intelligence on the signals, taste systems, and consumer shifts shaping what comes next. Written from the evidence, without naming the network that gathers it.</p>
 
   {% for post in posts %}
   <a class="tb-post" href="{{ post.url }}" rel="noopener">
@@ -43,7 +43,7 @@
     {% if post.tags %}<div class="tags">{% for t in post.tags %}<span>{{ t }}</span>{% endfor %}</div>{% endif %}
   </a>
   {% else %}
-  <div class="tb-empty"><b>No posts yet.</b> The first essays are on their way — the weekly signal work comes first, the writing follows it.</div>
+  <div class="tb-empty"><b>No posts yet.</b> The first essays are on their way: the weekly signal work comes first, the writing follows it.</div>
   {% endfor %}
 
   <p class="tb-note">
