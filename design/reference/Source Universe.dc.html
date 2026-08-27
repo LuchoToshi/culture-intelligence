@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #FAFAF7; color: #111; }
+  a { color: #111; } a:hover { color: #6B1D26; }
+  ::selection { background: #6B1D26; color: #FAFAF7; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</helmet>
+<dc-import name="CommandPalette" hint-size="100%,0px"></dc-import>
+<div data-screen-label="Source Universe" style="min-height: 100vh; background: #FAFAF7; color: #111; font-family: 'Archivo', sans-serif; padding: 0 48px 80px 48px; max-width: 1440px; margin: 0 auto; box-sizing: border-box;">
+
+  <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 28px 0 14px 0; border-bottom: 2px solid #111;">
+    <div style="font-size: 12px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase;">Culture Intelligence</div>
+    <div style="display: flex; gap: 32px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #555; align-items: baseline;">
+      <a href="Signal Registry.dc.html" style="color: #555; text-decoration: none;">Signals</a>
+      <a href="Weekly Report.dc.html" style="color: #555; text-decoration: none;">Reports</a>
+      <div style="color: #111; border-bottom: 1px solid #111; padding-bottom: 2px;">Sources</div>
+      <a href="City Intelligence.dc.html" style="color: #555; text-decoration: none;">Cities</a>
+      <button onClick="{{ openPalette }}" style="background: none; border: none; padding: 0; cursor: pointer; font-family: 'Archivo', sans-serif; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #999;" style-hover="color: #111;">Search ⌘K</button>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 300px; gap: 48px; align-items: end; padding: 40px 0 28px 0; border-bottom: 1px solid #111;">
+    <div>
+      <h1 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: 52px; line-height: 1.02; margin: 0; letter-spacing: -0.01em;">Source Universe</h1>
+      <div style="margin-top: 12px; font-size: 12px; color: #555; letter-spacing: 0.04em; max-width: 560px;">Every publication and channel the system reads, by tier. Collection failures are reported, never hidden — a silent source is a fact about coverage, not an absence of one.</div>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; border-left: 1px solid #C9C7BF;">
+      <div style="padding: 0 16px;">
+        <div style="font-family: 'Newsreader', serif; font-size: 28px; font-variant-numeric: tabular-nums;">{{ totalSources }}</div>
+        <div style="font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: #777; margin-top: 2px;">Sources</div>
+      </div>
+      <div style="padding: 0 16px; border-left: 1px solid #E4E2DA;">
+        <div style="font-family: 'Newsreader', serif; font-size: 28px; font-variant-numeric: tabular-nums;">{{ healthyCount }}</div>
+        <div style="font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: #777; margin-top: 2px;">Healthy</div>
+      </div>
+      <div style="padding: 0 16px; border-left: 1px solid #E4E2DA;">
+        <div style="font-family: 'Newsreader', serif; font-size: 28px; font-variant-numeric: tabular-nums; color: #6B1D26;">{{ failingCount }}</div>
+        <div style="font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: #777; margin-top: 2px;">Failing</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; align-items: baseline; gap: 12px; padding: 12px 0; border-bottom: 1px solid #C9C7BF;">
+    <span style="display: inline-block; width: 7px; height: 7px; background: #6B1D26; align-self: center;"></span>
+    <span style="font-size: 9px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #6B1D26; white-space: nowrap;">Collection alert</span>
+    <span style="font-size: 11px; color: #555; letter-spacing: 0.02em;">{{ failureDigest }}</span>
+  </div>
+
+  <sc-for list="{{ tiers }}" as="tier" hint-placeholder-count="4">
+    <div style="padding-top: 36px;">
+      <div style="display: flex; align-items: baseline; gap: 14px; padding-bottom: 10px; border-bottom: 2px solid #111;">
+        <span style="font-family: 'Newsreader', serif; font-size: 24px;">{{ tier.name }}</span>
+        <span style="font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: #777;">{{ tier.desc }}</span>
+        <span style="margin-left: auto; font-size: 11px; color: #777; font-variant-numeric: tabular-nums;">{{ tier.count }}</span>
+      </div>
+      <div style="display: grid; grid-template-columns: minmax(220px,1.2fr) 110px 130px minmax(140px,0.8fr) 120px 110px minmax(180px,1fr); gap: 0 20px; padding: 10px 0 8px 0; border-bottom: 1px solid #C9C7BF; font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: #777;">
+        <div>Source</div>
+        <div>Platform</div>
+        <div>Geography</div>
+        <div>Cadence</div>
+        <div style="text-align: right;">Items · 12 wk</div>
+        <div>Last collected</div>
+        <div>Feed health</div>
+      </div>
+      <sc-for list="{{ tier.sources }}" as="s" hint-placeholder-count="3">
+        <div style="display: grid; grid-template-columns: minmax(220px,1.2fr) 110px 130px minmax(140px,0.8fr) 120px 110px minmax(180px,1fr); gap: 0 20px; align-items: baseline; padding: 12px 0; border-bottom: 1px solid #E4E2DA; opacity: {{ s.opacity }};">
+          <div style="font-family: 'Newsreader', serif; font-size: 19px; line-height: 1.2;">{{ s.name }}</div>
+          <div style="font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #555;">{{ s.platform }}</div>
+          <div style="font-size: 11px; color: #555;">{{ s.geo }}</div>
+          <div style="font-size: 11px; color: #555;">{{ s.cadence }}</div>
+          <div style="text-align: right; font-size: 13px; font-variant-numeric: tabular-nums;">{{ s.items }}</div>
+          <div style="font-size: 11px; color: #555; font-variant-numeric: tabular-nums;">{{ s.last }}</div>
+          <div style="display: flex; align-items: baseline; gap: 8px;">
+            <span style="display: inline-block; width: 8px; height: 8px; background: {{ s.dotBg }}; border: 1px solid {{ s.dotBorder }}; border-radius: {{ s.dotRadius }};"></span>
+            <span style="font-size: 10px; letter-spacing: 0.08em; color: {{ s.healthColor }}; line-height: 1.4;">{{ s.health }}</span>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </sc-for>
+
+  <div style="margin-top: 40px; border-top: 2px solid #111; padding-top: 14px;">
+    <div style="display: flex; align-items: baseline; gap: 14px;">
+      <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase;">System Recommendations</div>
+      <div style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #777;">Generated from collection history · pending review</div>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 32px; margin-top: 16px;">
+      <div style="border-left: 1px solid #C9C7BF; padding-left: 16px;">
+        <div style="font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: #6B1D26; font-weight: 600;">Promote</div>
+        <div style="font-family: 'Newsreader', serif; font-size: 16px; margin-top: 6px;">Desfile Diario → Watch</div>
+        <div style="font-size: 11px; color: #555; line-height: 1.5; margin-top: 6px;">Produced the first adoption evidence for boxing-gym apparel, corroborated in W35. Seven items, zero parse errors since intake.</div>
+      </div>
+      <div style="border-left: 1px solid #C9C7BF; padding-left: 16px;">
+        <div style="font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: #6B1D26; font-weight: 600;">Recruit</div>
+        <div style="font-family: 'Newsreader', serif; font-size: 16px; margin-top: 6px;">Mexico City coverage</div>
+        <div style="font-size: 11px; color: #555; line-height: 1.5; margin-top: 6px;">Two signals now touch Mexico City through a single active source. The city's output-to-coverage ratio is the highest in the universe.</div>
+      </div>
+      <div style="border-left: 1px solid #C9C7BF; padding-left: 16px;">
+        <div style="font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: #6B1D26; font-weight: 600;">Investigate</div>
+        <div style="font-family: 'Newsreader', serif; font-size: 16px; margin-top: 6px;">The Gradient truncation</div>
+        <div style="font-size: 11px; color: #555; line-height: 1.5; margin-top: 6px;">Feed capped at 3 items since W33 — Milan runway coverage likely undercounted in W34–W35 reports. Resolve before the W36 synthesis.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; justify-content: space-between; padding: 18px 0; font-size: 10px; color: #777; letter-spacing: 0.04em;">
+    <div style="display: flex; gap: 24px;">
+      <div style="display: flex; align-items: baseline; gap: 7px;"><span style="display: inline-block; width: 8px; height: 8px; background: #111;"></span>OK</div>
+      <div style="display: flex; align-items: baseline; gap: 7px;"><span style="display: inline-block; width: 8px; height: 8px; background: #6B1D26;"></span>Failing — needs attention</div>
+      <div style="display: flex; align-items: baseline; gap: 7px;"><span style="display: inline-block; width: 8px; height: 8px; border: 1px solid #999; box-sizing: border-box;"></span>Not yet collected / dormant</div>
+    </div>
+    <div style="letter-spacing: 0.14em; text-transform: uppercase;">Last full poll · 30 Aug 2026 06:00 UTC</div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;showDormant&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const showDormant = this.props.showDormant ?? true;
+    const st = {
+      ok: { dotBg: '#111', dotBorder: '#111', healthColor: '#555', opacity: 1, dotRadius: '0' },
+      fail: { dotBg: '#6B1D26', dotBorder: '#6B1D26', healthColor: '#6B1D26', opacity: 1, dotRadius: '0' },
+      idle: { dotBg: 'transparent', dotBorder: '#999', healthColor: '#999', opacity: 0.65, dotRadius: '0' }
+    };
+    const S = (name, platform, geo, cadence, items, last, kind, health) =>
+      Object.assign({ name, platform, geo, cadence, items, last, health }, st[kind]);
+    const tiers = [
+      { name: 'Core', desc: 'Load-bearing · weighted fully in synthesis', sources: [
+        S('Field Notes CPH', 'RSS', 'Copenhagen', '~5 items / wk', 61, 'W35 · 30 Aug', 'ok', 'OK · 200, parsed clean'),
+        S('The Cutting Room', 'RSS', 'London', '~7 items / wk', 84, 'W35 · 30 Aug', 'ok', 'OK · 200, parsed clean'),
+        S('Corner Archive', 'Scrape', 'Tokyo', '~4 items / wk', 52, 'W35 · 29 Aug', 'ok', 'OK · selector stable'),
+        S('The Gradient', 'RSS', 'Milan', '~3 items / wk', 38, 'W35 · 30 Aug', 'fail', 'FAILING · feed truncated to 3 items since W33 — items likely missed')]},
+      { name: 'Watch', desc: 'Proven relevance · building track record', sources: [
+        S('Softline Journal', 'RSS', 'Berlin', '~3 items / wk', 29, 'W35 · 30 Aug', 'ok', 'OK · 200, parsed clean'),
+        S('Mireille P.', 'YouTube API', 'Paris', '~1 video / wk', 11, 'W35 · 28 Aug', 'ok', 'OK · quota nominal'),
+        S('Hem & Haw', 'YouTube API', 'New York', '~2 videos / wk', 16, 'W33 · 14 Aug', 'fail', 'FAILING · channel ID resolves, zero uploads returned for 2 wks — verify handle'),
+        S('Knit District', 'Scrape', 'Seoul', '~2 items / wk', 14, 'W34 · 21 Aug', 'ok', 'OK · silent this week, feed healthy'),
+        S('Paper Weight', 'RSS', 'New York', '~2 items / wk', 19, 'W35 · 30 Aug', 'ok', 'OK · 200, parsed clean')]},
+      { name: 'Candidate', desc: 'Provisional · evidence weighted at half until corroborated', sources: [
+        S('Lagos Stitch Club', 'YouTube API', 'Lagos', '~1 video / wk', 6, 'W35 · 29 Aug', 'ok', 'OK · quota nominal'),
+        S('Desfile Diario', 'Scrape', 'Mexico City', '~2 items / wk', 7, 'W35 · 30 Aug', 'ok', 'OK · selector stable'),
+        S('Uptown Stoop', 'RSS', 'New York', 'unknown', 0, '—', 'idle', 'PENDING · added W35, first poll scheduled')]},
+      { name: 'Dormant', desc: 'Retired or stalled · retained for the record, excluded from synthesis', sources: [
+        S('Velvet Rope Weekly', 'RSS', 'Los Angeles', 'ceased W29', 22, 'W29 · 17 Jul', 'idle', 'DORMANT · publication ceased, archive retained'),
+        S('Streetcast MX', 'YouTube API', 'Mexico City', 'stalled', 9, 'W27 · 3 Jul', 'idle', 'DORMANT · no uploads for 8 wks, auto-demoted W31')]}
+    ].map(t => Object.assign(t, { count: t.sources.length + (t.sources.length === 1 ? ' source' : ' sources') }));
+    const shown = showDormant ? tiers : tiers.filter(t => t.name !== 'Dormant');
+    const all = tiers.flatMap(t => t.sources);
+    const failing = all.filter(s => s.healthColor === '#6B1D26');
+    return {
+      openPalette: () => window.__ciPalette && window.__ciPalette.open(),
+      failureDigest: failing.length
+        ? failing.map(s => s.name + ' (' + s.health.replace('FAILING · ', '') + ')').join(' · ') + '. Collection retries hourly; both were flagged in the W35 report.'
+        : 'All feeds healthy at last poll.',
+      tiers: shown,
+      totalSources: all.length,
+      healthyCount: all.filter(s => s.healthColor === '#555').length,
+      failingCount: all.filter(s => s.healthColor === '#6B1D26').length
+    };
+  }
+}
+</script>
+</body>
+</html>

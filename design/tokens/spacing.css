@@ -1,0 +1,11 @@
+:root {
+  --ci-page-pad-x: 48px;
+  --ci-page-max: 1440px;
+  --ci-row-pad-y: 12px;      /* dense; 20px comfortable */
+  --ci-col-gap: 20px;
+  --ci-section-gap: 48px;
+  --ci-rule-heavy: 2px solid var(--ci-line-heavy);
+  --ci-rule: 1px solid var(--ci-line-heavy);
+  --ci-rule-mid: 1px solid var(--ci-line-mid);
+  --ci-rule-light: 1px solid var(--ci-line-light);
+}

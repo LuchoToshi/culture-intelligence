@@ -1,0 +1,22 @@
+:root {
+  /* base */
+  --ci-paper: #FAFAF7;
+  --ci-ink: #111111;
+  --ci-ink-2: #333333;
+  --ci-ink-3: #555555;
+  --ci-ink-4: #777777;
+  --ci-ink-5: #999999;
+  --ci-line-heavy: #111111;   /* 1-2px section rules */
+  --ci-line-mid: #C9C7BF;     /* group hairlines */
+  --ci-line-light: #E4E2DA;   /* row hairlines */
+  --ci-tint: #F2F0E8;         /* hover / active-row paper tint */
+  --ci-tint-2: #F7F5EE;       /* expanded-panel paper tint */
+  --ci-oxblood: #6B1D26;      /* THE accent: signal state + emphasis ONLY */
+  /* semantic */
+  --ci-bg: var(--ci-paper);
+  --ci-text: var(--ci-ink);
+  --ci-text-secondary: var(--ci-ink-3);
+  --ci-text-meta: var(--ci-ink-4);
+  --ci-signal: var(--ci-oxblood);
+  --ci-hover-bg: var(--ci-tint);
+}

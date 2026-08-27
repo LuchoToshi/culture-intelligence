@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #FAFAF7; color: #111; }
+  a { color: #111; } a:hover { color: #6B1D26; }
+  ::selection { background: #6B1D26; color: #FAFAF7; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</helmet>
+<dc-import name="CommandPalette" hint-size="100%,0px"></dc-import>
+<div data-screen-label="Signal Registry" style="min-height: 100vh; background: #FAFAF7; color: #111; font-family: 'Archivo', sans-serif; padding: 0 48px 80px 48px; max-width: 1440px; margin: 0 auto; box-sizing: border-box;">
+
+  <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 28px 0 14px 0; border-bottom: 2px solid #111;">
+    <div style="font-size: 12px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase;">Culture Intelligence</div>
+    <div style="display: flex; gap: 32px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #555; align-items: baseline;">
+      <div style="color: #111; border-bottom: 1px solid #111; padding-bottom: 2px;">Signals</div>
+      <a href="Weekly Report.dc.html" style="color: #555; text-decoration: none;">Reports</a>
+      <a href="Source Universe.dc.html" style="color: #555; text-decoration: none;">Sources</a>
+      <a href="City Intelligence.dc.html" style="color: #555; text-decoration: none;">Cities</a>
+      <button onClick="{{ openPalette }}" style="background: none; border: none; padding: 0; cursor: pointer; font-family: 'Archivo', sans-serif; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #999;" style-hover="color: #111;">Search ⌘K</button>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 300px; gap: 48px; align-items: end; padding: 40px 0 28px 0; border-bottom: 1px solid #111;">
+    <div>
+      <h1 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: 52px; line-height: 1.02; margin: 0; letter-spacing: -0.01em;">Signal Registry</h1>
+      <div style="margin-top: 12px; font-size: 12px; color: #555; letter-spacing: 0.04em;">Persistent longitudinal signals under observation. Editorial attention and real-world adoption are scored independently and never blended.</div>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; border-left: 1px solid #C9C7BF;">
+      <div style="padding: 0 16px;">
+        <div style="font-family: 'Newsreader', serif; font-size: 28px; font-variant-numeric: tabular-nums;">{{ totalSignals }}</div>
+        <div style="font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: #777; margin-top: 2px;">Signals</div>
+      </div>
+      <div style="padding: 0 16px; border-left: 1px solid #E4E2DA;">
+        <div style="font-family: 'Newsreader', serif; font-size: 28px; font-variant-numeric: tabular-nums;">{{ totalEvidence }}</div>
+        <div style="font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: #777; margin-top: 2px;">Evidence</div>
+      </div>
+      <div style="padding: 0 16px; border-left: 1px solid #E4E2DA;">
+        <div style="font-family: 'Newsreader', serif; font-size: 28px; font-variant-numeric: tabular-nums; color: #6B1D26;">{{ emergingCount }}</div>
+        <div style="font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: #777; margin-top: 2px;">Emerging</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; align-items: baseline; gap: 12px; padding: 12px 0; border-bottom: 1px solid #E4E2DA;">
+    <span style="display: inline-block; width: 7px; height: 7px; background: #6B1D26; align-self: center;"></span>
+    <span style="font-size: 9px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #6B1D26; white-space: nowrap;">{{ sinceLabel }}</span>
+    <span style="font-size: 11px; color: #555; letter-spacing: 0.02em;">{{ sinceNote }}</span>
+  </div>
+
+  <div style="display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 12px 0; border-bottom: 1px solid #E4E2DA;">
+    <div style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
+      <div style="font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: #777; margin-right: 12px; width: 44px;">Stage</div>
+      <sc-for list="{{ stageFilters }}" as="f" hint-placeholder-count="5">
+        <button onClick="{{ f.onClick }}" style="font-family: 'Archivo', sans-serif; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; background: {{ f.bg }}; color: {{ f.fg }}; border: 1px solid {{ f.border }}; padding: 5px 12px; cursor: pointer; transition: border-color 0.15s, color 0.15s;" style-hover="border-color: #999; color: #111;">{{ f.label }}</button>
+      </sc-for>
+    </div>
+    <div style="display: flex; align-items: baseline; gap: 20px; white-space: nowrap;">
+      <button onClick="{{ h.gap.onClick }}" style="background: none; border: none; padding: 0; cursor: pointer; font-family: 'Archivo', sans-serif; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: {{ h.gap.color }};" style-hover="color: #111;">{{ h.gap.label }}</button>
+      <div style="font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #777; font-variant-numeric: tabular-nums;">{{ resultsNote }}</div>
+    </div>
+  </div>
+  <div style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap; padding: 12px 0; border-bottom: 1px solid #C9C7BF;">
+    <div style="font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: #777; margin-right: 12px; width: 44px;">City</div>
+    <sc-for list="{{ cityFilters }}" as="c" hint-placeholder-count="6">
+      <button onClick="{{ c.onClick }}" style="font-family: 'Archivo', sans-serif; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; background: {{ c.bg }}; color: {{ c.fg }}; border: 1px solid {{ c.border }}; padding: 5px 12px; cursor: pointer; transition: border-color 0.15s, color 0.15s;" style-hover="border-color: #999; color: #111;">{{ c.label }}</button>
+    </sc-for>
+  </div>
+
+  <sc-if value="{{ hasPins }}" hint-placeholder-val="{{ false }}">
+    <div style="padding: 18px 0; border-bottom: 2px solid #111;">
+      <div style="display: flex; align-items: baseline; gap: 14px; padding-bottom: 12px;">
+        <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase;">Comparison</div>
+        <div style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #777;">{{ pinNote }}</div>
+        <button onClick="{{ clearPins }}" style="margin-left: auto; background: none; border: none; padding: 0; cursor: pointer; font-family: 'Archivo', sans-serif; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #999;" style-hover="color: #6B1D26;">Clear all</button>
+      </div>
+      <div style="display: flex; gap: 32px;">
+        <sc-for list="{{ pinnedRows }}" as="p" hint-placeholder-count="2">
+          <div style="flex: 1; border-left: 1px solid #C9C7BF; padding-left: 16px;">
+            <div style="display: flex; align-items: baseline; gap: 10px;">
+              <div style="font-family: 'Newsreader', serif; font-size: 18px; line-height: 1.2;">{{ p.name }}</div>
+              <button onClick="{{ p.unpin }}" style="margin-left: auto; background: none; border: none; padding: 0; cursor: pointer; font-family: 'Archivo', sans-serif; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: #999;" style-hover="color: #6B1D26;">Unpin</button>
+            </div>
+            <div style="font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #777; margin-top: 4px;">{{ p.meta }}</div>
+            <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 12px;">
+              <sc-for list="{{ p.meters }}" as="m" hint-placeholder-count="3">
+                <div style="display: grid; grid-template-columns: 72px 1fr 30px; gap: 10px; align-items: baseline;">
+                  <div style="font-size: 8px; letter-spacing: 0.16em; text-transform: uppercase; color: #777;">{{ m.label }}</div>
+                  <div style="display: flex; gap: 3px;">
+                    <sc-for list="{{ m.cells }}" as="cell" hint-placeholder-count="5">
+                      <span style="display: inline-block; width: 14px; height: 5px; background: {{ cell.bg }}; border: 1px solid {{ cell.border }};"></span>
+                    </sc-for>
+                  </div>
+                  <div style="font-size: 10px; font-variant-numeric: tabular-nums; color: #777; text-align: right;">{{ m.n }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <div style="display: grid; grid-template-columns: 18px minmax(260px,1.4fr) 140px 64px 64px minmax(150px,0.9fr) 108px 108px 108px 70px 18px; gap: 0 18px; padding: 10px 0 8px 0; border-bottom: 1px solid #111; font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: #777;">
+    <div></div>
+    <div>Signal</div>
+    <div>Stage</div>
+    <button onClick="{{ h.evidence.onClick }}" style="background: none; border: none; padding: 0; cursor: pointer; text-align: right; font-family: 'Archivo', sans-serif; font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: {{ h.evidence.color }};" style-hover="color: #111;">{{ h.evidence.label }}</button>
+    <button onClick="{{ h.sources.onClick }}" style="background: none; border: none; padding: 0; cursor: pointer; text-align: right; font-family: 'Archivo', sans-serif; font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: {{ h.sources.color }};" style-hover="color: #111;">{{ h.sources.label }}</button>
+    <div>Cities</div>
+    <button onClick="{{ h.edi.onClick }}" style="background: none; border: none; padding: 0; cursor: pointer; text-align: left; font-family: 'Archivo', sans-serif; font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: {{ h.edi.color }};" style-hover="color: #111;">{{ h.edi.label }}</button>
+    <button onClick="{{ h.ado.onClick }}" style="background: none; border: none; padding: 0; cursor: pointer; text-align: left; font-family: 'Archivo', sans-serif; font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: {{ h.ado.color }};" style-hover="color: #111;">{{ h.ado.label }}</button>
+    <button onClick="{{ h.sat.onClick }}" style="background: none; border: none; padding: 0; cursor: pointer; text-align: left; font-family: 'Archivo', sans-serif; font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: {{ h.sat.color }};" style-hover="color: #111;">{{ h.sat.label }}</button>
+    <button onClick="{{ h.span.onClick }}" style="background: none; border: none; padding: 0; cursor: pointer; text-align: right; font-family: 'Archivo', sans-serif; font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: {{ h.span.color }};" style-hover="color: #111;">{{ h.span.label }}</button>
+    <div></div>
+  </div>
+
+  <sc-for list="{{ rows }}" as="r" hint-placeholder-count="8">
+    <a href="Signal Detail.dc.html" style="text-decoration: none; color: inherit; display: grid; grid-template-columns: 18px minmax(260px,1.4fr) 140px 64px 64px minmax(150px,0.9fr) 108px 108px 108px 70px 18px; gap: 0 18px; align-items: baseline; padding: {{ rowPad }} 0; border-bottom: 1px solid #E4E2DA; cursor: pointer; transition: background 0.15s;" style-hover="background: #F2F0E8;">
+      <button onClick="{{ r.togglePin }}" title="Pin to compare" style="background: none; border: none; padding: 0; cursor: pointer; font-size: 11px; line-height: 1; color: {{ r.pinColor }}; align-self: center;" style-hover="color: #6B1D26;">{{ r.pinGlyph }}</button>
+      <div>
+        <div style="font-family: 'Newsreader', serif; font-size: 21px; font-weight: 400; line-height: 1.15;">{{ r.name }} <span style="color: #6B1D26; font-size: 14px;">{{ r.flag }}</span> <span style="font-family: 'Archivo', sans-serif; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #999;">{{ r.watchTag }}</span></div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 7px; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #333;">
+        <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: {{ r.stageDotBg }}; border: 1px solid {{ r.stageDotBorder }};"></span>
+        {{ r.stage }}
+      </div>
+      <div style="text-align: right; font-size: 13px; font-variant-numeric: tabular-nums;">{{ r.evidence }}</div>
+      <div style="text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; color: #555;">{{ r.sources }}</div>
+      <div style="font-size: 11px; color: #555; letter-spacing: 0.02em; line-height: 1.5;">{{ r.cities }}</div>
+      <div style="display: flex; align-items: baseline; gap: 8px;">
+        <div style="display: flex; gap: 3px;">
+          <sc-for list="{{ r.edi }}" as="cell" hint-placeholder-count="5">
+            <span style="display: inline-block; width: 12px; height: 5px; background: {{ cell.bg }}; border: 1px solid #111;"></span>
+          </sc-for>
+        </div>
+        <span style="font-size: 10px; font-variant-numeric: tabular-nums; color: #777;">{{ r.ediN }}</span>
+      </div>
+      <div style="display: flex; align-items: baseline; gap: 8px;">
+        <div style="display: flex; gap: 3px;">
+          <sc-for list="{{ r.ado }}" as="cell" hint-placeholder-count="5">
+            <span style="display: inline-block; width: 12px; height: 5px; background: {{ cell.bg }}; border: 1px solid #111;"></span>
+          </sc-for>
+        </div>
+        <span style="font-size: 10px; font-variant-numeric: tabular-nums; color: #777;">{{ r.adoN }}</span>
+      </div>
+      <div style="display: flex; align-items: baseline; gap: 8px;">
+        <div style="display: flex; gap: 3px;">
+          <sc-for list="{{ r.sat }}" as="cell" hint-placeholder-count="5">
+            <span style="display: inline-block; width: 12px; height: 5px; background: {{ cell.bg }}; border: 1px solid {{ cell.border }};"></span>
+          </sc-for>
+        </div>
+        <span style="font-size: 10px; font-variant-numeric: tabular-nums; color: #777;">{{ r.satN }}</span>
+      </div>
+      <div style="text-align: right; font-size: 11px; color: #555; font-variant-numeric: tabular-nums;">{{ r.span }}</div>
+      <button onClick="{{ r.togglePeek }}" title="Latest evidence" style="background: none; border: none; padding: 0; cursor: pointer; font-size: 14px; line-height: 1; color: #999; align-self: center; font-family: 'Newsreader', serif;" style-hover="color: #111;">{{ r.peekGlyph }}</button>
+    </a>
+    <sc-if value="{{ r.expanded }}" hint-placeholder-val="{{ false }}">
+      <div style="padding: 12px 0 16px 36px; border-bottom: 1px solid #E4E2DA; background: #F7F5EE;">
+        <div style="font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: #777;">Latest evidence</div>
+        <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 8px;">
+          <sc-for list="{{ r.latest }}" as="e" hint-placeholder-count="2">
+            <div style="display: grid; grid-template-columns: 44px minmax(200px,1fr) 180px; gap: 16px; align-items: baseline;">
+              <div style="font-size: 10px; color: #777; font-variant-numeric: tabular-nums;">{{ e.week }}</div>
+              <div style="font-family: 'Newsreader', serif; font-size: 14px;">{{ e.title }}</div>
+              <div style="font-size: 10px; color: #999; letter-spacing: 0.06em;">{{ e.src }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+  </sc-for>
+
+  <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+    <div style="padding: 40px 0; border-bottom: 1px solid #E4E2DA; font-family: 'Newsreader', serif; font-style: italic; font-size: 17px; color: #777;">No signals match the current filters. The registry holds {{ totalSignals }} signals — widen the stage or city filter.</div>
+  </sc-if>
+
+  <div style="display: flex; justify-content: space-between; padding: 14px 0; font-size: 10px; color: #777; letter-spacing: 0.04em;">
+    <div><span style="color: #6B1D26;">†</span> editorial attention exceeds real-world adoption by two or more points — hype risk, verify before acting. &nbsp;·&nbsp; ○ pin up to three signals to compare.</div>
+    <div style="letter-spacing: 0.14em; text-transform: uppercase;">Week 35 · Compiled 27 Aug 2026</div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;density&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;dense&quot;, &quot;comfortable&quot;], &quot;default&quot;: &quot;dense&quot;, &quot;tsType&quot;: &quot;string&quot;}, &quot;meterNumerals&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;}}">
+class Component extends DCLogic {
+  state = { stage: 'all', city: 'all', sortKey: null, sortDir: 1, lastVisit: null, pinned: [], expanded: null, watched: [] };
+
+  componentDidMount() {
+    const KEY = 'ci-registry-last-visit';
+    const prev = localStorage.getItem(KEY);
+    localStorage.setItem(KEY, String(Date.now()));
+    let watched = [];
+    try { watched = JSON.parse(localStorage.getItem('ci-watchlist') || '[]'); } catch (e) {}
+    this.setState({ lastVisit: prev ? Number(prev) : null, watched });
+  }
+
+  relTime(ts) {
+    const m = Math.round((Date.now() - ts) / 60000);
+    if (m < 2) return 'moments ago';
+    if (m < 60) return m + ' min ago';
+    const h = Math.round(m / 60);
+    if (h < 36) return h + (h === 1 ? ' hr ago' : ' hrs ago');
+    return Math.round(h / 24) + ' days ago';
+  }
+
+  data() {
+    return [
+      { name: 'Boxing-gym apparel crossover', stage: 'emerging', evidence: 14, sources: 6, cities: ['London', 'New York', 'Mexico City'], edi: 3, ado: 1, sat: 1, span: '6 wks', latest: [
+        { week: 'W35', title: 'Boxing-gym apparel stocked at two sneaker retailers', src: 'Desfile Diario · Mexico City' },
+        { week: 'W34', title: 'The gym-to-street pipeline, round two', src: 'The Cutting Room · London' }]},
+      { name: 'Y3K chrome accessories', stage: 'emerging', evidence: 9, sources: 4, cities: ['Seoul', 'Tokyo'], edi: 4, ado: 1, sat: 1, span: '4 wks', latest: [
+        { week: 'W35', title: 'Chrome fits at Homecoming afterparties', src: 'Lagos Stitch Club · Lagos' },
+        { week: 'W35', title: 'Two chrome accessory drops, both sold out', src: 'Corner Archive · Tokyo' }]},
+      { name: 'Post-Acronym techwear minimalism', stage: 'emerging', evidence: 11, sources: 5, cities: ['Berlin', 'Tokyo'], edi: 2, ado: 2, sat: 1, span: '8 wks', latest: [
+        { week: 'W34', title: 'After the buckles: quiet utility', src: 'Softline Journal · Berlin' },
+        { week: 'W33', title: 'Techwear without the cosplay', src: 'Corner Archive · Tokyo' }]},
+      { name: 'Logomania second return', stage: 'emerging', evidence: 8, sources: 4, cities: ['Milan', 'Seoul', 'Lagos'], edi: 3, ado: 1, sat: 1, span: '5 wks', latest: [
+        { week: 'W35', title: 'Logomania runway preview', src: 'The Gradient · Milan' },
+        { week: 'W33', title: 'The monogram is back, again', src: 'Knit District · Seoul' }]},
+      { name: 'Archive denim repair culture', stage: 'strengthening', evidence: 31, sources: 9, cities: ['Tokyo', 'Los Angeles', 'London'], edi: 4, ado: 3, sat: 2, span: '19 wks', latest: [
+        { week: 'W35', title: 'Repair pricing survey: up for a third consecutive month', src: 'Corner Archive · Tokyo' },
+        { week: 'W34', title: 'The waiting list at the darning bar', src: 'The Cutting Room · London' }]},
+      { name: 'Crochet menswear, granny-square', stage: 'strengthening', evidence: 22, sources: 7, cities: ['Copenhagen', 'Lagos', 'London'], edi: 4, ado: 2, sat: 2, span: '14 wks', latest: [
+        { week: 'W35', title: 'Knit share holding post-fashion-week; retail stock responding', src: 'Field Notes CPH · Copenhagen' },
+        { week: 'W33', title: 'The hand-made premium, priced', src: 'The Cutting Room · London' }]},
+      { name: 'Leopard print re-normalization', stage: 'strengthening', evidence: 27, sources: 8, cities: ['Paris', 'New York', 'Milan'], edi: 3, ado: 3, sat: 2, span: '16 wks', latest: [
+        { week: 'W34', title: 'Leopard as a neutral: a street census', src: 'Paper Weight · New York' },
+        { week: 'W33', title: 'Print sightings triple at Le Marais vintage', src: 'Mireille P. · Paris' }]},
+      { name: 'Gorpcore office-wear drift', stage: 'mainstream', evidence: 58, sources: 12, cities: ['New York', 'Berlin', 'Copenhagen', 'Seoul'], edi: 3, ado: 4, sat: 3, span: '41 wks', latest: [
+        { week: 'W35', title: 'Gorpcore office-wear reader survey results', src: 'Softline Journal · Berlin' },
+        { week: 'W34', title: 'Trail shells at the trading desk', src: 'Paper Weight · New York' }]},
+      { name: 'French chore-coat workwear', stage: 'mainstream', evidence: 44, sources: 10, cities: ['Paris', 'London', 'New York'], edi: 2, ado: 4, sat: 3, span: '55 wks', latest: [
+        { week: 'W33', title: 'The chore coat completes its commute', src: 'The Cutting Room · London' },
+        { week: 'W31', title: 'Bleu de travail at three price points', src: 'Mireille P. · Paris' }]},
+      { name: 'Barn jacket suburban adoption', stage: 'mainstream', evidence: 39, sources: 9, cities: ['New York', 'London'], edi: 2, ado: 5, sat: 4, span: '36 wks', latest: [
+        { week: 'W34', title: 'Barn jackets at the farmers market: a count', src: 'Paper Weight · New York' },
+        { week: 'W32', title: 'Waxed cotton for the school run', src: 'The Cutting Room · London' }]},
+      { name: 'Quiet luxury', stage: 'saturated', evidence: 96, sources: 14, cities: ['Milan', 'New York', 'Paris', 'Seoul'], edi: 2, ado: 5, sat: 5, span: '88 wks', latest: [
+        { week: 'W35', title: 'Quiet luxury, an obituary', src: 'The Cutting Room · London' },
+        { week: 'W33', title: 'Stealth wealth at the school gala, still', src: 'Paper Weight · New York' }]},
+      { name: 'Football blokecore revival', stage: 'saturated', evidence: 71, sources: 11, cities: ['London', 'Milan', 'Mexico City'], edi: 1, ado: 4, sat: 5, span: '64 wks', latest: [
+        { week: 'W35', title: 'Blokecore, framed as concluded', src: 'The Gradient · Milan' },
+        { week: 'W34', title: 'Vintage kits still moving at El Chopo', src: 'Streetcast MX · Mexico City' }]}
+    ];
+  }
+
+  renderVals() {
+    const signals = this.data();
+    const density = this.props.density ?? 'dense';
+    const meterNumerals = this.props.meterNumerals ?? true;
+    const stages = ['all', 'emerging', 'strengthening', 'mainstream', 'saturated'];
+    const cities = ['all'].concat(Array.from(new Set(signals.flatMap(s => s.cities))).sort());
+    let filtered = signals.filter(s =>
+      (this.state.stage === 'all' || s.stage === this.state.stage) &&
+      (this.state.city === 'all' || s.cities.includes(this.state.city)));
+
+    const k = this.state.sortKey;
+    if (k) {
+      const get = s => k === 'span' ? parseInt(s.span) : k === 'gap' ? s.edi - s.ado : s[k];
+      filtered = filtered.slice().sort((a, b) => (get(b) - get(a)) * this.state.sortDir);
+    }
+    const hdr = (key, label) => ({
+      label: label + (k === key ? (this.state.sortDir === 1 ? ' ▾' : ' ▴') : ''),
+      color: k === key ? '#111' : '#777',
+      onClick: () => this.setState(s => ({ sortKey: key, sortDir: s.sortKey === key ? -s.sortDir : 1 }))
+    });
+
+    const meter = (n, satStyle) => [1, 2, 3, 4, 5].map(i => ({
+      bg: i <= n ? (satStyle && n >= 4 ? '#6B1D26' : '#111') : 'transparent',
+      border: satStyle && n >= 4 && i <= n ? '#6B1D26' : '#111'
+    }));
+    const stageDot = s => s === 'emerging' ? { bg: '#6B1D26', border: '#6B1D26' }
+      : s === 'strengthening' ? { bg: '#111', border: '#111' }
+      : s === 'mainstream' ? { bg: '#999', border: '#999' }
+      : { bg: 'transparent', border: '#999' };
+    const chip = (list, key) => list.map(v => {
+      const active = this.state[key] === v;
+      return {
+        label: v === 'all' ? 'All' : v,
+        bg: active ? '#111' : 'transparent',
+        fg: active ? '#FAFAF7' : '#555',
+        border: active ? '#111' : 'transparent',
+        onClick: () => this.setState({ [key]: v })
+      };
+    });
+
+    const pinned = this.state.pinned;
+    const togglePin = name => e => {
+      e.preventDefault(); e.stopPropagation();
+      this.setState(s => ({
+        pinned: s.pinned.includes(name) ? s.pinned.filter(p => p !== name)
+          : s.pinned.length >= 3 ? s.pinned : s.pinned.concat(name)
+      }));
+    };
+    const togglePeek = name => e => {
+      e.preventDefault(); e.stopPropagation();
+      this.setState(s => ({ expanded: s.expanded === name ? null : name }));
+    };
+
+    return {
+      openPalette: () => window.__ciPalette && window.__ciPalette.open(),
+      totalSignals: signals.length,
+      totalEvidence: signals.reduce((a, s) => a + s.evidence, 0),
+      emergingCount: signals.filter(s => s.stage === 'emerging').length,
+      stageFilters: chip(stages, 'stage'),
+      cityFilters: chip(cities, 'city'),
+      resultsNote: filtered.length === signals.length ? signals.length + ' signals' : filtered.length + ' of ' + signals.length + ' signals',
+      isEmpty: filtered.length === 0,
+      rowPad: density === 'dense' ? '12px' : '20px',
+      sinceLabel: this.state.lastVisit ? 'Since your last visit · ' + this.relTime(this.state.lastVisit) : 'New this week · W35',
+      sinceNote: this.state.lastVisit
+        ? 'Boxing-gym apparel gained first adoption evidence (Mexico City) · Y3K chrome accessories spread to Lagos · The Gradient feed began failing'
+        : '2 signals added to the registry · 38 evidence items analyzed · 1 source promoted to watch',
+      h: {
+        gap: hdr('gap', 'Sort: divergence'),
+        evidence: hdr('evidence', 'Evid.'), sources: hdr('sources', 'Src.'),
+        edi: hdr('edi', 'Editorial'), ado: hdr('ado', 'Adoption'),
+        sat: hdr('sat', 'Saturation'), span: hdr('span', 'Span')
+      },
+      hasPins: pinned.length > 0,
+      pinNote: pinned.length + ' of 3 pinned',
+      clearPins: () => this.setState({ pinned: [] }),
+      pinnedRows: pinned.map(name => {
+        const s = signals.find(x => x.name === name);
+        return {
+          name: s.name,
+          meta: s.stage + ' · ' + s.evidence + ' evid · ' + s.span + ' · ' + s.cities.join(', '),
+          unpin: togglePin(name),
+          meters: [
+            { label: 'Editorial', cells: meter(s.edi, false), n: s.edi + '/5' },
+            { label: 'Adoption', cells: meter(s.ado, false), n: s.ado + '/5' },
+            { label: 'Saturation', cells: meter(s.sat, true), n: s.sat + '/5' }
+          ]
+        };
+      }),
+      rows: filtered.map(s => ({
+        name: s.name,
+        flag: s.edi - s.ado >= 2 ? '†' : '',
+        watchTag: this.state.watched.includes(s.name) ? '· watching' : '',
+        stage: s.stage,
+        stageDotBg: stageDot(s.stage).bg,
+        stageDotBorder: stageDot(s.stage).border,
+        evidence: s.evidence,
+        sources: s.sources,
+        cities: s.cities.join(' · '),
+        edi: meter(s.edi, false), ediN: meterNumerals ? s.edi + '/5' : '',
+        ado: meter(s.ado, false), adoN: meterNumerals ? s.ado + '/5' : '',
+        sat: meter(s.sat, true), satN: meterNumerals ? s.sat + '/5' : '',
+        span: s.span,
+        pinGlyph: pinned.includes(s.name) ? '●' : '○',
+        pinColor: pinned.includes(s.name) ? '#6B1D26' : '#C9C7BF',
+        togglePin: togglePin(s.name),
+        expanded: this.state.expanded === s.name,
+        peekGlyph: this.state.expanded === s.name ? '−' : '+',
+        togglePeek: togglePeek(s.name),
+        latest: s.latest
+      }))
+    };
+  }
+}
+</script>
+</body>
+</html>

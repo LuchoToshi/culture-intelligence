@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400;1,6..72,500&family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #FAFAF7; color: #111; }
+  a { color: #111; } a:hover { color: #6B1D26; }
+  ::selection { background: #6B1D26; color: #FAFAF7; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } html { scroll-behavior: auto; } }
+</style>
+</helmet>
+<dc-import name="CommandPalette" hint-size="100%,0px"></dc-import>
+<div data-screen-label="Weekly Report" style="min-height: 100vh; background: #FAFAF7; color: #111; font-family: 'Archivo', sans-serif; padding: 0 48px 100px 48px; max-width: 1440px; margin: 0 auto; box-sizing: border-box;">
+  <div style="position: fixed; top: 0; left: 0; height: 2px; background: #111; z-index: 10; width: {{ progress }};"></div>
+
+  <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 28px 0 14px 0; border-bottom: 2px solid #111;">
+    <div style="font-size: 12px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase;">Culture Intelligence</div>
+    <div style="display: flex; gap: 32px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #555; align-items: baseline;">
+      <a href="Signal Registry.dc.html" style="color: #555; text-decoration: none;">Signals</a>
+      <div style="color: #111; border-bottom: 1px solid #111; padding-bottom: 2px;">Reports</div>
+      <a href="Source Universe.dc.html" style="color: #555; text-decoration: none;">Sources</a>
+      <a href="City Intelligence.dc.html" style="color: #555; text-decoration: none;">Cities</a>
+      <button onClick="{{ openPalette }}" style="background: none; border: none; padding: 0; cursor: pointer; font-family: 'Archivo', sans-serif; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #999;" style-hover="color: #111;">Search ⌘K</button>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 220px 1fr; gap: 64px; padding-top: 40px;">
+
+    <div style="position: sticky; top: 0; align-self: start; padding-top: 8px;">
+      <div style="font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: #777; padding-bottom: 10px; border-bottom: 1px solid #111;">In this report</div>
+      <div style="display: flex; flex-direction: column;">
+        <sc-for list="{{ toc }}" as="t" hint-placeholder-count="7">
+          <a href="{{ t.href }}" style="text-decoration: none; display: grid; grid-template-columns: 28px 1fr; gap: 8px; align-items: baseline; padding: 9px 0; border-bottom: 1px solid #E4E2DA; font-size: 11px; letter-spacing: 0.04em; color: {{ t.color }}; font-weight: {{ t.weight }}; transition: color 0.2s;">
+            <span style="font-size: 9px; color: {{ t.numColor }}; font-variant-numeric: tabular-nums;">{{ t.num }}</span>
+            <span>{{ t.label }}</span>
+          </a>
+        </sc-for>
+      </div>
+      <div style="margin-top: 20px; font-size: 10px; line-height: 1.6; color: #777;">Part 1 is deterministic — compiled per source, no interpretation. Part 2 is synthesized and should be read as analysis.</div>
+    </div>
+
+    <div style="max-width: 760px;">
+      <div style="font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #6B1D26; font-weight: 600;">Weekly Intelligence Report</div>
+      <h1 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: 46px; line-height: 1.05; margin: 10px 0 0 0;">Week 35 — 24–30 August 2026</h1>
+      <div style="display: flex; gap: 24px; margin-top: 14px; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #777;">
+        <div>14 sources polled</div>
+        <div>11 reported</div>
+        <div>38 items analyzed</div>
+        <div>2 new signals</div>
+      </div>
+
+      <div id="watchlist" style="margin-top: 44px; scroll-margin-top: 24px; border: 1px solid #C9C7BF; padding: 18px 22px;">
+        <div style="display: flex; align-items: baseline; gap: 14px;">
+          <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase;">Your Watchlist</div>
+          <div style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #777;">{{ watchCount }}</div>
+        </div>
+        <sc-if value="{{ hasWatch }}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; flex-direction: column; margin-top: 8px;">
+            <sc-for list="{{ watchRows }}" as="w" hint-placeholder-count="2">
+              <div style="display: grid; grid-template-columns: 240px 1fr; gap: 20px; align-items: baseline; padding: 9px 0; border-top: 1px solid #E4E2DA;">
+                <a href="Signal Detail.dc.html" style="font-family: 'Newsreader', serif; font-size: 16px; text-decoration: none;">{{ w.name }}</a>
+                <div style="font-size: 11px; color: #555; line-height: 1.5;">{{ w.delta }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{ noWatch }}" hint-placeholder-val="{{ false }}">
+          <div style="font-family: 'Newsreader', serif; font-style: italic; font-size: 14px; color: #777; margin-top: 8px;">You are not watching any signals. Open a dossier and mark “Watch” — this section will carry their weekly movements.</div>
+        </sc-if>
+      </div>
+
+      <div id="roundup" style="margin-top: 48px; scroll-margin-top: 24px;">
+        <div style="display: flex; align-items: baseline; gap: 14px; padding-bottom: 10px; border-bottom: 2px solid #111;">
+          <span style="font-family: 'Newsreader', serif; font-size: 26px;">Part 1</span>
+          <span style="font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: #777;">Per-source roundup · deterministic</span>
+        </div>
+        <sc-for list="{{ roundup }}" as="s" hint-placeholder-count="6">
+          <div style="display: grid; grid-template-columns: 190px 1fr; gap: 24px; padding: 16px 0; border-bottom: 1px solid #E4E2DA;">
+            <div>
+              <div style="font-size: 12px; font-weight: 600;">{{ s.name }}</div>
+              <div style="font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: #999; margin-top: 3px;">{{ s.meta }}</div>
+            </div>
+            <div style="font-family: 'Newsreader', serif; font-size: 15px; line-height: 1.5; color: {{ s.color }}; font-style: {{ s.fontStyle }};">{{ s.summary }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display: flex; align-items: baseline; gap: 14px; padding-bottom: 10px; border-bottom: 2px solid #111; margin-top: 64px;">
+        <span style="font-family: 'Newsreader', serif; font-size: 26px;">Part 2</span>
+        <span style="font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: #777;">Synthesis · read as analysis</span>
+      </div>
+
+      <div id="brief" style="margin-top: 36px; scroll-margin-top: 24px;">
+        <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; padding-bottom: 10px; border-bottom: 1px solid #111;">Executive Brief</div>
+        <div style="font-family: 'Newsreader', serif; font-size: 19px; line-height: 1.6; margin-top: 18px;">The week's dominant pattern is editorial acceleration without street confirmation. Crochet menswear drew its heaviest coverage volume to date, yet adoption sightings remain confined to Copenhagen. Boxing-gym apparel produced its first non-editorial evidence — two retail sightings in Mexico City — which is more meaningful than the coverage spike that preceded it. Quiet luxury continues to shed editorial attention while holding adoption, the classic saturation profile; treat it as background, not signal.</div>
+      </div>
+
+      <div id="signals" style="margin-top: 48px; scroll-margin-top: 24px;">
+        <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; padding-bottom: 10px; border-bottom: 1px solid #111;">Emerging &amp; Strengthening</div>
+        <sc-for list="{{ movers }}" as="m" hint-placeholder-count="3">
+          <div style="padding: 18px 0; border-bottom: 1px solid #E4E2DA;">
+            <div style="display: flex; align-items: baseline; gap: 14px;">
+              <a href="Signal Detail.dc.html" style="font-family: 'Newsreader', serif; font-size: 20px; text-decoration: none;">{{ m.name }}</a>
+              <span style="font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: {{ m.moveColor }};">{{ m.move }}</span>
+            </div>
+            <div style="font-family: 'Newsreader', serif; font-size: 15px; line-height: 1.55; color: #333; margin-top: 8px;">{{ m.note }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div id="cities" style="margin-top: 48px; scroll-margin-top: 24px;">
+        <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; padding-bottom: 10px; border-bottom: 1px solid #111;">City Intelligence</div>
+        <sc-for list="{{ cityNotes }}" as="c" hint-placeholder-count="4">
+          <div style="display: grid; grid-template-columns: 150px 1fr; gap: 24px; padding: 14px 0; border-bottom: 1px solid #E4E2DA;">
+            <div style="font-family: 'Newsreader', serif; font-size: 17px;">{{ c.city }}</div>
+            <div style="font-family: 'Newsreader', serif; font-size: 15px; line-height: 1.55; color: #333;">{{ c.note }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div id="saturation" style="margin-top: 48px; scroll-margin-top: 24px;">
+        <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; padding-bottom: 10px; border-bottom: 1px solid #111;">Saturation Radar</div>
+        <sc-for list="{{ saturation }}" as="s" hint-placeholder-count="2">
+          <div style="display: grid; grid-template-columns: 220px 1fr; gap: 24px; padding: 14px 0; border-bottom: 1px solid #E4E2DA; align-items: baseline;">
+            <div style="font-family: 'Newsreader', serif; font-size: 17px;">{{ s.name }} <span style="color: #6B1D26; font-size: 12px; font-family: 'Archivo', sans-serif; letter-spacing: 0.1em;">{{ s.badge }}</span></div>
+            <div style="font-family: 'Newsreader', serif; font-size: 15px; line-height: 1.55; color: #333;">{{ s.note }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div id="contradictions" style="margin-top: 48px; scroll-margin-top: 24px;">
+        <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; padding-bottom: 10px; border-bottom: 1px solid #111;">Contradictions</div>
+        <sc-for list="{{ contradictions }}" as="c" hint-placeholder-count="2">
+          <div style="padding: 16px 0; border-bottom: 1px solid #E4E2DA;">
+            <div style="font-family: 'Newsreader', serif; font-style: italic; font-size: 17px; line-height: 1.5;">{{ c.claim }}</div>
+            <div style="font-family: 'Newsreader', serif; font-size: 15px; line-height: 1.55; color: #333; margin-top: 8px;">{{ c.detail }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div id="hypotheses" style="margin-top: 48px; scroll-margin-top: 24px;">
+        <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; padding-bottom: 10px; border-bottom: 1px solid #111;">Falsifiable Hypotheses</div>
+        <sc-for list="{{ hypotheses }}" as="h" hint-placeholder-count="3">
+          <div style="display: grid; grid-template-columns: 32px 1fr; gap: 16px; padding: 16px 0; border-bottom: 1px solid #E4E2DA;">
+            <div style="font-family: 'Newsreader', serif; font-size: 17px; color: #999; font-variant-numeric: tabular-nums;">{{ h.num }}</div>
+            <div>
+              <div style="font-family: 'Newsreader', serif; font-size: 16px; line-height: 1.55;">{{ h.claim }}</div>
+              <div style="font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #6B1D26; margin-top: 8px;">Falsified if: <span style="color: #555; text-transform: none; letter-spacing: 0.02em; font-size: 11px;">{{ h.falsifier }}</span></div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div id="ledger" style="margin-top: 48px; scroll-margin-top: 24px;">
+        <div style="display: flex; align-items: baseline; gap: 14px; padding-bottom: 10px; border-bottom: 1px solid #111;">
+          <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase;">Hypothesis Ledger</div>
+          <div style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #777;">Every past claim, scored — nothing quietly forgotten</div>
+        </div>
+        <sc-for list="{{ ledger }}" as="l" hint-placeholder-count="4">
+          <div style="display: grid; grid-template-columns: 52px 110px 1fr; gap: 20px; align-items: baseline; padding: 14px 0; border-bottom: 1px solid #E4E2DA;">
+            <div style="font-size: 10px; color: #777; font-variant-numeric: tabular-nums;">{{ l.week }}</div>
+            <div style="font-size: 9px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: {{ l.statusColor }};">{{ l.status }}</div>
+            <div>
+              <div style="font-family: 'Newsreader', serif; font-size: 15px; line-height: 1.5;">{{ l.claim }}</div>
+              <div style="font-size: 11px; color: #777; line-height: 1.5; margin-top: 4px;">{{ l.outcome }}</div>
+            </div>
+          </div>
+        </sc-for>
+        <div style="display: flex; gap: 24px; margin-top: 12px; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #777;">
+          <div>Record to date: 3 confirmed · 2 falsified · 2 open · 1 expired</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 56px; padding-top: 14px; border-top: 2px solid #111; display: flex; justify-content: space-between; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #777;">
+        <div>Culture Intelligence · Weekly Report W35</div>
+        <div>Synthesis generated 30 Aug 2026 · Model-assisted</div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;showSilentSources&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;}}">
+class Component extends DCLogic {
+  state = { active: 'watchlist', progress: 0, watched: [] };
+
+  componentDidMount() {
+    try { this.setState({ watched: JSON.parse(localStorage.getItem('ci-watchlist') || '[]') }); } catch (e) {}
+    this._ids = ['watchlist', 'roundup', 'brief', 'signals', 'cities', 'saturation', 'contradictions', 'hypotheses', 'ledger'];
+    this._onScroll = () => {
+      let cur = this._ids[0];
+      for (const id of this._ids) {
+        const el = document.getElementById(id);
+        if (el && el.getBoundingClientRect().top <= 140) cur = id;
+      }
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      const pct = max > 0 ? Math.round((window.scrollY / max) * 100) : 0;
+      if (cur !== this.state.active || pct !== this.state.progress) this.setState({ active: cur, progress: pct });
+    };
+    window.addEventListener('scroll', this._onScroll, { passive: true });
+    this._onScroll();
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('scroll', this._onScroll);
+  }
+
+  renderVals() {
+    const showSilent = this.props.showSilentSources ?? true;
+    const deltas = {
+      'Crochet menswear, granny-square': 'Heaviest coverage week to date; adoption still Copenhagen-only. Divergence flag stands.',
+      'Boxing-gym apparel crossover': 'Adoption 1→2 — first retail evidence, Mexico City.',
+      'Y3K chrome accessories': 'First appearance outside the Seoul–Tokyo corridor (Lagos, candidate source).',
+      'Archive denim repair culture': 'Repair pricing up a third consecutive survey; scores rising in step.'
+    };
+    const watched = this.state.watched;
+    const toc = [
+      { num: '0.1', label: 'Your watchlist', id: 'watchlist' },
+      { num: '1.0', label: 'Per-source roundup', id: 'roundup' },
+      { num: '2.1', label: 'Executive brief', id: 'brief' },
+      { num: '2.2', label: 'Emerging & strengthening', id: 'signals' },
+      { num: '2.3', label: 'City intelligence', id: 'cities' },
+      { num: '2.4', label: 'Saturation radar', id: 'saturation' },
+      { num: '2.5', label: 'Contradictions', id: 'contradictions' },
+      { num: '2.6', label: 'Falsifiable hypotheses', id: 'hypotheses' },
+      { num: '2.7', label: 'Hypothesis ledger', id: 'ledger' }
+    ].map(t => {
+      const active = this.state.active === t.id;
+      return Object.assign(t, {
+        href: '#' + t.id,
+        color: active ? '#111' : '#555',
+        weight: active ? '600' : '400',
+        numColor: active ? '#6B1D26' : '#999'
+      });
+    });
+    const silent = { summary: 'No new content found during this period.', color: '#999', fontStyle: 'italic' };
+    const roundupAll = [
+      { name: 'Field Notes CPH', meta: 'Core · Publication · Copenhagen', summary: '4 items. Street census follow-up: knit share holding post-fashion-week; first piece linking crochet stock to two mid-size retailers.' },
+      { name: 'The Cutting Room', meta: 'Core · Publication · London', summary: '6 items. Resort coverage tail continues; one boxing-gym apparel feature (first from this source); quiet-luxury retrospective framed as obituary.' },
+      { name: 'Corner Archive', meta: 'Core · Publication · Tokyo', summary: '5 items. Archive denim repair pricing survey; two Y3K accessory drops covered, both sold out.' },
+      { name: 'Softline Journal', meta: 'Watch · Publication · Berlin', summary: '3 items. Craftcore taxonomy part two; gorpcore office-wear reader survey results.' },
+      { name: 'Mireille P.', meta: 'Watch · YouTube · Paris', summary: '1 item. Thrift-market video notes hand-knit price inflation for the second consecutive month.' },
+      { name: 'Hem & Haw', meta: 'Watch · YouTube · New York', silent: true },
+      { name: 'Lagos Stitch Club', meta: 'Candidate · YouTube · Lagos', summary: '2 items. Homecoming afterparty coverage; first appearance of chrome accessories in a Lagos context.' },
+      { name: 'Desfile Diario', meta: 'Candidate · Publication · Mexico City', summary: '2 items. Boxing-gym apparel at two sneaker retailers — first non-editorial adoption evidence for the signal.' },
+      { name: 'Knit District', meta: 'Watch · Publication · Seoul', silent: true },
+      { name: 'The Gradient', meta: 'Core · Publication · Milan', summary: '3 items. Logomania runway preview; blokecore framed as concluded.' },
+      { name: 'Paper Weight', meta: 'Watch · Publication · New York', silent: true }
+    ].map(s => s.silent ? Object.assign(s, silent) : Object.assign(s, { color: '#111', fontStyle: 'normal' }));
+    const L = (week, status, claim, outcome) => ({
+      week, status, claim, outcome,
+      statusColor: status === 'Falsified' ? '#6B1D26' : status === 'Confirmed' ? '#111' : status === 'Open' ? '#555' : '#999'
+    });
+    return {
+      progress: this.state.progress + '%',
+      openPalette: () => window.__ciPalette && window.__ciPalette.open(),
+      watchCount: watched.length ? watched.length + (watched.length === 1 ? ' signal' : ' signals') : 'empty',
+      hasWatch: watched.length > 0,
+      noWatch: watched.length === 0,
+      watchRows: watched.map(name => ({ name, delta: deltas[name] || 'No recorded movement this week.' })),
+      ledger: [
+        L('W31', 'Confirmed', 'Archive denim repair pricing will rise for a third consecutive survey.', 'Confirmed W35 — Corner Archive pricing survey, +9% median.'),
+        L('W32', 'Falsified', 'Blokecore will show new adoption evidence in a fourth city by W35.', 'Falsified — no new city; Milan source declares the signal concluded.'),
+        L('W32', 'Confirmed', 'Gorpcore office-wear will hold adoption 4/5 through summer.', 'Confirmed W34 — reader survey and street counts stable.'),
+        L('W33', 'Open', 'Crochet menswear will show adoption outside Copenhagen within three weeks.', 'Open until W38 — restated this week as hypothesis 1.'),
+        L('W33', 'Falsified', 'Quiet luxury editorial attention will fall to zero by W35.', 'Falsified — attention persists as retrospectives; reframed as long-tail.'),
+        L('W34', 'Confirmed', 'Boxing-gym apparel will earn non-editorial evidence before editorial hits 4/5.', 'Confirmed W35 — two retail sightings, Mexico City; editorial still 3/5.'),
+        L('W34', 'Open', 'Y3K chrome accessories remain corridor-bound through W40.', 'Open — Lagos appearance is single-source, not yet corroborated.'),
+        L('W30', 'Expired', 'Leopard print saturation will reach 3/5 by W34.', 'Expired unresolved — scoring window closed at 2/5; hypothesis retired.')
+      ],
+      toc,
+      roundup: showSilent ? roundupAll : roundupAll.filter(s => s.fontStyle !== 'italic'),
+      movers: [
+        { name: 'Boxing-gym apparel crossover', move: '▲ Adoption 1→2', moveColor: '#6B1D26', note: 'First retail evidence (Mexico City, two sightings) after six weeks of editorial-only presence. This is the week the signal earned its place in the registry.' },
+        { name: 'Crochet menswear, granny-square', move: 'Attention ▲ · Adoption flat', moveColor: '#777', note: 'Heaviest weekly coverage volume to date, adoption still Copenhagen-only. Divergence flag stands; a third consecutive week without spread would argue for hype reclassification.' },
+        { name: 'Y3K chrome accessories', move: 'Spread: Lagos', moveColor: '#777', note: 'First appearance outside the Seoul–Tokyo corridor, via candidate source. Weight accordingly.' }
+      ],
+      cityNotes: [
+        { city: 'Copenhagen', note: 'Still the only city with confirmed crochet adoption. Retail stock evidence suggests local supply is responding — watch for margin data.' },
+        { city: 'Mexico City', note: 'Quietly productive week: boxing-gym adoption evidence plus continued blokecore residue. Under-sourced relative to output; candidate recruitment recommended.' },
+        { city: 'Tokyo', note: 'Archive denim repair pricing up for a third consecutive survey. Attention and adoption rising in step — the healthiest signal profile in the registry.' },
+        { city: 'Lagos', note: 'Two signals now touching Lagos through a single candidate source. Corroboration needed before either counts as spread.' }
+      ],
+      saturation: [
+        { name: 'Quiet luxury', badge: 'SAT 5', note: 'Editorial attention now arriving as retrospectives. No exit evidence in adoption yet — expect a long tail. Cease treating coverage as signal.' },
+        { name: 'Football blokecore revival', badge: 'SAT 5', note: 'Milan source declares it concluded; adoption data agrees outside Mexico City. Candidate for archive status within four weeks.' }
+      ],
+      contradictions: [
+        { claim: 'London coverage says crochet menswear is "everywhere"; London adoption evidence records zero sightings.', detail: 'The Cutting Room and Softline Journal both assert street presence without citable instances. Editorial attention 4/5 against adoption 2/5 — the widest divergence in the registry this week.' },
+        { claim: 'Milan calls blokecore concluded; Mexico City evidence shows it alive.', detail: 'Likely a genuine geographic lag rather than a source error. Saturation scores are global — consider whether city-level saturation is worth surfacing.' }
+      ],
+      hypotheses: [
+        { num: '1', claim: 'Crochet menswear will show adoption evidence outside Copenhagen within three weeks.', falsifier: 'no non-Copenhagen adoption sighting by W38.' },
+        { num: '2', claim: 'Boxing-gym apparel adoption will reach a second city before its editorial score exceeds 3.', falsifier: 'editorial hits 4/5 while adoption remains Mexico City-only.' },
+        { num: '3', claim: 'Y3K chrome accessories is corridor-bound; the Lagos appearance will not corroborate.', falsifier: 'a second independent Lagos source produces chrome-accessory evidence by W40.' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

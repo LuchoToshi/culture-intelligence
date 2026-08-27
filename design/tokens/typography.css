@@ -1,0 +1,19 @@
+:root {
+  --ci-font-display: 'Newsreader', 'Times New Roman', serif; /* headlines, signal names, prose */
+  --ci-font-text: 'Archivo', 'Helvetica Neue', sans-serif;   /* data, labels, tables, UI */
+  /* display scale */
+  --ci-size-h1: 52px;        /* page titles; detail headers up to 58px */
+  --ci-size-h2: 26px;        /* part headers */
+  --ci-size-row: 21px;       /* index-row signal names */
+  --ci-size-prose: 15px;     /* report body; executive brief 19px */
+  /* data scale */
+  --ci-size-data: 13px;      /* tabular numerals */
+  --ci-size-caption: 11px;   /* secondary cells, notes */
+  --ci-size-label: 9px;      /* uppercase column/meta labels (10px for nav) */
+  /* tracking */
+  --ci-track-brand: 0.22em;
+  --ci-track-label: 0.16em;  /* 0.14-0.18em range */
+  --ci-track-chip: 0.1em;
+  --ci-leading-prose: 1.55;
+  --ci-leading-tight: 1.05;
+}

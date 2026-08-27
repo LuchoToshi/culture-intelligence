@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #FAFAF7; color: #111; }
+  a { color: #111; } a:hover { color: #6B1D26; }
+  ::selection { background: #6B1D26; color: #FAFAF7; }
+  @keyframes ciIn { from { opacity: 0; } to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</helmet>
+<dc-import name="CommandPalette" hint-size="100%,0px"></dc-import>
+<div data-screen-label="Signal Detail" style="min-height: 100vh; background: #FAFAF7; color: #111; font-family: 'Archivo', sans-serif; padding: 0 48px 80px 48px; max-width: 1440px; margin: 0 auto; box-sizing: border-box;">
+
+  <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 28px 0 14px 0; border-bottom: 2px solid #111;">
+    <div style="font-size: 12px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase;">Culture Intelligence</div>
+    <div style="display: flex; gap: 32px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #555; align-items: baseline;">
+      <a href="Signal Registry.dc.html" style="color: #111; border-bottom: 1px solid #111; padding-bottom: 2px; text-decoration: none;">Signals</a>
+      <a href="Weekly Report.dc.html" style="color: #555; text-decoration: none;">Reports</a>
+      <a href="Source Universe.dc.html" style="color: #555; text-decoration: none;">Sources</a>
+      <a href="City Intelligence.dc.html" style="color: #555; text-decoration: none;">Cities</a>
+      <button onClick="{{ openPalette }}" style="background: none; border: none; padding: 0; cursor: pointer; font-family: 'Archivo', sans-serif; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #999;" style-hover="color: #111;">Search ⌘K</button>
+    </div>
+  </div>
+
+  <div style="padding: 32px 0 0 0; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: #777;">
+    <a href="Signal Registry.dc.html" style="text-decoration: none; color: #777;">Signal Registry</a> &nbsp;/&nbsp; <span style="color: #111;">Dossier CI-041</span>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 380px; gap: 64px; padding: 20px 0 32px 0; border-bottom: 2px solid #111;">
+    <div>
+      <h1 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: 58px; line-height: 1.02; margin: 0; letter-spacing: -0.01em;">Crochet menswear, granny-square <span style="color: #6B1D26; font-size: 34px;">†</span></h1>
+      <div style="display: flex; gap: 28px; margin-top: 20px; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #555;">
+        <div style="display: flex; align-items: center; gap: 7px; color: #111;"><span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #111;"></span>Strengthening</div>
+        <div>22 evidence items</div>
+        <div>7 distinct sources</div>
+        <div>First seen W21 · 14 weeks</div>
+        <button onClick="{{ toggleWatch }}" style="background: none; border: 1px solid {{ watchBorder }}; padding: 4px 12px; cursor: pointer; font-family: 'Archivo', sans-serif; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: {{ watchColor }}; transition: border-color 0.15s, color 0.15s;" style-hover="border-color: #6B1D26; color: #6B1D26;">{{ watchLabel }}</button>
+      </div>
+      <div style="margin-top: 22px; max-width: 560px; font-family: 'Newsreader', serif; font-size: 17px; line-height: 1.5; color: #333;">Granny-square and open-knit crochet moving from womenswear resort into menswear editorial and small-batch drops. Heavy magazine attention since W27; street-level adoption remains thin outside Copenhagen.</div>
+    </div>
+    <div style="border-left: 1px solid #C9C7BF; padding-left: 32px; display: flex; flex-direction: column; justify-content: flex-end; gap: 18px;">
+      <sc-for list="{{ scores }}" as="s" hint-placeholder-count="3">
+        <div style="display: grid; grid-template-columns: 110px 1fr 44px; align-items: baseline; gap: 12px;">
+          <div style="font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: #777;">{{ s.label }}</div>
+          <div style="display: flex; gap: 3px;">
+            <sc-for list="{{ s.cells }}" as="cell" hint-placeholder-count="5">
+              <span style="display: inline-block; width: 22px; height: 6px; background: {{ cell.bg }}; border: 1px solid {{ cell.border }}; animation: ciIn 0.35s both; animation-delay: {{ cell.delay }};"></span>
+            </sc-for>
+          </div>
+          <div style="font-family: 'Newsreader', serif; font-size: 20px; font-variant-numeric: tabular-nums; text-align: right;">{{ s.n }}</div>
+        </div>
+      </sc-for>
+      <div style="border-top: 1px solid #C9C7BF; padding-top: 14px; font-size: 11px; line-height: 1.5; color: #555;">
+        <span style="font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; font-size: 9px; color: #777;">Evidence quality</span><br>
+        Corroborated — 2 core, 2 watch, 1 candidate source; 64% of items from core tier. Candidate-tier evidence (Lagos) weighted at half.
+      </div>
+      <div style="border-top: 1px solid #C9C7BF; padding-top: 14px; font-size: 11px; line-height: 1.5; color: #6B1D26;">
+        <span style="font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; font-size: 9px;">† Divergence</span><br>
+        Editorial attention exceeds real-world adoption by 2 points. Coverage is running ahead of the street — treat volume as hype until adoption confirms.
+      </div>
+    </div>
+  </div>
+
+  <div style="padding: 36px 0 32px 0; border-bottom: 1px solid #111;">
+    <div style="display: flex; justify-content: space-between; align-items: baseline;">
+      <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase;">Evidence Timeline</div>
+      <div style="display: flex; gap: 20px; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #777;">
+        <div style="display: flex; align-items: center; gap: 6px;"><span style="display: inline-block; width: 10px; height: 10px; background: transparent; border: 1px solid #111;"></span>Editorial coverage</div>
+        <div style="display: flex; align-items: center; gap: 6px;"><span style="display: inline-block; width: 10px; height: 10px; background: #111;"></span>Adoption sightings</div>
+      </div>
+    </div>
+    <div style="display: flex; gap: 10px; align-items: flex-end; margin-top: 24px; border-bottom: 1px solid #111; padding-bottom: 0;">
+      <sc-for list="{{ weeks }}" as="w" hint-placeholder-count="14">
+        <div title="{{ w.tip }}" style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0; animation: ciIn 0.3s both; animation-delay: {{ w.delay }}; cursor: default; padding: 4px 0 0 0; transition: background 0.15s;" style-hover="background: #F2F0E8;">
+          <div style="display: flex; gap: 3px; align-items: flex-end;">
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <sc-for list="{{ w.ed }}" as="u" hint-placeholder-count="2">
+                <span style="display: block; width: 11px; height: 11px; background: transparent; border: 1px solid #111; box-sizing: border-box;"></span>
+              </sc-for>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <sc-for list="{{ w.ad }}" as="u" hint-placeholder-count="1">
+                <span style="display: block; width: 11px; height: 11px; background: #111;"></span>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display: flex; gap: 10px; margin-top: 8px;">
+      <sc-for list="{{ weeks }}" as="w" hint-placeholder-count="14">
+        <div style="flex: 1; text-align: center; font-size: 9px; letter-spacing: 0.08em; color: {{ w.labelColor }}; font-variant-numeric: tabular-nums;">{{ w.label }}</div>
+      </sc-for>
+    </div>
+    <div style="margin-top: 16px; font-size: 11px; color: #555; max-width: 620px; line-height: 1.5;">Editorial coverage spikes W27–W29 (fashion-week resort reviews) with no matching adoption response. Adoption sightings begin W30, Copenhagen only.</div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 340px; gap: 64px; padding-top: 36px;">
+    <div>
+      <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; padding-bottom: 12px; border-bottom: 1px solid #111;">Evidence by Source</div>
+      <sc-for list="{{ sourceGroups }}" as="g" hint-placeholder-count="4">
+        <div style="padding: 18px 0 6px 0; border-bottom: 1px solid #E4E2DA;">
+          <div style="display: flex; align-items: baseline; gap: 12px;">
+            <div style="font-size: 13px; font-weight: 600; letter-spacing: 0.02em;">{{ g.name }}</div>
+            <div style="font-size: 8px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; padding: 2px 7px; border: 1px solid {{ g.tierBorder }}; color: {{ g.tierFg }}; background: {{ g.tierBg }};">{{ g.tier }}</div>
+            <div style="font-size: 10px; color: #777; letter-spacing: 0.06em;">{{ g.meta }}</div>
+          </div>
+          <div style="display: flex; flex-direction: column; margin-top: 10px;">
+            <sc-for list="{{ g.items }}" as="e" hint-placeholder-count="2">
+              <div style="display: grid; grid-template-columns: 44px 1fr 90px 40px; gap: 16px; align-items: baseline; padding: 7px 0; border-top: 1px solid #F0EEE6;">
+                <div style="font-size: 10px; color: #777; font-variant-numeric: tabular-nums;">{{ e.week }}</div>
+                <div style="font-family: 'Newsreader', serif; font-size: 15px; line-height: 1.35;">{{ e.title }}</div>
+                <div style="font-size: 10px; color: #555; letter-spacing: 0.04em;">{{ e.city }}</div>
+                <div style="font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: #999;">{{ e.kind }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+    <div>
+      <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; padding-bottom: 12px; border-bottom: 1px solid #111;">Geography</div>
+      <sc-for list="{{ cities }}" as="c" hint-placeholder-count="3">
+        <div style="padding: 16px 0; border-bottom: 1px solid #E4E2DA;">
+          <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <a href="City Intelligence.dc.html" style="font-family: 'Newsreader', serif; font-size: 19px; text-decoration: none;">{{ c.name }}</a>
+            <div style="font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: {{ c.roleColor }};">{{ c.role }}</div>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-top: 6px; font-size: 10px; color: #777; font-variant-numeric: tabular-nums;">
+            <div>{{ c.since }}</div>
+            <div>{{ c.count }} items</div>
+          </div>
+        </div>
+      </sc-for>
+      <div style="margin-top: 16px; font-size: 11px; line-height: 1.5; color: #555;">Emerged in Copenhagen W21; editorial spread to London W27. Lagos evidence is editorial-only — no adoption sightings recorded there yet.</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 1440}, &quot;showDivergence&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;}}">
+class Component extends DCLogic {
+  state = { watching: false };
+  SIGNAL = 'Crochet menswear, granny-square';
+
+  componentDidMount() {
+    try {
+      const w = JSON.parse(localStorage.getItem('ci-watchlist') || '[]');
+      this.setState({ watching: w.includes(this.SIGNAL) });
+    } catch (e) {}
+  }
+
+  toggleWatch() {
+    let w = [];
+    try { w = JSON.parse(localStorage.getItem('ci-watchlist') || '[]'); } catch (e) {}
+    const watching = !w.includes(this.SIGNAL);
+    w = watching ? w.concat(this.SIGNAL) : w.filter(n => n !== this.SIGNAL);
+    localStorage.setItem('ci-watchlist', JSON.stringify(w));
+    this.setState({ watching });
+  }
+
+  renderVals() {
+    const showDivergence = this.props.showDivergence ?? true;
+    const meter = (n, accent) => [1,2,3,4,5].map(i => ({
+      bg: i <= n ? (accent ? '#6B1D26' : '#111') : 'transparent',
+      border: accent && i <= n ? '#6B1D26' : '#111',
+      delay: ((i - 1) * 70) + 'ms'
+    }));
+    const scores = [
+      { label: 'Editorial', n: '4/5', cells: meter(4, showDivergence) },
+      { label: 'Adoption', n: '2/5', cells: meter(2, false) },
+      { label: 'Saturation', n: '2/5', cells: meter(2, false) }
+    ];
+    // weeks W21..W34: [editorial, adoption]
+    const wk = [[1,0],[0,0],[1,0],[0,1],[1,0],[0,0],[3,0],[4,0],[3,1],[1,2],[0,1],[2,1],[1,2],[2,2]];
+    const weeks = wk.map((d, i) => ({
+      label: 'W' + (21 + i),
+      delay: (i * 35) + 'ms',
+      tip: 'W' + (21 + i) + ' — ' + d[0] + ' editorial, ' + d[1] + ' adoption',
+      labelColor: (21 + i) >= 27 && (21 + i) <= 29 ? '#6B1D26' : '#999',
+      ed: Array.from({ length: d[0] }),
+      ad: Array.from({ length: d[1] })
+    }));
+    const tier = t => t === 'core' ? { tierBg: '#111', tierFg: '#FAFAF7', tierBorder: '#111' }
+      : t === 'watch' ? { tierBg: 'transparent', tierFg: '#111', tierBorder: '#111' }
+      : { tierBg: 'transparent', tierFg: '#777', tierBorder: '#C9C7BF' };
+    const groups = [
+      { name: 'Field Notes CPH', tier: 'core', meta: 'Publication · Copenhagen', items: [
+        { week: 'W21', title: 'Open-knit at Studiestræde: three shops, one weekend', city: 'Copenhagen', kind: 'Art.' },
+        { week: 'W24', title: 'The crochet vest is not going away', city: 'Copenhagen', kind: 'Art.' },
+        { week: 'W30', title: 'Street census: knitwear share doubles at Fashion Week fringe', city: 'Copenhagen', kind: 'Art.' }]},
+      { name: 'The Cutting Room', tier: 'core', meta: 'Publication · London', items: [
+        { week: 'W27', title: 'Resort reviews: granny squares walk for four houses', city: 'London', kind: 'Art.' },
+        { week: 'W28', title: 'Why menswear is suddenly soft', city: 'London', kind: 'Art.' },
+        { week: 'W33', title: 'The hand-made premium, priced', city: 'London', kind: 'Art.' }]},
+      { name: 'Softline Journal', tier: 'watch', meta: 'Publication · Berlin', items: [
+        { week: 'W28', title: 'Craftcore, a taxonomy', city: '—', kind: 'Art.' },
+        { week: 'W29', title: 'Interview: the knit labels selling out on drop day', city: 'London', kind: 'Art.' }]},
+      { name: 'Mireille P.', tier: 'watch', meta: 'YouTube · Paris', items: [
+        { week: 'W29', title: 'I wore crochet for a week (menswear edition)', city: 'Paris', kind: 'Vid.' },
+        { week: 'W34', title: 'Thrift haul: hand-knits are getting expensive', city: 'Paris', kind: 'Vid.' }]},
+      { name: 'Lagos Stitch Club', tier: 'candidate', meta: 'YouTube · Lagos', items: [
+        { week: 'W31', title: 'Crochet fits at Homecoming afterparties', city: 'Lagos', kind: 'Vid.' }]}
+    ].map(g => Object.assign(g, tier(g.tier)));
+    const cities = [
+      { name: 'Copenhagen', role: 'Origin · W21', roleColor: '#6B1D26', since: 'Adoption confirmed W30', count: 9 },
+      { name: 'London', role: 'Spread · W27', roleColor: '#555', since: 'Editorial-led', count: 8 },
+      { name: 'Lagos', role: 'Spread · W31', roleColor: '#555', since: 'Editorial only — unconfirmed', count: 3 },
+      { name: 'Paris', role: 'Spread · W29', roleColor: '#555', since: 'Creator coverage only', count: 2 }
+    ];
+    return {
+      scores, weeks, sourceGroups: groups, cities,
+      openPalette: () => window.__ciPalette && window.__ciPalette.open(),
+      toggleWatch: () => this.toggleWatch(),
+      watchLabel: this.state.watching ? '● Watching' : '○ Watch signal',
+      watchColor: this.state.watching ? '#6B1D26' : '#555',
+      watchBorder: this.state.watching ? '#6B1D26' : '#C9C7BF'
+    };
+  }
+}
+</script>
+</body>
+</html>

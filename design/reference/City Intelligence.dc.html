@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #FAFAF7; color: #111; }
+  a { color: #111; } a:hover { color: #6B1D26; }
+  ::selection { background: #6B1D26; color: #FAFAF7; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</helmet>
+<dc-import name="CommandPalette" hint-size="100%,0px"></dc-import>
+<div data-screen-label="City Intelligence" style="min-height: 100vh; background: #FAFAF7; color: #111; font-family: 'Archivo', sans-serif; padding: 0 48px 80px 48px; max-width: 1440px; margin: 0 auto; box-sizing: border-box;">
+
+  <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 28px 0 14px 0; border-bottom: 2px solid #111;">
+    <div style="font-size: 12px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase;">Culture Intelligence</div>
+    <div style="display: flex; gap: 32px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #555; align-items: baseline;">
+      <a href="Signal Registry.dc.html" style="color: #555; text-decoration: none;">Signals</a>
+      <a href="Weekly Report.dc.html" style="color: #555; text-decoration: none;">Reports</a>
+      <a href="Source Universe.dc.html" style="color: #555; text-decoration: none;">Sources</a>
+      <div style="color: #111; border-bottom: 1px solid #111; padding-bottom: 2px;">Cities</div>
+      <button onClick="{{ openPalette }}" style="background: none; border: none; padding: 0; cursor: pointer; font-family: 'Archivo', sans-serif; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #999;" style-hover="color: #111;">Search ⌘K</button>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 300px; gap: 48px; align-items: end; padding: 40px 0 28px 0; border-bottom: 1px solid #111;">
+    <div>
+      <h1 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: 52px; line-height: 1.02; margin: 0; letter-spacing: -0.01em;">City Intelligence</h1>
+      <div style="margin-top: 12px; font-size: 12px; color: #555; letter-spacing: 0.04em; max-width: 560px;">Geography is data, not tags. Each city is scored on what is confirmed on its streets against what is merely written about it — and on whether we have the sources to know the difference.</div>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; border-left: 1px solid #C9C7BF;">
+      <div style="padding: 0 16px;">
+        <div style="font-family: 'Newsreader', serif; font-size: 28px; font-variant-numeric: tabular-nums;">11</div>
+        <div style="font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: #777; margin-top: 2px;">Cities</div>
+      </div>
+      <div style="padding: 0 16px; border-left: 1px solid #E4E2DA;">
+        <div style="font-family: 'Newsreader', serif; font-size: 28px; font-variant-numeric: tabular-nums;">4</div>
+        <div style="font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: #777; margin-top: 2px;">Origin cities</div>
+      </div>
+      <div style="padding: 0 16px; border-left: 1px solid #E4E2DA;">
+        <div style="font-family: 'Newsreader', serif; font-size: 28px; font-variant-numeric: tabular-nums; color: #6B1D26;">3</div>
+        <div style="font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: #777; margin-top: 2px;">Coverage gaps</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: minmax(120px,1fr) minmax(52px,64px) minmax(70px,96px) minmax(70px,96px) minmax(60px,80px) minmax(180px,1.6fr); gap: 0 16px; padding: 10px 0 8px 0; border-bottom: 1px solid #111; font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: #777;">
+    <div>City</div>
+    <div style="text-align: right;">Signals</div>
+    <div style="text-align: right;">Adopt.</div>
+    <div style="text-align: right;">Edit.-only</div>
+    <div style="text-align: right;">Sources</div>
+    <div>Coverage assessment</div>
+  </div>
+
+  <sc-for list="{{ cities }}" as="c" hint-placeholder-count="9">
+    <div style="display: grid; grid-template-columns: minmax(120px,1fr) minmax(52px,64px) minmax(70px,96px) minmax(70px,96px) minmax(60px,80px) minmax(180px,1.6fr); gap: 0 16px; align-items: baseline; padding: 13px 0; border-bottom: 1px solid #E4E2DA;">
+      <div style="font-family: 'Newsreader', serif; font-size: 21px; line-height: 1.15;">{{ c.name }} <span style="font-size: 11px; font-family: 'Archivo', sans-serif; letter-spacing: 0.12em; text-transform: uppercase; color: #6B1D26;">{{ c.tag }}</span></div>
+      <div style="text-align: right; font-size: 13px; font-variant-numeric: tabular-nums;">{{ c.signals }}</div>
+      <div style="text-align: right; font-size: 13px; font-variant-numeric: tabular-nums;">{{ c.adopted }}</div>
+      <div style="text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; color: {{ c.edColor }};">{{ c.editorial }}</div>
+      <div style="text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; color: {{ c.srcColor }};">{{ c.sources }}</div>
+      <div style="font-size: 11px; color: #555; line-height: 1.5;">{{ c.note }}</div>
+    </div>
+  </sc-for>
+
+  <div style="margin-top: 40px; border-top: 2px solid #111; padding-top: 14px;">
+    <div style="display: flex; align-items: baseline; gap: 14px;">
+      <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase;">Coverage Gaps</div>
+      <div style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #777;">Where the map is thinner than the territory</div>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 32px; margin-top: 16px;">
+      <div style="border-left: 1px solid #C9C7BF; padding-left: 16px;">
+        <div style="font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: #6B1D26; font-weight: 600;">Blind spot</div>
+        <div style="font-family: 'Newsreader', serif; font-size: 16px; margin-top: 6px;">Los Angeles</div>
+        <div style="font-size: 11px; color: #555; line-height: 1.5; margin-top: 6px;">No active source since Velvet Rope Weekly ceased in W29. Archive denim evidence now arrives only via Tokyo coverage of LA sellers.</div>
+      </div>
+      <div style="border-left: 1px solid #C9C7BF; padding-left: 16px;">
+        <div style="font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: #6B1D26; font-weight: 600;">Uncorroborated</div>
+        <div style="font-family: 'Newsreader', serif; font-size: 16px; margin-top: 6px;">Lagos</div>
+        <div style="font-size: 11px; color: #555; line-height: 1.5; margin-top: 6px;">Three signals touch Lagos through one candidate source. Nothing counts as spread until a second independent source corroborates.</div>
+      </div>
+      <div style="border-left: 1px solid #C9C7BF; padding-left: 16px;">
+        <div style="font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: #6B1D26; font-weight: 600;">Under-sourced</div>
+        <div style="font-family: 'Newsreader', serif; font-size: 16px; margin-top: 6px;">Mexico City</div>
+        <div style="font-size: 11px; color: #555; line-height: 1.5; margin-top: 6px;">Highest output-to-coverage ratio in the universe: two live signals, one active source. Recruitment recommended in W35.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; justify-content: space-between; padding: 18px 0; font-size: 10px; color: #777; letter-spacing: 0.04em;">
+    <div><span style="color: #6B1D26;">Editorial-only</span> counts in oxblood where written attention exceeds anything confirmed on the street.</div>
+    <div style="letter-spacing: 0.14em; text-transform: uppercase;">Week 35 · Compiled 30 Aug 2026</div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const C = (name, tag, signals, adopted, editorial, sources, srcWarn, note) => ({
+      name, tag, signals, adopted, editorial, sources,
+      edColor: editorial > adopted ? '#6B1D26' : '#555',
+      srcColor: srcWarn ? '#6B1D26' : '#555',
+      note
+    });
+    return {
+      openPalette: () => window.__ciPalette && window.__ciPalette.open(),
+      cities: [
+        C('New York', '', 6, 4, 2, 3, true, 'Hem & Haw failing for two weeks — adoption sightings likely undercounted. Uptown Stoop intake scheduled.'),
+        C('London', '', 5, 2, 3, 2, false, 'Heaviest editorial volume in the universe; attention consistently runs ahead of the street. Read coverage with the divergence flag in mind.'),
+        C('Tokyo', 'origin', 4, 3, 1, 1, false, 'Healthiest attention-to-adoption balance. Archive denim repair originated here; scores rising in step.'),
+        C('Milan', '', 4, 2, 2, 1, true, 'The Gradient feed truncation undercounts runway coverage since W33. Treat Milan editorial counts as a floor.'),
+        C('Seoul', 'origin', 3, 1, 2, 1, false, 'Y3K chrome accessories originated here. Knit District silent this week, feed healthy.'),
+        C('Paris', '', 3, 1, 2, 1, false, 'Creator-led coverage only — no print source. Evidence skews to what films well.'),
+        C('Mexico City', '', 3, 2, 1, 1, false, 'First adoption evidence for boxing-gym apparel this week. Quietly productive and under-sourced.'),
+        C('Lagos', '', 3, 0, 3, 1, false, 'All Lagos evidence is editorial and single-source. No adoption confirmed anywhere in the city.'),
+        C('Copenhagen', 'origin', 2, 2, 0, 1, false, 'Only city with confirmed crochet adoption; retail stock now responding. Single-source risk if Field Notes CPH stalls.'),
+        C('Berlin', '', 2, 1, 1, 1, false, 'Steady, low-volume. Softline Journal covers taxonomy more than streets.'),
+        C('Los Angeles', 'origin', 1, 1, 0, 0, true, 'No active source. Archive denim adoption known only through second-hand coverage — the registry\'s largest blind spot.')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
