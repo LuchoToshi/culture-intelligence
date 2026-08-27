@@ -143,6 +143,18 @@
   .alert-band .abt { font-size: 11px; color: var(--ci-ink-3); letter-spacing: 0.02em; }
   .bandwrap { max-width: var(--ci-page-max); margin: 0 auto; padding: 0 var(--ci-page-pad-x); }
 
+  /* ── coverage-gap cards (City Intelligence) ─────────── */
+  .gapgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--ci-col-gap); }
+  .gapcard { border-left: var(--ci-rule-mid); padding-left: 16px; }
+  .gapcard .gl { font: 600 9px var(--ci-font-text); letter-spacing: 0.18em;
+                 text-transform: uppercase; color: var(--ci-oxblood); }
+  .gapcard h3 { margin: 4px 0 4px; font-family: var(--ci-font-display); font-weight: 400;
+                font-size: var(--ci-size-row); line-height: 1.2; }
+  .gapcard p { margin: 0; font-size: 12px; color: var(--ci-ink-3); }
+  .origin-tag { font: 600 8px var(--ci-font-text); letter-spacing: var(--ci-track-label);
+                text-transform: uppercase; color: var(--ci-oxblood); margin-left: 8px; }
+  .ed-only { color: var(--ci-oxblood); }
+
   /* ── evidence ledger sparklines ─────────────────────── */
   .spark-bar { fill: var(--ci-ink); }
   .spark-empty { fill: var(--ci-line-light); }
@@ -275,6 +287,10 @@
 
   .mt-0 { margin-top: 0; }
   .mt-section { margin-top: var(--ci-section-gap); }
+  .finetext { font-size: 12px; color: var(--ci-ink-4); max-width: 68ch; }
+  select.plain { font: 12px var(--ci-font-text); color: var(--ci-ink);
+                 border: var(--ci-rule-mid); border-radius: 0; background: transparent;
+                 padding: 4px 8px; }
 
   footer.pagefoot { max-width: var(--ci-page-max); margin: 0 auto;
                     padding: 14px var(--ci-page-pad-x) 32px; border-top: var(--ci-rule-light);

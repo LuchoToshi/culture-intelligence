@@ -9,10 +9,10 @@
 {% if value %}<span class="meter{{ ' hot' if accent and value >= 4 }}" role="img" aria-label="{{ value }} of {{ max }}"><span class="cells" aria-hidden="true">{% for i in range(max) %}<span class="cell{{ ' on' if i < value }}"></span>{% endfor %}</span>{% if show_numeral %}<span class="n" aria-hidden="true">{{ value }}/{{ max }}</span>{% endif %}</span>{% else %}<span class="muted">{{ none_text }}</span>{% endif %}
 {%- endmacro %}
 
-{# The † divergence dagger: editorial momentum exceeds adoption by >= 2.
-   Auto-renders from the scores — never suppress it (design rule). #}
+{# The † divergence dagger. The rule lives in queries.signal_diverges — one
+   definition everywhere. Auto-renders — never suppress it (design rule). #}
 {% macro divergence(signal) -%}
-{% if signal.editorial_momentum_score and signal.urban_adoption_score and signal.editorial_momentum_score - signal.urban_adoption_score >= 2 %} <span class="dagger" role="img" aria-label="Editorial attention exceeds adoption" title="Editorial attention exceeds adoption — hype risk, verify before acting">†</span>{% endif %}
+{% if signal_diverges(signal) %} <span class="dagger" role="img" aria-label="Editorial attention exceeds adoption" title="Editorial attention exceeds adoption — hype risk, verify before acting">†</span>{% endif %}
 {%- endmacro %}
 
 {% macro tier_badge(tier) -%}

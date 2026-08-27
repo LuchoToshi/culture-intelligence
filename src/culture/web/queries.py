@@ -350,6 +350,157 @@ def city_rows(session: Session, min_items: int = 2) -> list[CityRow]:
     return rows
 
 
+DIVERGENCE_GAP = 2
+
+
+def signal_diverges(signal: Signal) -> bool:
+    """The † rule, defined once: editorial momentum outruns adoption by >= 2.
+
+    A missing adoption score counts as zero — strong editorial attention with
+    no adoption evidence at all is exactly the hype-risk case the dagger marks.
+    """
+    editorial = signal.editorial_momentum_score or 0
+    adoption = signal.urban_adoption_score or 0
+    return editorial - adoption >= DIVERGENCE_GAP
+
+
+GAP_LABELS = {
+    "blind_spot": "Blind spot",
+    "uncorroborated": "Uncorroborated",
+    "under_sourced": "Under-sourced",
+}
+
+
+@dataclass
+class CityIntelRow:
+    name: str
+    item_count: int
+    signal_count: int
+    adopted_count: int
+    editorial_only_count: int
+    local_source_count: int
+    recent_count: int
+    origin_signals: int
+    gap: str | None
+    assessment: str
+
+
+def _city_assessment(
+    signals: int, adopted: int, editorial_only: int, local: int, gap: str | None
+) -> str:
+    """Mechanical one-liner derived from the counts — never editorial judgment."""
+    if gap == "blind_spot":
+        verb = "reference" if signals != 1 else "references"
+        return (
+            f"No monitored source is based here; "
+            f"{signals} signal{'s' if signals != 1 else ''} {verb} the city."
+        )
+    if gap == "uncorroborated":
+        return (
+            f"Every signal here rests on a single source "
+            f"({signals} signal{'s' if signals != 1 else ''})."
+        )
+    if gap == "under_sourced":
+        return (
+            f"{signals} signals against {local} local source{'s' if local != 1 else ''} — "
+            "coverage lags the activity."
+        )
+    if signals == 0:
+        return "Evidence mentions the city; no persistent signal names it yet."
+    parts = [f"{local} local source{'s' if local != 1 else ''}"]
+    plural = "s" if signals != 1 else ""
+    parts.append(f"{adopted} of {signals} signal{plural} show adoption evidence")
+    if editorial_only:
+        parts.append(f"{editorial_only} editorial-only")
+    return "; ".join(parts) + "."
+
+
+def city_intelligence(session: Session) -> dict:
+    """City Intelligence: per-city coverage rows under transparent, deterministic
+    rules (each rule is also rendered in the page legend — spirit of
+    ``compute_lifecycle``, never vibes):
+
+    - adopted: urban adoption score >= 3.
+    - editorial-only: the † divergence rule (``signal_diverges``).
+    - origin: the first city named by the signal's earliest dated evidence.
+    - blind spot: signals present, no monitored source based in the city.
+    - uncorroborated: every signal present rests on a single source.
+    - under-sourced: >= 3 signals present, <= 1 local source.
+    """
+    base = city_rows(session)
+    signals = active_signals(session)
+    local_sources: Counter[str] = Counter()
+    for source in session.scalars(select(Source)):
+        if source.city:
+            local_sources[canonical_city(source.city)] += 1
+
+    # Origin: the signal's earliest dated evidence item, first city it names.
+    earliest: dict[int, ContentItem] = {}
+    for signal_id, item in session.execute(
+        select(SignalEvidence.signal_id, ContentItem).join(
+            ContentItem, ContentItem.id == SignalEvidence.content_item_id
+        )
+    ):
+        when = item_time(item)
+        if when is None:
+            continue
+        current = earliest.get(signal_id)
+        current_when = item_time(current) if current is not None else None
+        if current_when is None or when < current_when:
+            earliest[signal_id] = item
+    active_ids = {s.id for s in signals}
+    analyses = latest_analyses(session, [i.id for i in earliest.values()])
+    origin_counts: Counter[str] = Counter()
+    for signal_id, item in earliest.items():
+        if signal_id not in active_ids:
+            continue
+        analysis = analyses.get(item.id)
+        for raw in (analysis.cities if analysis else None) or []:
+            if city := canonical_city(raw):
+                origin_counts[city] += 1
+            break  # only the first city named by the earliest item
+
+    rows = []
+    for b in base:
+        present = [s for s in signals if _city_matches(b.name, s.cities)]
+        adopted = sum(1 for s in present if (s.urban_adoption_score or 0) >= 3)
+        editorial_only = sum(1 for s in present if signal_diverges(s))
+        local = local_sources.get(b.name, 0)
+        # A gap needs material activity: single-signal cities stay unflagged.
+        gap = None
+        if len(present) >= 2 and local == 0:
+            gap = "blind_spot"
+        elif len(present) >= 2 and all(s.source_count == 1 for s in present):
+            gap = "uncorroborated"
+        elif len(present) >= 3 and local <= 1:
+            gap = "under_sourced"
+        rows.append(
+            CityIntelRow(
+                name=b.name,
+                item_count=b.item_count,
+                signal_count=len(present),
+                adopted_count=adopted,
+                editorial_only_count=editorial_only,
+                local_source_count=local,
+                recent_count=b.recent_count,
+                origin_signals=origin_counts.get(b.name, 0),
+                gap=gap,
+                assessment=_city_assessment(len(present), adopted, editorial_only, local, gap),
+            )
+        )
+    gaps = sorted((r for r in rows if r.gap), key=lambda r: r.signal_count, reverse=True)
+    return {
+        "rows": rows,
+        "gaps": gaps,
+        "gap_labels": GAP_LABELS,
+        "summary": {
+            "cities": len(rows),
+            "origin_cities": sum(1 for r in rows if r.origin_signals),
+            "coverage_gaps": len(gaps),
+        },
+    }
+
+
 def city_detail(session: Session, name: str) -> dict:
     analyses = list(session.scalars(select(ContentAnalysis)))
     items = {i.id: i for i in session.scalars(select(ContentItem))}

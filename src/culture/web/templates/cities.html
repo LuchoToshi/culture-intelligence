@@ -1,34 +1,71 @@
 {% extends "base.html" %}
-{% block title %}Cities — Culture Intelligence{% endblock %}
+{% from "_macros.html" import stat_block %}
+{% block title %}City Intelligence — Culture Intelligence{% endblock %}
 {% block content %}
-<p class="eyebrow">Cities</p>
-<h1>Where taste is forming <span class="note" style="font:500 0.85rem var(--font-ui)"><a href="/cities/compare">Compare two cities →</a></span></h1>
-<p class="lede">Cities ranked by evidence concentration — how often each place appears in analyzed content, how many signals name it, and how much arrived this week. A ranked view says more than a map at this scale; place counts reflect what monitored sources cover, so under-covered cities may simply be under-observed.</p>
+<p class="eyebrow">Cities <a href="/cities/compare">Compare two cities →</a></p>
+<h1>City Intelligence</h1>
+<p class="lede">Cities ranked by evidence concentration — how often each place appears in analyzed content, what has taken hold there, and where coverage falls short of the activity. Place counts reflect what monitored sources cover, so an under-covered city may simply be under-observed.</p>
+
+<div class="statline">
+  {{ stat_block(ci.summary.cities, "Cities") }}
+  {{ stat_block(ci.summary.origin_cities, "Origin cities") }}
+  {{ stat_block(ci.summary.coverage_gaps, "Coverage gaps", accent=(ci.summary.coverage_gaps > 0)) }}
+</div>
 
 <div class="table-scroll">
 <table class="index">
+  <caption class="skip-link">Cities ranked by evidence concentration</caption>
   <thead><tr>
     <th scope="col">City</th>
     <th scope="col" class="num">Evidence items</th>
     <th scope="col" class="num">Signals</th>
-    <th scope="col" class="num">Sources</th>
-    <th scope="col" class="num">Archetype observations</th>
+    <th scope="col" class="num"><abbr title="Signals with adoption evidence (urban adoption score 3 or higher)">Adopt.</abbr></th>
+    <th scope="col" class="num"><abbr title="Signals where editorial attention outruns adoption (the dagger rule)">Edit.-only</abbr></th>
+    <th scope="col" class="num"><abbr title="Monitored sources based in the city">Local sources</abbr></th>
     <th scope="col" class="num">New this week</th>
+    <th scope="col">Coverage assessment</th>
   </tr></thead>
   <tbody>
-  {% for city in cities %}
+  {% for city in ci.rows %}
     <tr>
-      <td class="cell-primary"><a href="/cities/{{ city.name | urlencode }}">{{ city.name }}</a></td>
+      <td class="cell-primary"><a href="/cities/{{ city.name | urlencode }}">{{ city.name }}</a>{% if city.origin_signals %}<span class="origin-tag" title="{{ city.origin_signals }} signal{{ 's' if city.origin_signals != 1 }} first observed here">origin</span>{% endif %}</td>
       <td class="num">{{ city.item_count }}</td>
       <td class="num">{{ city.signal_count }}</td>
-      <td class="num">{{ city.source_count }}</td>
-      <td class="num">{{ city.archetype_count }}</td>
+      <td class="num">{{ city.adopted_count }}</td>
+      <td class="num">{% if city.editorial_only_count %}<span class="ed-only">{{ city.editorial_only_count }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+      <td class="num">{% if city.local_source_count %}{{ city.local_source_count }}{% else %}<span class="muted">0</span>{% endif %}</td>
       <td class="num">{% if city.recent_count %}<span class="delta-up">+{{ city.recent_count }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+      <td class="muted">{{ city.assessment }}</td>
     </tr>
   {% else %}
-    <tr><td colspan="6"><div class="empty" style="border:none">No city has enough evidence yet.</div></td></tr>
+    <tr><td colspan="8"><div class="empty">No city has enough evidence yet.</div></td></tr>
   {% endfor %}
   </tbody>
 </table>
 </div>
+
+{% if ci.gaps %}
+<h2 class="section heavy">Coverage gaps <span class="note">where the monitored universe falls short of the activity</span></h2>
+<div class="gapgrid">
+  {% for g in ci.gaps[:3] %}
+  <div class="gapcard">
+    <div class="gl">{{ ci.gap_labels[g.gap] }}</div>
+    <h3><a href="/cities/{{ g.name | urlencode }}">{{ g.name }}</a></h3>
+    <p>{{ g.assessment }}</p>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<h2 class="section">Method</h2>
+<p class="finetext">
+  Adopted — urban adoption score of 3 or more. Editorial-only — editorial momentum outruns
+  adoption by two points or more (the † rule). Origin — the city named by a signal's
+  earliest dated evidence. Blind spot — two or more signals present with no monitored local source.
+  Uncorroborated — two or more signals present, every one resting on a single source. Under-sourced — three
+  or more signals against at most one local source. All rules are computed, not asserted.
+</p>
+<p class="mono muted">
+  {% if latest_report %}Week {{ latest_report.split("-W")[-1] }}{% endif %}{% if freshness and freshness.last_check %} · Compiled {{ freshness.last_check | dmy }}{% endif %}
+</p>
 {% endblock %}

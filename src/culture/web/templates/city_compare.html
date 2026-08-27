@@ -8,11 +8,11 @@
 
 <form class="filterbar" method="get" action="/cities/compare">
   <span class="label">Cities</span>
-  <select name="a" style="font:0.85rem var(--font-ui); border:1px solid var(--hairline); border-radius:999px; padding:0.25rem 0.8rem">
+  <select name="a" class="plain">
     {% for c in all_cities %}<option value="{{ c }}" {% if c == a %}selected{% endif %}>{{ c }}</option>{% endfor %}
   </select>
   <span class="muted">vs</span>
-  <select name="b" style="font:0.85rem var(--font-ui); border:1px solid var(--hairline); border-radius:999px; padding:0.25rem 0.8rem">
+  <select name="b" class="plain">
     {% for c in all_cities %}<option value="{{ c }}" {% if c == b %}selected{% endif %}>{{ c }}</option>{% endfor %}
   </select>
   <button type="submit">Compare</button>
@@ -33,9 +33,9 @@
 <div class="empty">No signal currently has evidence naming both {{ a }} and {{ b }}.</div>
 {% endif %}
 
-<div class="grid-2" style="margin-top:1.6rem">
+<div class="grid-2 mt-section">
   <div>
-    <h2 class="section" style="margin-top:0">Only in {{ a }}</h2>
+    <h2 class="section mt-0">Only in {{ a }}</h2>
     {% for s in comparison.only_a %}
     <div class="card">
       <div class="meta">{{ stage_chip(s.lifecycle_stage) }} · {{ s.evidence_count }} items</div>
@@ -44,7 +44,7 @@
     {% else %}<div class="empty">Nothing exclusive to {{ a }} right now.</div>{% endfor %}
   </div>
   <div>
-    <h2 class="section" style="margin-top:0">Only in {{ b }}</h2>
+    <h2 class="section mt-0">Only in {{ b }}</h2>
     {% for s in comparison.only_b %}
     <div class="card">
       <div class="meta">{{ stage_chip(s.lifecycle_stage) }} · {{ s.evidence_count }} items</div>

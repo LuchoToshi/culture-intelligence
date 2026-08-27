@@ -297,6 +297,7 @@ def create_app(
     templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
     templates.env.globals["stage_labels"] = queries.STAGE_LABELS
     templates.env.globals["stage_glyphs"] = queries.STAGE_GLYPHS
+    templates.env.globals["signal_diverges"] = queries.signal_diverges
     templates.env.filters["dmy"] = _dmy
     templates.env.filters["public_city_first"] = citypolicy.first_public_city
     templates.env.filters["public_cities"] = citypolicy.public_cities
@@ -715,7 +716,13 @@ def create_app(
             request,
             session,
             "cities.html",
-            {"cities": queries.city_rows(session), "active_nav": "cities"},
+            {
+                "ci": queries.city_intelligence(session),
+                "latest_report": session.scalar(
+                    select(WeeklyReport.iso_week).order_by(WeeklyReport.generated_at.desc())
+                ),
+                "active_nav": "cities",
+            },
         )
 
     @app.get("/cities/compare", response_class=HTMLResponse)
