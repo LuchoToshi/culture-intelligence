@@ -185,12 +185,14 @@ def _draft(name, tier):
 
 CITY_REGISTRY: tuple[CityRecord, ...] = (
     _approved("London", "core-global",
-              "58 evidence mentions across 11 dedicated sources; strongest signal density on the platform.",
+              "58 evidence mentions across 11 dedicated sources; "
+              "strongest signal density on the platform.",
               ("Western Internet Rap Producers Crossing Into K-pop Mainstream",
                "Producers Stepping Out as Front-Facing Solo Artists"),
               "11 active London-based sources incl. Dazed, i-D, CULTED"),
     _approved("New York", "core-global",
-              "86 evidence mentions across 14 dedicated sources; deepest coverage of any city.",
+              "86 evidence mentions across 14 dedicated sources; "
+              "deepest coverage of any city.",
               ("Digital Detox as Premium Brand Positioning",
                "Japanese Spatial Design Vocabulary Entering Retail and Brand Environments"),
               "14 active NY-based sources incl. Office Magazine, Drew Joiner"),

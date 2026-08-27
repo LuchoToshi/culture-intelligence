@@ -18,7 +18,9 @@ def test_approved_city_passes_through_case_insensitively():
 def test_aliases_normalize_to_approved_label():
     assert public_city("NYC") == "New York"
     assert public_city("new york city") == "New York"
-    assert public_city("Philly") == "Philadelphia"
+    # Alias resolution still works internally; display waits on approval.
+    assert MAPPINGS["philly"].public_output == "Philadelphia"
+    assert public_city("Philly") is None
 
 
 def test_metro_locales_map_to_major_city_when_target_is_approved():
