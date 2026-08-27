@@ -105,7 +105,7 @@ def test_entries_missing_evidence_or_source_are_excluded_from_display():
     for r in CITY_REGISTRY:
         if r.status != "Approved":
             assert r.name not in APPROVED_CITIES, r.name
-    assert APPROVED_CITIES == {r.name for r in CITY_REGISTRY if r.status == "Approved"}
+    assert {r.name for r in CITY_REGISTRY if r.status == "Approved"} == APPROVED_CITIES
 
 
 def test_registry_statuses_are_from_the_policy_vocabulary():
