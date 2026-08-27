@@ -31,6 +31,36 @@ A synchronous CLI pipeline: `seed → ingest → analyze → report`.
 
 Python 3.11+ · uv · PostgreSQL · SQLAlchemy 2 · Alembic · Pydantic / pydantic-settings · Typer · Rich. Later phases add httpx, feedparser, trafilatura, yt-dlp, and the Anthropic/OpenAI SDKs.
 
+## Design system
+
+The web UI implements the **"briefing room"** design system, designed in Claude Design and
+exported to [design/](design/) — the design source of truth (brand rules in
+[design/readme.md](design/readme.md), repo conventions in
+[design/README-REPO.md](design/README-REPO.md)).
+
+- **Tokens** — `--ci-*` CSS custom properties (ink scale, oxblood accent, hairline rules,
+  Newsreader + Archivo type scale, spacing). Canonical: `design/tokens/`. Runtime copy:
+  `src/culture/web/templates/_tokens.css`, `{% include %}`d by `base.html`, `login.html`,
+  `error.html`. Change tokens in both places or the next design sync will disagree.
+- **Components** — Jinja2 macros in `src/culture/web/templates/_macros.html`
+  (`stage_chip`, `score_meter`, `divergence`, `tier_badge`, `health_mark`, `stat_block`,
+  `alert_band`, `signal_table`, `evidence_record`), each implementing the matching
+  reference component in `design/components/core/` (React `.jsx` + `.d.ts` +
+  `.prompt.md`). The product runs no JavaScript framework; the `.jsx` files are the
+  visual/API reference and the future `/design-sync` input.
+- **Adding a component**: start from its reference in `design/components/core/` (or add
+  one there first), implement it as a macro using only `--ci-*` tokens, and give it the
+  accessibility the reference lacks (real heading elements, `aria-hidden` decorative
+  marks, labeled meters).
+- **Prohibited** (from the design charter): gradients, shadows, rounded corners (7px
+  stage dots excepted), icon fonts/SVG icons/emoji (unicode glyphs only: `†` `●` `○`
+  `▾` `·`), pulsing or count-up animations, a second styling system, oxblood for
+  anything but signal state and emphasis. Hard-coded colors in templates are a bug —
+  use tokens.
+- There is **no build step**: styles ship inline in the Jinja templates. No `dist/` is
+  produced or needed. Reference screens live in `design/reference/*.dc.html` (Claude
+  Design artboards with demo data — open in a browser to compare fidelity).
+
 ## Setup
 
 ### 1. PostgreSQL
