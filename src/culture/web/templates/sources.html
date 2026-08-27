@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import tier_badge, health_mark %}
 {% block title %}Sources — Culture Intelligence{% endblock %}
 {% block content %}
 <p class="eyebrow">Sources <span class="muted">· admin only</span></p>
@@ -25,14 +26,13 @@
     <tr id="state-{{ r.state }}">
       <td class="cell-primary">{% if s.url %}<a href="{{ s.url }}" rel="noopener">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}</td>
       <td class="mono">{{ s.platform }}</td>
-      <td class="mono">{{ s.tier }}</td>
+      <td>{{ tier_badge(s.tier) }}</td>
       <td>{{ [s.city, s.country] | select | join(", ") }}</td>
-      <td class="num">{{ r.items }}</td>
+      <td class="num">{{ r["items"] }}</td>
       <td class="mono">{{ s.last_successful_check_at | dmy }}</td>
       <td class="mono">{{ s.last_checked_at | dmy }}</td>
-      <td>{% if r.state == "collecting" %}<span class="delta-up">{{ state_labels[r.state] }}</span>
-          {% elif r.state == "paused" %}<span class="muted">{{ state_labels[r.state] }}</span>
-          {% else %}<span class="limitation">{{ state_labels[r.state] }}</span>{% endif %}</td>
+      {% set mark = {"collecting": "ok", "failing": "fail", "stale": "fail"} %}
+      <td>{{ health_mark(mark.get(r.state, "idle"), state_labels[r.state]) }}</td>
     </tr>
   {% endfor %}
   </tbody>

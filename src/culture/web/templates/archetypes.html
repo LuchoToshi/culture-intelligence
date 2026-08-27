@@ -6,8 +6,8 @@
 <p class="lede">Identity descriptions observed in the evidence — who is combining which signals, where. These are observations, not established personas: an archetype earns standing only by recurring across <em>independent</em> sources, and the page is grouped by exactly how far each one has gotten.</p>
 
 {# Sticky summary + filters: the numbers a reader needs while scrolling. #}
-<div style="position:sticky; top:0; z-index:5; background:var(--paper, #fff); border-bottom:1px solid var(--hairline); padding:0.6rem 0; margin-bottom:1rem">
-  <div class="mono" style="font-size:0.78rem; display:flex; flex-wrap:wrap; gap:0.4rem 1.2rem; margin-bottom:0.55rem">
+<div class="stickybar">
+  <div class="mono stickyline">
     <span><b>{{ summary.total }}</b> archetypes</span>
     <span class="delta-up"><b>{{ summary.recurring }}</b> recurring</span>
     <span><b>{{ summary.repeated }}</b> repeated</span>
@@ -15,11 +15,10 @@
     {% if summary.cities %}<span>{{ summary.cities }} cities</span>{% endif %}
     {% if summary.newest %}<span>{{ summary.oldest | dmy("?") }} – {{ summary.newest | dmy("?") }}</span>{% endif %}
   </div>
-  <form class="filterbar" method="get" action="/archetypes" style="margin:0">
+  <form class="filterbar compact" method="get" action="/archetypes">
     <span class="label">Filter</span>
-    <input name="q" type="search" placeholder="e.g. runner, curator, Berlin…" value="{{ q or '' }}"
-           style="font:0.85rem var(--font-ui); border:1px solid var(--hairline); border-radius:999px; padding:0.25rem 0.8rem">
-    <select name="sort" style="font:0.85rem var(--font-ui); border:1px solid var(--hairline); border-radius:999px; padding:0.25rem 0.8rem">
+    <input class="plain" name="q" type="search" placeholder="e.g. runner, curator, Berlin…" value="{{ q or '' }}">
+    <select class="plain" name="sort">
       <option value="recurrence" {% if sort == "recurrence" %}selected{% endif %}>Most corroborated first</option>
       <option value="recency" {% if sort == "recency" %}selected{% endif %}>Most recent first</option>
       <option value="corroboration" {% if sort == "corroboration" %}selected{% endif %}>Most sources first</option>
@@ -37,10 +36,10 @@
 {% for key, label, open_default in sections %}
 {% set groups = by_state[key] %}
 {% if groups %}
-<details {% if open_default %}open{% endif %} style="margin-bottom:1.4rem">
-  <summary style="cursor:pointer; padding:0.4rem 0; border-bottom:2px solid var(--hairline)">
+<details class="groupfold" {% if open_default %}open{% endif %}>
+  <summary>
     <span class="eyebrow" style="display:inline">{{ label }}</span>
-    <span class="mono muted" style="font-size:0.78rem"> · {{ groups | length }}</span>
+    <span class="mono muted"> · {{ groups | length }}</span>
   </summary>
   {% for g in groups %}
   <article class="record" id="a-{{ key }}-{{ loop.index }}">
@@ -52,12 +51,12 @@
       <span>{{ g.latest | dmy("?") }}</span>
       {% if g.cities %}<span>{{ g.cities | join(" · ") }}</span>{% endif %}
     </div>
-    <p style="margin:0; font-size: 1rem">{{ g.text }}</p>
+    <p class="reading" style="margin:0">{{ g.text }}</p>
     {% set shown = [] %}
     {% set signal_links = [] %}
     {% for obs in g.observations %}{% for signal in obs.signals %}{% if signal.id not in shown %}{% set _ = shown.append(signal.id) %}{% set _ = signal_links.append(signal) %}{% endif %}{% endfor %}{% endfor %}
     {% if signal_links %}
-    <div class="tagrow" style="margin-top:0.5rem">
+    <div class="tagrow">
       {% for signal in signal_links %}<a href="/signals/{{ signal.id }}">{{ signal.name }}</a>{% endfor %}
     </div>
     {% endif %}

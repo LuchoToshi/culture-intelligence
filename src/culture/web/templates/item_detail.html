@@ -20,7 +20,7 @@
 <h2 class="section">Model analysis <span class="note">{{ analysis.analysis_provider }}/{{ analysis.analysis_model }} · analyzed {{ analysis.analyzed_at | dmy("?") }}</span></h2>
 <article class="record">
   <div class="provenance"><span class="kind kind-model"></span></div>
-  <p style="font-size:1rem">{{ analysis.summary }}</p>
+  <p class="reading">{{ analysis.summary }}</p>
   {% if analysis.why_it_matters %}<div class="curator"><span class="mono muted">WHY IT MATTERS</span> — {{ analysis.why_it_matters }}</div>{% endif %}
 </article>
 
@@ -40,7 +40,7 @@
 <h2 class="section">Extracted entities</h2>
 <div class="scoregrid">
   {% for label, values in entity_rows %}
-    <div class="row"><span class="muted">{{ label }}</span><span style="text-align:right">{{ values | join(", ") }}</span></div>
+    <div class="row"><span class="muted">{{ label }}</span><span class="ta-r">{{ values | join(", ") }}</span></div>
   {% endfor %}
 </div>
 {% endif %}
