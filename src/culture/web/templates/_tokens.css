@@ -1,0 +1,59 @@
+/* Culture Intelligence design tokens — runtime copy.
+   Source of truth: design/tokens/*.css (Claude Design export). Keep in sync both ways.
+   Fonts (Newsreader + Archivo) load via <link> in the base templates instead of the
+   @import in design/tokens/fonts.css — same families, faster with preconnect. */
+:root {
+  /* base */
+  --ci-paper: #FAFAF7;
+  --ci-ink: #111111;
+  --ci-ink-2: #333333;
+  --ci-ink-3: #555555;
+  --ci-ink-4: #777777;
+  --ci-ink-5: #999999;
+  --ci-line-heavy: #111111;   /* 1-2px section rules */
+  --ci-line-mid: #C9C7BF;     /* group hairlines */
+  --ci-line-light: #E4E2DA;   /* row hairlines */
+  --ci-tint: #F2F0E8;         /* hover / active-row paper tint */
+  --ci-tint-2: #F7F5EE;       /* expanded-panel paper tint */
+  --ci-oxblood: #6B1D26;      /* THE accent: signal state + emphasis ONLY */
+  /* semantic */
+  --ci-bg: var(--ci-paper);
+  --ci-text: var(--ci-ink);
+  --ci-text-secondary: var(--ci-ink-3);
+  --ci-text-meta: var(--ci-ink-4);
+  --ci-signal: var(--ci-oxblood);
+  --ci-hover-bg: var(--ci-tint);
+
+  --ci-font-display: 'Newsreader', 'Times New Roman', serif; /* headlines, signal names, prose */
+  --ci-font-text: 'Archivo', 'Helvetica Neue', sans-serif;   /* data, labels, tables, UI */
+  /* display scale */
+  --ci-size-h1: 52px;        /* page titles; detail headers up to 58px */
+  --ci-size-h2: 26px;        /* part headers */
+  --ci-size-row: 21px;       /* index-row signal names */
+  --ci-size-prose: 15px;     /* report body; executive brief 19px */
+  /* data scale */
+  --ci-size-data: 13px;      /* tabular numerals */
+  --ci-size-caption: 11px;   /* secondary cells, notes */
+  --ci-size-label: 9px;      /* uppercase column/meta labels (10px for nav) */
+  /* tracking */
+  --ci-track-brand: 0.22em;
+  --ci-track-label: 0.16em;  /* 0.14-0.18em range */
+  --ci-track-chip: 0.1em;
+  --ci-leading-prose: 1.55;
+  --ci-leading-tight: 1.05;
+
+  --ci-page-pad-x: 48px;
+  --ci-page-max: 1440px;
+  --ci-row-pad-y: 12px;      /* dense; 20px comfortable */
+  --ci-col-gap: 20px;
+  --ci-section-gap: 48px;
+  --ci-rule-heavy: 2px solid var(--ci-line-heavy);
+  --ci-rule: 1px solid var(--ci-line-heavy);
+  --ci-rule-mid: 1px solid var(--ci-line-mid);
+  --ci-rule-light: 1px solid var(--ci-line-light);
+}
+::selection { background: var(--ci-oxblood); color: var(--ci-paper); }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}

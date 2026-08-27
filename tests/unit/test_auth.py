@@ -231,7 +231,7 @@ def test_demo_banner_and_source_hiding(role_client):
     )
     assert response.status_code == 303
     text = role_client.get("/dashboard").text
-    assert "DEMO ACCOUNT" in text
+    assert "Demo account" in text
     assert "Sabukaru" not in text  # fixture source name never shown to demo
 
 

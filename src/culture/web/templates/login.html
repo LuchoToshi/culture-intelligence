@@ -6,31 +6,49 @@
 <title>Sign in — Culture Intelligence</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root { --porcelain:#F6F6F3; --surface:#fff; --ink:#1A1B1E; --ink-2:#5F6167; --hairline:#E3E3DE; --accent:#2B2BC4; }
+{% include "_tokens.css" %}
   * { box-sizing: border-box; }
   body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
-         background:var(--porcelain); font:15.5px/1.6 "Instrument Sans",-apple-system,sans-serif; color:var(--ink); }
-  .panel { background:var(--surface); border:1px solid var(--hairline); padding:2.4rem 2.2rem; width:100%; max-width:380px; }
-  h1 { font-family:"Newsreader",Georgia,serif; font-weight:600; font-size:1.4rem; margin:0 0 0.4rem; }
-  p.lede { color:var(--ink-2); margin:0 0 1.6rem; font-size:0.92rem; }
-  label { display:block; font-size:0.8rem; color:var(--ink-2); margin-bottom:0.3rem; }
-  input[type=email] { width:100%; font:inherit; padding:0.6rem 0.8rem; border:1px solid var(--hairline);
-                       border-radius:4px; margin-bottom:1rem; }
-  input[type=email]:focus { outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent); }
-  button { width:100%; font:600 0.92rem "Instrument Sans",sans-serif; color:#fff; background:var(--accent);
-           border:none; border-radius:4px; padding:0.65rem; cursor:pointer; }
-  button:hover { background:#1F1F96; }
-  button:focus-visible { outline:2px solid var(--ink); outline-offset:2px; }
-  .notice { font-size:0.88rem; padding:0.8rem 0.9rem; border-radius:4px; margin-bottom:1.2rem; }
-  .notice.ok { background:#EEF3EE; color:#1F7A50; }
-  .notice.err { background:#FBEEEE; color:#A03B5C; }
+         background:var(--ci-paper); font:14px/1.55 var(--ci-font-text); color:var(--ci-ink);
+         padding:1.5rem; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline:2px solid var(--ci-oxblood); outline-offset:2px; }
+  .panel { border:var(--ci-rule-mid); padding:2.4rem 2.2rem; width:100%; max-width:400px; }
+  .brand { font:600 11px var(--ci-font-text); letter-spacing:var(--ci-track-brand);
+           text-transform:uppercase; margin:0 0 1rem; }
+  h1 { font-family:var(--ci-font-display); font-weight:400; font-size:26px;
+       line-height:var(--ci-leading-tight); margin:0 0 0.4rem; }
+  p.lede { color:var(--ci-ink-3); margin:0 0 1.6rem; font-size:13px; }
+  label { display:block; font:500 9px var(--ci-font-text); letter-spacing:var(--ci-track-label);
+          text-transform:uppercase; color:var(--ci-ink-4); margin-bottom:0.35rem; }
+  input[type=email], input[type=password] {
+    width:100%; font:inherit; padding:0.6rem 0.8rem; border:var(--ci-rule-mid);
+    border-radius:0; background:transparent; margin-bottom:1rem; }
+  input:focus { outline:2px solid var(--ci-oxblood); outline-offset:1px; border-color:var(--ci-ink); }
+  button { width:100%; font:600 11px var(--ci-font-text); letter-spacing:var(--ci-track-chip);
+           text-transform:uppercase; color:var(--ci-paper); background:var(--ci-ink);
+           border:1px solid var(--ci-ink); border-radius:0; padding:0.75rem; cursor:pointer; }
+  button:hover { background:var(--ci-oxblood); border-color:var(--ci-oxblood); }
+  .notice { font-size:12px; padding:0.7rem 0; margin-bottom:1.2rem;
+            display:flex; gap:10px; align-items:baseline;
+            border-top:var(--ci-rule-light); border-bottom:var(--ci-rule-light); }
+  .notice::before { content:""; width:7px; height:7px; flex:none; align-self:center; }
+  .notice.ok { color:var(--ci-ink-2); }
+  .notice.ok::before { background:var(--ci-ink); }
+  .notice.err { color:var(--ci-oxblood); }
+  .notice.err::before { background:var(--ci-oxblood); }
+  .aside { font-size:12px; color:var(--ci-ink-3); margin:1.1rem 0 0; }
+  details { margin-top:1.2rem; border-top:var(--ci-rule-light); padding-top:1rem; }
+  summary { cursor:pointer; font:400 11px var(--ci-font-text);
+            letter-spacing:var(--ci-track-chip); text-transform:uppercase; color:var(--ci-ink-3); }
 </style>
 </head>
 <body>
   <div class="panel">
-    <h1>Culture Intelligence</h1>
+    <p class="brand">Culture Intelligence</p>
+    <h1>Sign in</h1>
     <p class="lede">Urban taste intelligence — signed access only.</p>
     {% if sent %}
       <div class="notice ok">A sign-in link is on its way to <strong>{{ sent }}</strong> — it expires in 15 minutes.</div>
@@ -44,18 +62,17 @@
       <input type="hidden" name="next" value="{{ next or '/' }}">
       <button type="submit">Send sign-in link</button>
     </form>
-    <p style="font-size:0.82rem;color:var(--ink-2);margin:1.1rem 0 0">
+    <p class="aside">
       No account? Submitting your work email records an access request for
       review. Approved members sign in by email link — no password to manage.
     </p>
-    <details style="margin-top:1.2rem;border-top:1px solid var(--hairline);padding-top:1rem">
-      <summary style="cursor:pointer;font-size:0.82rem;color:var(--ink-2)">Have demo credentials?</summary>
+    <details>
+      <summary>Have demo credentials?</summary>
       <form method="post" action="/login/demo" style="margin-top:0.8rem">
         <label for="demo-email">Demo email</label>
         <input id="demo-email" name="email" type="email" required>
         <label for="demo-password">Demo password</label>
-        <input id="demo-password" name="password" type="password" required
-               style="width:100%;font:inherit;padding:0.6rem 0.8rem;border:1px solid var(--hairline);border-radius:4px;margin-bottom:1rem">
+        <input id="demo-password" name="password" type="password" required>
         <button type="submit">Enter demo</button>
       </form>
     </details>
