@@ -221,7 +221,8 @@ CITY_REGISTRY: tuple[CityRecord, ...] = (
               "032c, Highsnobiety, Berlin Club Memes"),
     _approved("Madrid", "eu-watch",
               "3 evidence mentions; one dedicated source.",
-              ("Actors With Archive-Fashion Backgrounds Platformed as Style Voices on Menswear Podcasts",),
+              ("Actors With Archive-Fashion Backgrounds Platformed as Style "
+               "Voices on Menswear Podcasts",),
               "Fucking Young!"),
     _approved("Montreal", "early-signal",
               "1 evidence mention; one dedicated source.",
