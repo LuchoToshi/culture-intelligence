@@ -333,7 +333,12 @@ def resolve_profile(session: "Session", user_id: str) -> "Profile | None":
 def require_authenticated(request: Request) -> None:
     """Raise 401 unless the request carries a resolved session. Route
     handlers call this in addition to AuthMiddleware (defense-in-depth,
-    matching how /sources already double-checks admin at the route)."""
+    matching how /sources already double-checks admin at the route).
+    Local unauthenticated mode (create_app(require_auth=False), the
+    operator running `culture web` on their own machine) is inherently the
+    operator — same bypass app.py's _request_is_admin already applies."""
+    if not getattr(request.app.state, "require_auth", True):
+        return
     if getattr(request.state, "user_email", None) is None:
         raise HTTPException(401, "Sign in required.")
 
@@ -352,8 +357,11 @@ def require_owner(request: Request) -> None:
     """Raise 403 unless the session's role is the top permission tier
     (ROLE_ADMIN in magic-link mode, ROLE_OWNER in Supabase mode — see
     OWNER_ROLES). Every /admin route calls this explicitly, in addition to
-    the middleware's ADMIN_ONLY_PREFIXES check."""
+    the middleware's ADMIN_ONLY_PREFIXES check. Local unauthenticated mode
+    bypasses this the same way require_authenticated does."""
     require_authenticated(request)
+    if not getattr(request.app.state, "require_auth", True):
+        return
     role = getattr(request.state, "user_role", None)
     if role not in OWNER_ROLES:
         record_event(
@@ -385,6 +393,11 @@ def verify_csrf_token(token: str, request: Request, settings: Settings) -> bool:
 
 
 def require_csrf(token: str, request: Request, settings: Settings) -> None:
+    """Local unauthenticated mode has no SESSION_SECRET configured (nothing
+    else needs one there) and, per require_owner, no session concept to
+    protect — same bypass."""
+    if not getattr(request.app.state, "require_auth", True):
+        return
     if not verify_csrf_token(token, request, settings):
         raise HTTPException(403, "This form has expired. Reload the page and try again.")
 

@@ -86,7 +86,7 @@
     <a href="/admin/audit" {% if active_tab == "audit" %}aria-current="page"{% endif %}>Audit</a>
     <a href="/admin/settings" {% if active_tab == "settings" %}aria-current="page"{% endif %}>Settings</a>
     <span class="account-menu" style="margin-left:auto; align-self:center;">
-      {{ user_email }}<a href="/logout">Sign out</a>
+      {% if user_email %}{{ user_email }}<a href="/logout">Sign out</a>{% endif %}
     </span>
   </div>
 </nav>

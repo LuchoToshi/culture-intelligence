@@ -217,13 +217,68 @@ def sources() -> None:
         console.print(table)
 
 
+def _ingest_queued() -> None:
+    from datetime import UTC, datetime
+
+    from sqlalchemy import select
+
+    from culture.database import get_engine, session_scope
+    from culture.models.collection_request import CollectionRequest
+    from culture.models.source import Source
+    from culture.services.ingestion import IngestionService
+
+    with session_scope(get_engine()) as session:
+        pending = list(
+            session.scalars(
+                select(CollectionRequest).where(CollectionRequest.fulfilled_at.is_(None))
+            )
+        )
+        source_names = {
+            source_id: source.name
+            for source_id in {r.source_id for r in pending}
+            if (source := session.get(Source, source_id)) is not None
+        }
+
+    if not pending:
+        console.print("[yellow]No queued collection requests.[/yellow]")
+        return
+
+    console.print(
+        f"Draining {len(pending)} queued request(s) across {len(source_names)} source(s)."
+    )
+    for name in source_names.values():
+        with session_scope(get_engine()) as session:
+            try:
+                IngestionService(session).ingest(source_name=name)
+            except ValueError as exc:
+                console.print(f"[red]{name}: {exc}[/red]")
+
+    with session_scope(get_engine()) as session:
+        now = datetime.now(UTC)
+        for row in session.scalars(
+            select(CollectionRequest).where(CollectionRequest.fulfilled_at.is_(None))
+        ):
+            row.fulfilled_at = now
+    console.print("[green]Queue drained.[/green]")
+
+
 @app.command()
 def ingest(
     source: str | None = typer.Option(None, "--source", help="Ingest a single source by name."),
+    queued: bool = typer.Option(
+        False, "--queued",
+        help="Drain /admin/sources 'Collect now' requests instead of the full sweep. "
+        "The web app can't run collectors in-function (Vercel excludes their deps); "
+        "it queues a request here for the pipeline to pick up.",
+    ),
 ) -> None:
     """Check all active supported sources and store new content."""
     from culture.database import get_engine, session_scope
     from culture.services.ingestion import IngestionService
+
+    if queued:
+        _ingest_queued()
+        return
 
     with session_scope(get_engine()) as session:
         service = IngestionService(session)

@@ -25,6 +25,7 @@ from culture.logging import get_logger
 from culture.models.auth_event import AuthEvent
 from culture.models.email_log import EmailLog
 from culture.models.profile import ROLE_MEMBER, ROLE_OWNER, Profile
+from culture.utils.identifiers import normalize_identifier
 from culture.web import auth, queries
 
 log = get_logger("culture.web.admin")
@@ -53,9 +54,13 @@ def mount_admin_routes(app: FastAPI) -> None:
     def _render(request: Request, template: str, active_tab: str, context: dict):
         context.setdefault("active_tab", active_tab)
         context.setdefault("user_email", getattr(request.state, "user_email", None))
-        context.setdefault(
-            "csrf_token", auth.create_csrf_token(request, _settings())
-        )
+        # Local unauthenticated mode has no SESSION_SECRET (nothing else
+        # needs one there) and require_csrf bypasses the check it would
+        # protect anyway — matches require_owner's local-mode bypass.
+        if getattr(request.app.state, "require_auth", True):
+            context.setdefault("csrf_token", auth.create_csrf_token(request, _settings()))
+        else:
+            context.setdefault("csrf_token", "")
         return templates.TemplateResponse(request, template, context)
 
     def _queue_email(session, to_email: str, template: str, dedupe_key: str) -> None:
@@ -259,6 +264,291 @@ def mount_admin_routes(app: FastAPI) -> None:
                 )
             )
         return RedirectResponse("/admin/settings", status_code=303)
+
+    # --- sources -------------------------------------------------------
+
+    @app.get("/admin/sources", response_class=HTMLResponse, include_in_schema=False)
+    def admin_sources_list(
+        request: Request,
+        platform: str | None = None,
+        tier: str | None = None,
+        health: str | None = None,
+        q: str | None = None,
+        archived: str | None = None,
+    ):
+        auth.require_owner(request)
+        with session_scope(request.app.state.engine) as session:
+            rows, _counts = queries.source_health_rows(session)
+            session.expunge_all()
+
+        show_archived = archived == "1"
+        rows = [r for r in rows if (r["source"].archived_at is not None) == show_archived]
+        if platform:
+            rows = [r for r in rows if r["source"].platform == platform]
+        if tier:
+            rows = [r for r in rows if r["source"].tier == tier]
+        if health:
+            rows = [r for r in rows if r["state"] == health]
+        if q:
+            needle = q.strip().lower()
+            rows = [r for r in rows if needle in r["source"].name.lower()]
+
+        from culture.models.source import Platform, SourceTier
+
+        return _render(
+            request, "admin_sources.html", "sources",
+            {
+                "rows": rows, "state_labels": queries.SOURCE_HEALTH_LABELS,
+                "platforms": [p.value for p in Platform],
+                "tiers": [t.value for t in SourceTier],
+                "filters": {
+                    "platform": platform, "tier": tier, "health": health,
+                    "q": q, "archived": archived,
+                },
+            },
+        )
+
+    def _source_form_context(source, error: str | None):
+        from culture.models.source import Platform
+
+        return {
+            "source": source, "error": error,
+            "platforms": [p.value for p in Platform],
+            "cadences": ["hourly", "daily", "weekly"],
+        }
+
+    @app.get("/admin/sources/new", response_class=HTMLResponse, include_in_schema=False)
+    def admin_source_new_form(request: Request):
+        auth.require_owner(request)
+        return _render(
+            request, "admin_source_form.html", "sources", _source_form_context(None, None)
+        )
+
+    def _validate_source_fields(
+        platform: str, url: str, feed_url: str, external_identifier: str
+    ) -> str | None:
+        if platform in ("instagram", "tiktok") and not (external_identifier or url):
+            return "A handle or profile URL is required for this platform."
+        if platform == "youtube" and not (external_identifier or url):
+            return "A channel URL or channel ID is required for YouTube."
+        if platform in ("podcast", "web", "newsletter") and not feed_url:
+            return "A feed URL is required for this platform."
+        return None
+
+    @app.post("/admin/sources/new", include_in_schema=False)
+    def admin_source_create(
+        request: Request,
+        csrf_token: str = Form(...),
+        name: str = Form(...),
+        platform: str = Form(...),
+        url: str = Form(""),
+        feed_url: str = Form(""),
+        external_identifier: str = Form(""),
+        city: str = Form(""),
+        collection_method: str = Form(""),
+        collection_notes: str = Form(""),
+        cadence: str = Form("weekly"),
+    ):
+        from sqlalchemy import select
+
+        from culture.models.source import Source
+
+        auth.require_owner(request)
+        auth.require_csrf(csrf_token, request, _settings())
+
+        error = _validate_source_fields(platform, url, feed_url, external_identifier)
+        normalized = normalize_identifier(platform, external_identifier or url or feed_url)
+
+        with session_scope(request.app.state.engine) as session:
+            if error is None and session.scalar(
+                select(Source).where(Source.name == name.strip())
+            ):
+                error = "A source with this name already exists."
+            if error is None and normalized and session.scalar(
+                select(Source).where(Source.normalized_identifier == normalized)
+            ):
+                error = "A source with this identifier already exists."
+            if error:
+                blank = Source(
+                    name=name, platform=platform, url=url, feed_url=feed_url,
+                    external_identifier=external_identifier, city=city,
+                    collection_method=collection_method, collection_notes=collection_notes,
+                    cadence=cadence,
+                )
+                return _render(
+                    request, "admin_source_form.html", "sources",
+                    _source_form_context(blank, error),
+                )
+
+            actor = getattr(request.state, "user_email", None)
+            source = Source(
+                name=name.strip(), platform=platform, url=url or None,
+                feed_url=feed_url or None, external_identifier=external_identifier or None,
+                city=city or None, collection_method=collection_method or None,
+                collection_notes=collection_notes or None, cadence=cadence,
+                normalized_identifier=normalized or None,
+            )
+            session.add(source)
+            session.flush()
+            session.add(
+                AuthEvent(
+                    event="source_created", email=actor, actor=actor,
+                    target_type="source", target_id=str(source.id),
+                )
+            )
+        return RedirectResponse("/admin/sources", status_code=303)
+
+    @app.get(
+        "/admin/sources/{source_id}/edit", response_class=HTMLResponse,
+        include_in_schema=False,
+    )
+    def admin_source_edit_form(request: Request, source_id: int):
+        from culture.models.source import Source
+
+        auth.require_owner(request)
+        with session_scope(request.app.state.engine) as session:
+            source = session.get(Source, source_id)
+            if source is None:
+                raise HTTPException(404, "No such source.")
+            session.expunge(source)
+        return _render(
+            request, "admin_source_form.html", "sources", _source_form_context(source, None)
+        )
+
+    @app.post("/admin/sources/{source_id}/edit", include_in_schema=False)
+    def admin_source_update(
+        request: Request,
+        source_id: int,
+        csrf_token: str = Form(...),
+        name: str = Form(...),
+        platform: str = Form(...),
+        url: str = Form(""),
+        feed_url: str = Form(""),
+        external_identifier: str = Form(""),
+        city: str = Form(""),
+        collection_method: str = Form(""),
+        collection_notes: str = Form(""),
+        cadence: str = Form("weekly"),
+    ):
+        from sqlalchemy import select
+
+        from culture.models.source import Source
+
+        auth.require_owner(request)
+        auth.require_csrf(csrf_token, request, _settings())
+
+        error = _validate_source_fields(platform, url, feed_url, external_identifier)
+        normalized = normalize_identifier(platform, external_identifier or url or feed_url)
+
+        with session_scope(request.app.state.engine) as session:
+            source = session.get(Source, source_id)
+            if source is None:
+                raise HTTPException(404, "No such source.")
+            if error is None and session.scalar(
+                select(Source).where(Source.name == name.strip(), Source.id != source_id)
+            ):
+                error = "A source with this name already exists."
+            if error is None and normalized and session.scalar(
+                select(Source).where(
+                    Source.normalized_identifier == normalized, Source.id != source_id
+                )
+            ):
+                error = "A source with this identifier already exists."
+            if error:
+                source.name, source.platform = name, platform
+                source.url, source.feed_url = url, feed_url
+                source.external_identifier, source.city = external_identifier, city
+                source.collection_method, source.collection_notes = (
+                    collection_method, collection_notes,
+                )
+                source.cadence = cadence
+                session.expunge(source)
+                return _render(
+                    request, "admin_source_form.html", "sources",
+                    _source_form_context(source, error),
+                )
+
+            actor = getattr(request.state, "user_email", None)
+            source.name = name.strip()
+            source.platform = platform
+            source.url = url or None
+            source.feed_url = feed_url or None
+            source.external_identifier = external_identifier or None
+            source.city = city or None
+            source.collection_method = collection_method or None
+            source.collection_notes = collection_notes or None
+            source.cadence = cadence
+            source.normalized_identifier = normalized or None
+            session.add(
+                AuthEvent(
+                    event="source_updated", email=actor, actor=actor,
+                    target_type="source", target_id=str(source.id),
+                )
+            )
+        return RedirectResponse("/admin/sources", status_code=303)
+
+    def _source_action(request: Request, source_id: int, csrf_token: str, apply, event: str):
+        from culture.models.source import Source
+
+        auth.require_owner(request)
+        auth.require_csrf(csrf_token, request, _settings())
+        actor = getattr(request.state, "user_email", None)
+        with session_scope(request.app.state.engine) as session:
+            source = session.get(Source, source_id)
+            if source is None:
+                raise HTTPException(404, "No such source.")
+            apply(source)
+            session.add(
+                AuthEvent(
+                    event=event, email=actor, actor=actor,
+                    target_type="source", target_id=str(source.id),
+                )
+            )
+        return RedirectResponse("/admin/sources", status_code=303)
+
+    @app.post("/admin/sources/{source_id}/enable", include_in_schema=False)
+    def admin_source_enable(request: Request, source_id: int, csrf_token: str = Form(...)):
+        return _source_action(
+            request, source_id, csrf_token, lambda s: setattr(s, "active", True),
+            "source_enabled",
+        )
+
+    @app.post("/admin/sources/{source_id}/disable", include_in_schema=False)
+    def admin_source_disable(request: Request, source_id: int, csrf_token: str = Form(...)):
+        return _source_action(
+            request, source_id, csrf_token, lambda s: setattr(s, "active", False),
+            "source_disabled",
+        )
+
+    @app.post("/admin/sources/{source_id}/archive", include_in_schema=False)
+    def admin_source_archive(request: Request, source_id: int, csrf_token: str = Form(...)):
+        def _archive(source):
+            source.archived_at = datetime.now(UTC)
+            source.archived_by = getattr(request.state, "user_email", None)
+            source.active = False
+
+        return _source_action(request, source_id, csrf_token, _archive, "source_archived")
+
+    @app.post("/admin/sources/{source_id}/collect", include_in_schema=False)
+    def admin_source_collect(request: Request, source_id: int, csrf_token: str = Form(...)):
+        from culture.models.collection_request import CollectionRequest
+        from culture.models.source import Source
+
+        auth.require_owner(request)
+        auth.require_csrf(csrf_token, request, _settings())
+        actor = getattr(request.state, "user_email", None)
+        with session_scope(request.app.state.engine) as session:
+            source = session.get(Source, source_id)
+            if source is None:
+                raise HTTPException(404, "No such source.")
+            session.add(CollectionRequest(source_id=source_id, requested_by=actor))
+            session.add(
+                AuthEvent(
+                    event="collection_triggered", email=actor, actor=actor,
+                    target_type="source", target_id=str(source_id),
+                )
+            )
+        return RedirectResponse("/admin/sources", status_code=303)
 
 
 def _get_or_create_settings(session):

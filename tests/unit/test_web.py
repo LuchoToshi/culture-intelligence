@@ -353,13 +353,16 @@ def test_public_mobile_menu_exists(client):
 
 
 def test_sources_admin_gate_open_in_local_unauthenticated_mode(client):
-    # require_auth=False (local operator) counts as admin.
-    assert client.get("/sources").status_code == 200
+    # require_auth=False (local operator) counts as admin, and admin.py's
+    # require_owner bypass applies the same way. /sources redirects there.
+    redirect = client.get("/sources", follow_redirects=False)
+    assert redirect.status_code == 303
+    assert redirect.headers["location"] == "/admin/sources"
+    assert client.get("/admin/sources").status_code == 200
 
 
 def test_sources_shows_collection_health_states(client):
-    text = client.get("/sources").text
-    assert "admin only" in text
+    text = client.get("/admin/sources").text
     # Fixture source has no last_successful_check_at -> never collected...
     # unless it lacks a feed_url first (needs_method). Either way, a state renders.
     assert ("Never collected" in text) or ("Needs collection method" in text)

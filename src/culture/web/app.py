@@ -608,9 +608,13 @@ def create_app(
         else:
             _mount_auth_routes(app)
 
-        from culture.web.admin import mount_admin_routes
+    # Mounted regardless of require_auth: require_owner applies the same
+    # "local unauthenticated mode is inherently the operator" bypass
+    # _request_is_admin uses below, so `culture web` locally still reaches
+    # the admin workspace without a login system existing at all.
+    from culture.web.admin import mount_admin_routes
 
-        mount_admin_routes(app)
+    mount_admin_routes(app)
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
     templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
     templates.env.globals["stage_labels"] = queries.STAGE_LABELS
@@ -622,6 +626,10 @@ def create_app(
     templates.env.filters["public_cities"] = citypolicy.public_cities
     engine = engine or get_engine()
     app.state.engine = engine  # audit writes and middleware use the app's own DB
+    # Lets auth.require_owner/require_authenticated apply the same "local
+    # unauthenticated mode is inherently the operator" bypass _request_is_admin
+    # already uses below, without those helpers needing a closure reference.
+    app.state.require_auth = require_auth
     factory = sessionmaker(bind=engine, expire_on_commit=False)
 
     def db() -> Iterator[Session]:
@@ -1220,25 +1228,14 @@ def create_app(
             },
         )
 
-    @app.get("/sources", response_class=HTMLResponse)
-    def sources(request: Request, session: Session = Depends(db)):
-        # The source registry is proprietary — admin-only by explicit role,
-        # not just by login (operator directive; reviewer §8/§9).
+    @app.get("/sources", include_in_schema=False)
+    def sources(request: Request):
+        # Retired from the member product (spec §8.1): source management
+        # moved entirely to /admin/sources. Owners land there; everyone
+        # else gets the same 403 this route always gave non-admins.
         if not _request_is_admin(request):
             raise HTTPException(403, "The source registry is restricted to administrators.")
-        rows, state_counts = queries.source_health_rows(session)
-        return render(
-            request,
-            session,
-            "sources.html",
-            {
-                "rows": rows,
-                "state_counts": state_counts,
-                "state_labels": queries.SOURCE_HEALTH_LABELS,
-                "state_order": queries.SOURCE_HEALTH_ORDER,
-                "active_nav": "sources",
-            },
-        )
+        return RedirectResponse("/admin/sources", status_code=303)
 
     @app.get("/reports", response_class=HTMLResponse)
     def reports(request: Request, session: Session = Depends(db)):

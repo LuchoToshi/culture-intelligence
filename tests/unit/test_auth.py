@@ -197,7 +197,12 @@ def test_member_is_denied_admin_routes_at_the_route(role_client):
 
 def test_admin_reaches_admin_routes(role_client):
     _login_as(role_client, "boss@example.com")
-    assert role_client.get("/sources").status_code == 200
+    # /sources retired from the member product (spec §8.1): admins land on
+    # /admin/sources instead of rendering inline.
+    redirect = role_client.get("/sources")
+    assert redirect.status_code == 303
+    assert redirect.headers["location"] == "/admin/sources"
+    assert role_client.get("/admin/sources").status_code == 200
 
 
 def test_demo_login_and_blocked_surfaces(role_client):

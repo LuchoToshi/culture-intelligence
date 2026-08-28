@@ -1,0 +1,76 @@
+{% extends "admin_base.html" %}
+{% block title %}Sources{% endblock %}
+{% block content %}
+<p class="eyebrow">Admin</p>
+<h1>Sources</h1>
+<p class="lede">{{ rows | length }} source{{ "s" if rows | length != 1 }}{% if filters.archived == "1" %} (archived){% endif %}. <a href="/admin/sources/new" class="btn primary">Add source</a></p>
+<form method="get" action="/admin/sources" class="eyebrow" style="margin-bottom:18px; gap:14px;">
+  <input type="search" name="q" value="{{ filters.q or '' }}" placeholder="Search name"
+         style="font:inherit; padding:6px 10px; border:var(--ci-rule-mid); background:transparent;">
+  <select name="platform" style="font:inherit; padding:6px 10px; border:var(--ci-rule-mid); background:transparent;">
+    <option value="">All platforms</option>
+    {% for p in platforms %}<option value="{{ p }}" {% if filters.platform == p %}selected{% endif %}>{{ p }}</option>{% endfor %}
+  </select>
+  <select name="tier" style="font:inherit; padding:6px 10px; border:var(--ci-rule-mid); background:transparent;">
+    <option value="">All tiers</option>
+    {% for t in tiers %}<option value="{{ t }}" {% if filters.tier == t %}selected{% endif %}>{{ t }}</option>{% endfor %}
+  </select>
+  <select name="health" style="font:inherit; padding:6px 10px; border:var(--ci-rule-mid); background:transparent;">
+    <option value="">All health states</option>
+    {% for key, label in state_labels.items() %}<option value="{{ key }}" {% if filters.health == key %}selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select>
+  <button class="btn" type="submit">Filter</button>
+  {% if filters.archived != "1" %}
+    <a class="btn" href="/admin/sources?archived=1">View archived</a>
+  {% else %}
+    <a class="btn" href="/admin/sources">View active</a>
+  {% endif %}
+</form>
+{% if rows %}
+<table class="index">
+  <thead>
+    <tr><th>Name</th><th>Platform</th><th>Tier</th><th>Cadence</th><th>Health</th><th>Enabled</th><th></th></tr>
+  </thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td><a href="/admin/sources/{{ r.source.id }}/edit">{{ r.source.name }}</a></td>
+      <td>{{ r.source.platform }}</td>
+      <td>{{ r.source.tier }}</td>
+      <td>{{ r.source.cadence }}</td>
+      <td>{{ state_labels.get(r.state, r.state) }}</td>
+      <td>{{ "Yes" if r.source.active else "No" }}</td>
+      <td>
+        {% if filters.archived != "1" %}
+          <form method="post" action="/admin/sources/{{ r.source.id }}/collect" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button class="btn" type="submit">Collect</button>
+          </form>
+          {% if r.source.active %}
+            <form method="post" action="/admin/sources/{{ r.source.id }}/disable" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button class="btn" type="submit">Disable</button>
+            </form>
+          {% else %}
+            <form method="post" action="/admin/sources/{{ r.source.id }}/enable" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button class="btn" type="submit">Enable</button>
+            </form>
+          {% endif %}
+          <form method="post" action="/admin/sources/{{ r.source.id }}/archive" style="display:inline"
+                onsubmit="return confirm('Archive this source? Collection stops and it leaves the active list.')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button class="btn danger" type="submit">Archive</button>
+          </form>
+        {% else %}
+          <span class="protected">Archived{% if r.source.archived_by %} by {{ r.source.archived_by }}{% endif %}</span>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">No sources match this filter.</p>
+{% endif %}
+{% endblock %}

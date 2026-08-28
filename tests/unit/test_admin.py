@@ -258,3 +258,266 @@ def test_admin_reaches_admin_workspace_under_magiclink_mode(monkeypatch):
     assert response.status_code == 303
     assert response.headers["location"] == "/admin/approvals"
     get_settings.cache_clear()
+
+
+# --- sources (Phase 6) ----------------------------------------------------
+
+
+def _sources(engine):
+    from culture.models.source import Source
+
+    with Session(engine) as session:
+        return list(session.scalars(select(Source)))
+
+
+def test_owner_creates_an_instagram_source(client):  # noqa: F811
+    csrf = _login_owner(client)
+    response = client.post(
+        "/admin/sources/new",
+        data={
+            "csrf_token": csrf, "name": "Desfile Diario", "platform": "instagram",
+            "external_identifier": "@DesfileDiario", "cadence": "daily",
+        },
+    )
+    assert response.status_code == 303
+    sources = _sources(client.app_engine)
+    assert len(sources) == 1
+    assert sources[0].normalized_identifier == "instagram:desfilediario"
+    assert "source_created" in _events(client.app_engine)
+
+
+def test_instagram_source_requires_a_handle_or_url(client):  # noqa: F811
+    csrf = _login_owner(client)
+    response = client.post(
+        "/admin/sources/new",
+        data={"csrf_token": csrf, "name": "No Handle", "platform": "instagram"},
+    )
+    assert response.status_code == 200
+    assert "required" in response.text.lower()
+    assert _sources(client.app_engine) == []
+
+
+def test_web_source_requires_a_feed_url(client):  # noqa: F811
+    csrf = _login_owner(client)
+    response = client.post(
+        "/admin/sources/new",
+        data={"csrf_token": csrf, "name": "No Feed", "platform": "web"},
+    )
+    assert response.status_code == 200
+    assert "feed url is required" in response.text.lower()
+
+
+def test_duplicate_name_is_rejected(client):  # noqa: F811
+    csrf = _login_owner(client)
+    payload = {
+        "csrf_token": csrf, "name": "Dup Source", "platform": "web",
+        "feed_url": "https://a.example.com/feed",
+    }
+    client.post("/admin/sources/new", data=payload)
+    second = client.post("/admin/sources/new", data={**payload, "feed_url": "https://b.example.com/feed"})
+    assert second.status_code == 200
+    assert "already exists" in second.text.lower()
+    assert len(_sources(client.app_engine)) == 1
+
+
+def test_normalized_identifier_collision_is_rejected_even_with_different_names(client):  # noqa: F811
+    csrf = _login_owner(client)
+    client.post(
+        "/admin/sources/new",
+        data={
+            "csrf_token": csrf, "name": "First Name", "platform": "instagram",
+            "external_identifier": "@samehandle",
+        },
+    )
+    second = client.post(
+        "/admin/sources/new",
+        data={
+            "csrf_token": csrf, "name": "Second Name", "platform": "instagram",
+            "url": "https://instagram.com/SameHandle/",
+        },
+    )
+    assert second.status_code == 200
+    assert "already exists" in second.text.lower()
+    assert len(_sources(client.app_engine)) == 1
+
+
+def test_member_gets_403_on_every_source_mutation(client):  # noqa: F811
+    csrf_owner = _login_owner(client)
+    client.post(
+        "/admin/sources/new",
+        data={
+            "csrf_token": csrf_owner, "name": "Target", "platform": "web",
+            "feed_url": "https://a.example.com/feed",
+        },
+    )
+    source_id = _sources(client.app_engine)[0].id
+    client.cookies.clear()
+
+    _insert_profile(client.app_engine, MEMBER_ID, "member@example.com", "approved")
+    _login_as(client, MEMBER_ID, "member@example.com")
+    for path, data in [
+        ("/admin/sources/new", {"name": "x", "platform": "web", "feed_url": "y"}),
+        (f"/admin/sources/{source_id}/edit", {"name": "x", "platform": "web"}),
+        (f"/admin/sources/{source_id}/enable", {}),
+        (f"/admin/sources/{source_id}/disable", {}),
+        (f"/admin/sources/{source_id}/archive", {}),
+        (f"/admin/sources/{source_id}/collect", {}),
+    ]:
+        response = client.post(path, data={**data, "csrf_token": "irrelevant"})
+        assert response.status_code == 303, path
+        assert response.headers["location"] == "/dashboard", path
+    assert client.get("/admin/sources").status_code == 303
+
+
+def test_edit_updates_fields_and_audits(client):  # noqa: F811
+    csrf = _login_owner(client)
+    client.post(
+        "/admin/sources/new",
+        data={
+            "csrf_token": csrf, "name": "Original", "platform": "web",
+            "feed_url": "https://a.example.com/feed",
+        },
+    )
+    source_id = _sources(client.app_engine)[0].id
+    response = client.post(
+        f"/admin/sources/{source_id}/edit",
+        data={
+            "csrf_token": csrf, "name": "Renamed", "platform": "web",
+            "feed_url": "https://a.example.com/feed", "cadence": "hourly",
+        },
+    )
+    assert response.status_code == 303
+    sources = _sources(client.app_engine)
+    assert sources[0].name == "Renamed"
+    assert sources[0].cadence == "hourly"
+    assert "source_updated" in _events(client.app_engine)
+
+
+def test_enable_disable_toggle_active_flag(client):  # noqa: F811
+    csrf = _login_owner(client)
+    client.post(
+        "/admin/sources/new",
+        data={
+            "csrf_token": csrf, "name": "Togglable", "platform": "web",
+            "feed_url": "https://a.example.com/feed",
+        },
+    )
+    source_id = _sources(client.app_engine)[0].id
+    client.post(f"/admin/sources/{source_id}/disable", data={"csrf_token": csrf})
+    assert _sources(client.app_engine)[0].active is False
+    client.post(f"/admin/sources/{source_id}/enable", data={"csrf_token": csrf})
+    assert _sources(client.app_engine)[0].active is True
+    events = _events(client.app_engine)
+    assert "source_disabled" in events and "source_enabled" in events
+
+
+def test_archive_disables_and_hides_from_the_active_list_but_never_deletes(client):  # noqa: F811
+    csrf = _login_owner(client)
+    client.post(
+        "/admin/sources/new",
+        data={
+            "csrf_token": csrf, "name": "Archivable", "platform": "web",
+            "feed_url": "https://a.example.com/feed",
+        },
+    )
+    source_id = _sources(client.app_engine)[0].id
+    response = client.post(f"/admin/sources/{source_id}/archive", data={"csrf_token": csrf})
+    assert response.status_code == 303
+
+    sources = _sources(client.app_engine)
+    assert len(sources) == 1  # archive, not delete
+    assert sources[0].archived_at is not None
+    assert sources[0].active is False
+    assert "source_archived" in _events(client.app_engine)
+
+    active_list = client.get("/admin/sources").text
+    assert "Archivable" not in active_list
+    archived_list = client.get("/admin/sources?archived=1").text
+    assert "Archivable" in archived_list
+
+
+def test_collect_now_queues_a_request(client):  # noqa: F811
+    csrf = _login_owner(client)
+    client.post(
+        "/admin/sources/new",
+        data={
+            "csrf_token": csrf, "name": "Collectable", "platform": "web",
+            "feed_url": "https://a.example.com/feed",
+        },
+    )
+    source_id = _sources(client.app_engine)[0].id
+    response = client.post(f"/admin/sources/{source_id}/collect", data={"csrf_token": csrf})
+    assert response.status_code == 303
+    assert "collection_triggered" in _events(client.app_engine)
+
+    from culture.models.collection_request import CollectionRequest
+
+    with Session(client.app_engine) as session:
+        requests_ = list(session.scalars(select(CollectionRequest)))
+        assert len(requests_) == 1
+        assert requests_[0].fulfilled_at is None
+
+
+def test_cli_ingest_queued_drains_and_stamps_fulfilled(monkeypatch, tmp_path):
+    from unittest.mock import MagicMock
+
+    from sqlalchemy import create_engine
+
+    from culture import cli
+    from culture.database import Base as _Base
+    from culture.models.collection_request import CollectionRequest
+    from culture.models.source import Source
+
+    db_path = tmp_path / "cli_drain.db"
+    engine = create_engine(f"sqlite+pysqlite:///{db_path}")
+    _Base.metadata.create_all(engine)
+    with Session(engine) as session:
+        source = Source(name="Collectable", platform="web")
+        session.add(source)
+        session.flush()
+        session.add(CollectionRequest(source_id=source.id))
+        session.commit()
+
+    monkeypatch.setenv("DATABASE_URL", f"sqlite+pysqlite:///{db_path}")
+    get_settings.cache_clear()
+
+    fake_service = MagicMock()
+    with patch("culture.services.ingestion.IngestionService", return_value=fake_service):
+        cli._ingest_queued()
+
+    with Session(engine) as session:
+        drained = list(session.scalars(select(CollectionRequest)))
+        assert drained[0].fulfilled_at is not None
+    fake_service.ingest.assert_called_once_with(source_name="Collectable")
+    get_settings.cache_clear()
+
+
+def test_cli_ingest_queued_is_a_noop_with_nothing_queued(monkeypatch, tmp_path, capsys):
+    from culture import cli
+    from culture.database import Base as _Base
+
+    db_path = tmp_path / "cli_drain_empty.db"
+    from sqlalchemy import create_engine
+
+    engine = create_engine(f"sqlite+pysqlite:///{db_path}")
+    _Base.metadata.create_all(engine)
+    monkeypatch.setenv("DATABASE_URL", f"sqlite+pysqlite:///{db_path}")
+    get_settings.cache_clear()
+
+    cli._ingest_queued()
+    assert "No queued collection requests" in capsys.readouterr().out
+    get_settings.cache_clear()
+
+
+def test_admin_source_templates_never_reference_env_secrets():
+    """Static guard: the admin source form/list templates must never grow a
+    field bound to an API key or other env secret (config.py's own
+    Settings), even indirectly — Source rows never carry credentials."""
+    from pathlib import Path
+
+    templates_dir = Path(__file__).resolve().parents[2] / "src" / "culture" / "web" / "templates"
+    forbidden = ["apify_token", "anthropic_api_key", "openai_api_key", "supabase_service_role_key"]
+    for name in ("admin_sources.html", "admin_source_form.html"):
+        text = (templates_dir / name).read_text(encoding="utf-8").lower()
+        for term in forbidden:
+            assert term not in text, f"{name} references {term}"
