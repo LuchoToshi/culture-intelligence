@@ -111,6 +111,9 @@ uv run culture auth migrate-allowlist --dry-run   # report legacy ALLOWED_EMAILS
 uv run culture auth migrate-allowlist             # create them as pending profiles (nobody auto-approved)
 uv run culture auth reset-owner-password   # recovery path: sets the owner's password via the Supabase
                                             # admin API, bypassing email entirely; prompts locally, hidden
+uv run culture auth send-emails            # drains queued email_log rows via Resend; the web app only
+                                            # ever queues a row, it never sends in-request — run on a
+                                            # schedule (cron / Vercel Cron) for notifications to go out
 uv run culture ingest --queued             # drains /admin/sources "Collect now" requests
 ```
 

@@ -1153,5 +1153,56 @@ def auth_reset_owner_password() -> None:
     console.print(f"[green]Password set for {owner_email}. You can sign in now.[/green]")
 
 
+@auth_app.command("send-emails")
+def auth_send_emails() -> None:
+    """Drains queued account-notification emails (email_log status='queued').
+
+    The web app only ever queues a row here — it never sends in-request,
+    the same "queue now, drain via CLI" split already used for
+    `culture ingest --queued`. Run this on a schedule (cron / Vercel Cron)
+    for notifications to actually reach anyone.
+    """
+    from datetime import UTC, datetime
+
+    from sqlalchemy import select
+
+    from culture.database import get_engine, session_scope
+    from culture.models.email_log import EmailLog
+    from culture.web import auth as web_auth
+
+    settings = get_settings()
+    max_attempts = 5
+
+    with session_scope(get_engine()) as session:
+        pending = list(session.scalars(select(EmailLog).where(EmailLog.status == "queued")))
+
+    if not pending:
+        console.print("[yellow]No queued emails.[/yellow]")
+        return
+
+    sent = failed = 0
+    for row in pending:
+        try:
+            web_auth.send_account_status_email(row.to_email, row.template, settings)
+            outcome = "sent"
+        except Exception:  # noqa: BLE001 — any send failure is a retryable delivery failure
+            log.info("email_log id=%s send failed", row.id, exc_info=True)
+            outcome = "failed" if row.attempts + 1 >= max_attempts else "queued"
+
+        with session_scope(get_engine()) as session:
+            fresh = session.get(EmailLog, row.id)
+            if fresh is None:
+                continue
+            fresh.attempts += 1
+            fresh.status = outcome
+            if outcome == "sent":
+                fresh.sent_at = datetime.now(UTC)
+                sent += 1
+            elif outcome == "failed":
+                failed += 1
+
+    console.print(f"[green]{sent} sent[/green], [red]{failed} failed[/red] permanently.")
+
+
 if __name__ == "__main__":
     app()

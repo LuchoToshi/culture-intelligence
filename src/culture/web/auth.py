@@ -419,6 +419,66 @@ def require_csrf(token: str, request: Request, settings: Settings) -> None:
         raise HTTPException(403, "This form has expired. Reload the page and try again.")
 
 
+_ACCOUNT_STATUS_EMAIL_COPY = {
+    "account_approved": (
+        "Your account is approved",
+        "<p>Your Culture Intelligence account has been approved. You can sign in now.</p>",
+        "/login",
+    ),
+    "account_rejected": (
+        "Your registration request",
+        "<p>Your request to join Culture Intelligence was not approved.</p>",
+        "/login",
+    ),
+    "account_suspended": (
+        "Your account has been suspended",
+        "<p>Your Culture Intelligence account has been suspended. "
+        "Contact the workspace owner if you believe this is a mistake.</p>",
+        "/login",
+    ),
+    "account_disabled": (
+        "Your account has been disabled",
+        "<p>Your Culture Intelligence account has been disabled. "
+        "Contact the workspace owner if you believe this is a mistake.</p>",
+        "/login",
+    ),
+    "account_reactivated": (
+        "Your account has been reactivated",
+        "<p>Your Culture Intelligence account has been reactivated. You can sign in now.</p>",
+        "/login",
+    ),
+    "activation_sent": (
+        "Set a password for your Culture Intelligence account",
+        "<p>Your account moved to our new sign-in system and needs a password. "
+        "Your request is also pending owner approval, same as any new signup.</p>",
+        "/reset",
+    ),
+}
+
+
+def send_account_status_email(to_email: str, template: str, settings: Settings) -> None:
+    """Sends the notification an `email_log` row of this `template` promises.
+
+    Templates are the same event names `admin.py`/`migrate-allowlist` write
+    to `AuthEvent` (account_approved, account_rejected, ..., activation_sent)
+    — one fixed copy block per status transition, no per-user
+    personalization needed.
+    """
+    import resend
+
+    subject, html, path = _ACCOUNT_STATUS_EMAIL_COPY[template]
+    link = f"{settings.site_url.rstrip('/')}{path}"
+    resend.api_key = settings.resend_api_key
+    resend.Emails.send(
+        {
+            "from": settings.email_from,
+            "to": [to_email],
+            "subject": subject,
+            "html": f'{html}<p><a href="{link}">{link}</a></p>',
+        }
+    )
+
+
 def send_login_email(email: str, token: str, base_url: str, settings: Settings) -> None:
     import resend
 

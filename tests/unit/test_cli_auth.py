@@ -203,3 +203,56 @@ def test_reset_owner_password_rejects_mismatched_confirmation(cli_auth_env):
 def test_reset_owner_password_without_a_provisioned_owner_fails_cleanly(cli_auth_env):
     with pytest.raises(typer.Exit):
         cli.auth_reset_owner_password()
+
+
+def test_send_emails_marks_queued_row_sent(cli_auth_env):
+    with Session(cli_auth_env) as session:
+        session.add(
+            EmailLog(to_email="a@example.com", template="account_approved", dedupe_key="k1")
+        )
+        session.commit()
+
+    with patch("culture.web.auth.send_account_status_email") as mock_send:
+        cli.auth_send_emails()
+
+    mock_send.assert_called_once()
+    with Session(cli_auth_env) as session:
+        row = session.scalar(select(EmailLog))
+        assert row.status == "sent"
+        assert row.attempts == 1
+        assert row.sent_at is not None
+
+
+def test_send_emails_leaves_row_queued_for_retry_below_max_attempts(cli_auth_env):
+    with Session(cli_auth_env) as session:
+        session.add(
+            EmailLog(to_email="a@example.com", template="account_approved", dedupe_key="k1")
+        )
+        session.commit()
+
+    with patch("culture.web.auth.send_account_status_email", side_effect=RuntimeError("boom")):
+        cli.auth_send_emails()
+
+    with Session(cli_auth_env) as session:
+        row = session.scalar(select(EmailLog))
+        assert row.status == "queued"
+        assert row.attempts == 1
+
+
+def test_send_emails_marks_permanently_failed_after_max_attempts(cli_auth_env):
+    with Session(cli_auth_env) as session:
+        session.add(
+            EmailLog(
+                to_email="a@example.com", template="account_approved",
+                dedupe_key="k1", attempts=4,
+            )
+        )
+        session.commit()
+
+    with patch("culture.web.auth.send_account_status_email", side_effect=RuntimeError("boom")):
+        cli.auth_send_emails()
+
+    with Session(cli_auth_env) as session:
+        row = session.scalar(select(EmailLog))
+        assert row.status == "failed"
+        assert row.attempts == 5
