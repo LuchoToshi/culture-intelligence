@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from enum import StrEnum
 
-from sqlalchemy import Boolean, DateTime, String, Text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from culture.database import Base, JSONField
@@ -61,9 +61,26 @@ class Source(Base):
     # When a human last reviewed this source — used by the weekly review queue
     # for platforms with no automated collector (Instagram, TikTok).
     last_reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Canonical form of the account/feed identity (lowercased host, stripped
+    # tracking params/trailing slash, bare @handle, resolved channel id for
+    # YouTube) — see culture.utils.identifiers. Lets "@Handle" and
+    # "instagram.com/handle/" collide as the same duplicate source.
+    normalized_identifier: Mapped[str | None] = mapped_column(String(300))
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    archived_by: Mapped[str | None] = mapped_column(String(300))
+    cadence: Mapped[str] = mapped_column(String(20), default="weekly")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "cadence IN ('hourly', 'daily', 'weekly')", name="ck_sources_cadence"
+        ),
+        Index(
+            "ix_sources_normalized_identifier", "normalized_identifier", unique=True
+        ),
     )
 
     def __repr__(self) -> str:

@@ -23,12 +23,21 @@ class AuthEvent(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     # link_requested, access_requested, login_success, login_expired,
-    # demo_login, demo_login_failed, logout, rate_limited, access_denied
+    # demo_login, demo_login_failed, logout, rate_limited, access_denied,
+    # plus the account/security/sources/settings vocabulary added for the
+    # Supabase-backed auth model (see culture.web.auth and culture.web.admin).
     event: Mapped[str] = mapped_column(Text, nullable=False)
     email: Mapped[str | None] = mapped_column(Text)
     ip: Mapped[str | None] = mapped_column(Text)
     path: Mapped[str | None] = mapped_column(Text)
     detail: Mapped[str | None] = mapped_column(Text)
+    # Who performed the action, when it wasn't the subject themself (an
+    # owner approving/suspending another account). Null for self-service
+    # events (login, logout, registration).
+    actor: Mapped[str | None] = mapped_column(Text)
+    target_type: Mapped[str | None] = mapped_column(Text)
+    target_id: Mapped[str | None] = mapped_column(Text)
+    request_id: Mapped[str | None] = mapped_column(Text)
 
     __table_args__ = (
         Index("ix_auth_events_created_at", "created_at"),

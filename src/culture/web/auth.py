@@ -26,7 +26,9 @@ import hmac
 import time
 from collections import defaultdict, deque
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
+from fastapi import HTTPException
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -34,6 +36,11 @@ from starlette.responses import RedirectResponse, Response
 
 from culture.config import Settings, get_settings
 from culture.logging import get_logger
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
+    from culture.models.profile import Profile
 
 log = get_logger("culture.web.auth")
 
@@ -67,6 +74,11 @@ PUBLIC_PATHS = {
 ROLE_ADMIN = "admin"
 ROLE_MEMBER = "member"
 ROLE_DEMO = "demo"
+# The Supabase-backed auth model's top role (culture.models.profile.Profile).
+# Treated as synonymous with ROLE_ADMIN everywhere access is checked, so the
+# admin workspace (Phase 4+) works identically under either auth mode.
+ROLE_OWNER = "owner"
+OWNER_ROLES = (ROLE_ADMIN, ROLE_OWNER)
 
 # Route-level enforcement. Hiding a nav link is not access control.
 ADMIN_ONLY_PREFIXES = ("/sources", "/admin")
@@ -174,6 +186,53 @@ def verify_session_value(value: str, settings: Settings) -> SessionInfo | None:
     if isinstance(payload, dict) and payload.get("e"):
         return SessionInfo(email=payload["e"], role=payload.get("r") or ROLE_MEMBER)
     return None
+
+
+def resolve_profile(session: "Session", user_id: str) -> "Profile | None":
+    """The current profiles row for a Supabase user id, or None. A thin
+    wrapper (not a bare `session.get(Profile, user_id)` at call sites) so the
+    lazy import matches this module's own convention and callers never need
+    to import the model themselves."""
+    from culture.models.profile import Profile
+
+    return session.get(Profile, user_id)
+
+
+def require_authenticated(request: Request) -> None:
+    """Raise 401 unless the request carries a resolved session. Route
+    handlers call this in addition to AuthMiddleware (defense-in-depth,
+    matching how /sources already double-checks admin at the route)."""
+    if getattr(request.state, "user_email", None) is None:
+        raise HTTPException(401, "Sign in required.")
+
+
+def require_approved(request: Request) -> None:
+    """Raise 403 if the session belongs to a profile that isn't approved.
+    Magic-link sessions carry no `user_status` (that concept doesn't exist
+    in that mode) and are treated as approved."""
+    require_authenticated(request)
+    status = getattr(request.state, "user_status", None)
+    if status is not None and status != "approved":
+        raise HTTPException(403, "Your account is not active.")
+
+
+def require_owner(request: Request) -> None:
+    """Raise 403 unless the session's role is the top permission tier
+    (ROLE_ADMIN in magic-link mode, ROLE_OWNER in Supabase mode — see
+    OWNER_ROLES). Every /admin route calls this explicitly, in addition to
+    the middleware's ADMIN_ONLY_PREFIXES check."""
+    require_authenticated(request)
+    role = getattr(request.state, "user_role", None)
+    if role not in OWNER_ROLES:
+        record_event(
+            "access_denied",
+            email=getattr(request.state, "user_email", None),
+            ip=client_ip(request),
+            path=request.url.path,
+            detail=f"role={role}",
+            engine=getattr(request.app.state, "engine", None),
+        )
+        raise HTTPException(403, "You don't have access to this page.")
 
 
 def send_login_email(email: str, token: str, base_url: str, settings: Settings) -> None:

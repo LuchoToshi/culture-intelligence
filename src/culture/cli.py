@@ -905,5 +905,146 @@ def leak_check(
         f"{len(patterns)} monitored names.[/green]"
     )
 
+auth_app = typer.Typer(help="Account provisioning and migration.", no_args_is_help=True)
+app.add_typer(auth_app, name="auth")
+
+
+@auth_app.command("provision-owner")
+def auth_provision_owner() -> None:
+    """Idempotently provision the single owner account from OWNER_EMAIL.
+
+    Safe to rerun: finds or creates the Supabase identity, then upserts the
+    matching profiles row as role=owner/status=approved. Refuses to create a
+    second owner (the DB's partial unique index also enforces this) — use
+    the documented ownership-transfer procedure instead.
+    """
+    from datetime import UTC, datetime
+    from uuid import UUID
+
+    from sqlalchemy import select
+
+    from culture.database import get_engine, session_scope
+    from culture.models.profile import ROLE_OWNER, STATUS_APPROVED, Profile
+    from culture.web import auth as web_auth
+    from culture.web import supabase
+
+    settings = get_settings()
+    if not settings.owner_email:
+        console.print("[red]OWNER_EMAIL is not set.[/red]")
+        raise typer.Exit(1)
+    owner_email = settings.owner_email.strip().lower()
+
+    try:
+        user = supabase.admin_get_or_create_user(owner_email, settings)
+    except supabase.SupabaseAuthError as exc:
+        console.print(f"[red]Supabase error: {exc.detail}[/red]")
+        raise typer.Exit(1) from exc
+
+    user_id = UUID(user["id"])
+    with session_scope(get_engine()) as session:
+        other_owner = session.scalars(
+            select(Profile).where(Profile.role == ROLE_OWNER, Profile.id != user_id)
+        ).first()
+        if other_owner is not None:
+            console.print(
+                f"[red]An owner already exists ({other_owner.email}). Ownership transfer "
+                "is a manual procedure documented in the README, not this command.[/red]"
+            )
+            raise typer.Exit(1)
+
+        profile = session.get(Profile, user_id)
+        if profile is None:
+            profile = Profile(id=user_id, email=owner_email)
+            session.add(profile)
+        now = datetime.now(UTC)
+        profile.role = ROLE_OWNER
+        profile.status = STATUS_APPROVED
+        profile.email_verified_at = profile.email_verified_at or now
+        profile.approved_at = profile.approved_at or now
+        profile.approved_by = "system:provision-owner"
+
+    web_auth.record_event("owner_provisioned", email=owner_email)
+    console.print(f"[green]Owner provisioned: {owner_email}[/green]")
+
+
+@auth_app.command("migrate-allowlist")
+def auth_migrate_allowlist(
+    dry_run: bool = typer.Option(False, "--dry-run", help="Report only; write nothing."),
+) -> None:
+    """Create pending, legacy-flagged profiles for every email on the old
+    magic-link allow-list (ALLOWED_EMAILS / ADMIN_EMAILS), so no legacy user
+    keeps access silently. No legacy user is auto-approved — the owner
+    reviews each one in /admin/approvals like any other applicant. Idempotent:
+    rerunning creates nothing for emails already migrated. Run with
+    --dry-run first; nothing is written until you drop it.
+    """
+    from sqlalchemy import select
+
+    from culture.database import get_engine, session_scope
+    from culture.models.email_log import EmailLog
+    from culture.models.profile import STATUS_PENDING, Profile
+    from culture.web import auth as web_auth
+    from culture.web import supabase
+
+    settings = get_settings()
+    owner_email = settings.owner_email.strip().lower() if settings.owner_email else None
+    legacy_emails = (settings.allowed_email_set | settings.admin_email_set) - {owner_email}
+    if not legacy_emails:
+        console.print("[yellow]No legacy emails to migrate.[/yellow]")
+        return
+
+    with session_scope(get_engine()) as session:
+        already_migrated = {p.email for p in session.scalars(select(Profile))}
+    to_migrate = sorted(legacy_emails - already_migrated)
+
+    console.print(
+        f"Legacy emails: {len(legacy_emails)}. Already migrated: "
+        f"{len(legacy_emails) - len(to_migrate)}. New: {len(to_migrate)}."
+    )
+    for email in to_migrate:
+        console.print(f"  {email}")
+    if dry_run:
+        console.print("[yellow]Dry run: nothing written.[/yellow]")
+        return
+    if not to_migrate:
+        return
+
+    migrated: list[str] = []
+    for email in to_migrate:
+        try:
+            user = supabase.admin_get_or_create_user(email, settings)
+        except supabase.SupabaseAuthError as exc:
+            console.print(f"[red]{email}: Supabase error: {exc.detail}[/red]")
+            continue
+        from uuid import UUID
+
+        user_id = UUID(user["id"])
+        with session_scope(get_engine()) as session:
+            profile = session.get(Profile, user_id)
+            if profile is None:
+                profile = Profile(id=user_id, email=email)
+                session.add(profile)
+            profile.status = STATUS_PENDING
+            profile.legacy_magic_link = True
+            session.add(
+                EmailLog(
+                    to_email=email,
+                    template="activation_sent",
+                    trigger_event="migrate_allowlist",
+                    dedupe_key=f"activation_sent:{email}:{user_id}",
+                )
+            )
+        web_auth.record_event("activation_sent", email=email, detail="legacy_magic_link")
+        migrated.append(f"{email} ({user_id})")
+
+    console.print(f"[green]Migrated {len(migrated)} legacy account(s):[/green]")
+    for line in migrated:
+        console.print(f"  {line}")
+    console.print(
+        "[yellow]Rollback: delete these Supabase users and their profile rows "
+        "(listed above) if this run needs to be reversed.[/yellow]"
+    )
+
+
 if __name__ == "__main__":
     app()

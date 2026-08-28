@@ -50,6 +50,25 @@ class Settings(BaseSettings):
     # deployment, and the value to set the day a first customer is invited.
     admin_emails: str = ""
 
+    # --- Account-based auth (Supabase), replacing the magic-link flow above ---
+    # "magiclink" keeps every existing route/behavior unchanged; "supabase"
+    # switches _mount_auth_routes to register/verify/approve. Default stays
+    # magiclink until the Phase 7 cutover (real Supabase project, data
+    # migration, SESSION_SECRET rotation) is explicitly performed.
+    auth_mode: str = "magiclink"
+    supabase_url: str = ""
+    supabase_anon_key: str = ""
+    # Server-only: never rendered in templates, JS, or logs.
+    supabase_service_role_key: str = ""
+    # The sole account provisioned as role='owner' by `culture auth
+    # provision-owner`. Never trusted from a request; read only by that CLI
+    # command and the migration/recovery tooling.
+    owner_email: str = ""
+    # Canonical base URL for links in transactional email. Never derived
+    # from request headers in production (a spoofed Host header must not be
+    # able to redirect a password-reset link).
+    site_url: str = ""
+
     @property
     def allowed_email_set(self) -> set[str]:
         return {e.strip().lower() for e in self.allowed_emails.split(",") if e.strip()}
