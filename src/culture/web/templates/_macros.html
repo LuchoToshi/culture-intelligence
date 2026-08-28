@@ -34,11 +34,17 @@
 <div class="alert-band"><span class="sq" aria-hidden="true"></span><span class="abl">{{ label }}</span><span class="abt">{{ text }}</span></div>
 {%- endmacro %}
 
-{% macro signal_table(rows, caption=None) -%}
+{% macro signal_table(rows, caption=None, interactive=False) -%}
+{#- data-row-id / data-city / score attributes always render, so keynav and
+   cross-highlight (interactions.js) work on every signal table on the site,
+   including the dashboard's embedded ones. interactive=True additionally
+   renders the pin/watch/peek control column and expando row -- the
+   registry-only, compare-panel-feeding surface (signals.html). -#}
 <div class="table-scroll">
 <table class="index">
   {% if caption %}<caption class="skip-link">{{ caption }}</caption>{% endif %}
   <thead><tr>
+    {% if interactive %}<th scope="col"><span class="skip-link">Actions</span></th>{% endif %}
     <th scope="col">Signal</th>
     <th scope="col">Lifecycle</th>
     <th scope="col">Ledger <span class="muted">12 mo</span></th>
@@ -52,7 +58,17 @@
   </tr></thead>
   <tbody>
   {% for row in rows %}
-    <tr>
+    <tr data-row-id="{{ row.signal.id }}" data-name="{{ row.signal.name }}"
+      {%- if row.signal.editorial_momentum_score %} data-edi="{{ row.signal.editorial_momentum_score }}"{% endif %}
+      {%- if row.signal.urban_adoption_score %} data-ado="{{ row.signal.urban_adoption_score }}"{% endif %}
+      {%- if row.signal.saturation_risk_score %} data-sat="{{ row.signal.saturation_risk_score }}"{% endif %}>
+      {% if interactive %}
+      <td class="ctl">
+        <button type="button" class="pin-btn" aria-pressed="false" title="Pin to compare">○</button>
+        <button type="button" class="watch-btn" aria-pressed="false" title="Watch">⚐</button>
+        <button type="button" class="peek-btn" aria-expanded="false" title="Peek evidence">+</button>
+      </td>
+      {% endif %}
       <td class="cell-primary">
         <a href="/signals/{{ row.signal.id }}">{{ row.signal.name }}</a>{{ divergence(row.signal) }}
         {% if row.related_count %}<span class="desc">Connected to {{ row.related_count }} other signal{{ "s" if row.related_count != 1 }}</span>{% endif %}
@@ -62,13 +78,14 @@
       <td class="num">{{ row.signal.evidence_count }}</td>
       <td class="num">{{ row.signal.source_count }}</td>
       <td class="num">{% if row.delta_7d %}<span class="delta-up">+{{ row.delta_7d }}</span>{% else %}<span class="muted">-</span>{% endif %}</td>
-      <td class="mono muted">{{ row.signal.cities[:2] | join(", ") }}</td>
+      <td class="mono muted">{% for city in row.signal.cities[:2] %}<span data-city="{{ city }}" tabindex="0">{{ city }}</span>{{ ", " if not loop.last }}{% endfor %}</td>
       <td>{{ score_meter(row.signal.editorial_momentum_score, show_numeral=False) }}</td>
       <td>{{ score_meter(row.signal.urban_adoption_score, show_numeral=False) }}</td>
       <td>{{ score_meter(row.signal.saturation_risk_score, accent=True, show_numeral=False) }}</td>
     </tr>
+    {% if interactive %}<tr class="peek-row" hidden data-peek-for="{{ row.signal.id }}"><td colspan="11"></td></tr>{% endif %}
   {% else %}
-    <tr><td colspan="10"><div class="empty">Nothing matches. <a href="/signals">Clear filters</a>.</div></td></tr>
+    <tr><td colspan="{{ 11 if interactive else 10 }}"><div class="empty">Nothing matches. <a href="/signals">Clear filters</a>.</div></td></tr>
   {% endfor %}
   </tbody>
 </table>
