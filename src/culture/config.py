@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -7,6 +8,19 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     database_url: str = "postgresql+psycopg://localhost:5432/culture_intelligence"
+    # Ahead of the full Neon->Supabase production data migration (D1), lets
+    # one environment (e.g. Preview) run the new auth stack against
+    # Supabase's own Postgres — required for the profiles->auth.users FK —
+    # while every other environment keeps using DATABASE_URL untouched.
+    # Empty (the default everywhere except that one environment) means
+    # database_url below is exactly what it always was.
+    supabase_database_url: str = ""
+
+    @model_validator(mode="after")
+    def _prefer_supabase_database_url(self) -> "Settings":
+        if self.supabase_database_url:
+            self.database_url = self.supabase_database_url
+        return self
 
     ai_provider: str = "anthropic"
     ai_model: str = ""

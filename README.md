@@ -16,6 +16,8 @@ This is **not** a news aggregator or a trend dashboard. The system distinguishes
 | 6. AI provider abstraction + item analysis | ✅ done |
 | 7. Weekly report (roundup + synthesis) | ✅ done |
 | 8. Quality pass | ✅ done |
+| 9. Web UI, magic-link auth, interactive layer | ✅ done, live |
+| 10. Account-based auth + admin workspace | 🔶 built, `auth-admin-workspace` branch, not merged/deployed: see [Authentication & admin workspace](#authentication--admin-workspace) |
 
 ## Architecture
 
@@ -60,6 +62,78 @@ exported to [design/](design/) — the design source of truth (brand rules in
 - There is **no build step**: styles ship inline in the Jinja templates. No `dist/` is
   produced or needed. Reference screens live in `design/reference/*.dc.html` (Claude
   Design artboards with demo data — open in a browser to compare fidelity).
+
+## Authentication & admin workspace
+
+### What's live today
+
+`src/culture/web/auth.py` gates the hosted deployment behind a **magic-link,
+invite-only** flow: an email on the `ALLOWED_EMAILS` allow-list gets a signed,
+15-minute sign-in link (no password); role (`admin`/`member`) comes from
+`ADMIN_EMAILS`; a fixed-credential `demo` role exists for showing the product
+without a real account. Every login attempt is written to `auth_events`
+best-effort, and logins are rate-limited per IP per warm instance. This is
+the only auth path production actually runs, and nothing below changes that
+until `AUTH_MODE` is explicitly set (see next section).
+
+### What's built, not yet live
+
+A full account-based replacement lives on the `auth-admin-workspace` branch
+(unmerged): registration with email verification, owner approval, password
+login/reset, and an owner-only admin workspace. It is inert everywhere
+production runs: every route in it is mounted only when
+`Settings.auth_mode == "supabase"`, and `AUTH_MODE` defaults to `magiclink`
+and is unset in every deployed environment.
+
+**New database tables** (Alembic migrations `f8a21b02712b` through
+`848708701be7`): `profiles` (one row per Supabase Auth identity, FK'd to
+`auth.users`, RLS-protected), `app_settings` (single-row registration
+controls), `email_log` (delivery ledger), `collection_requests` (the
+"Collect now" queue, see below). `auth_events` gained `actor`/`target_type`/
+`target_id`/`request_id`; `sources` gained `normalized_identifier`,
+`archived_at`/`archived_by`, `cadence`.
+
+**New routes** (mounted only in `AUTH_MODE=supabase`): `/register`,
+`/auth/confirm`, `/login` (password), `/reset`, `/reset/confirm`,
+`/pending`, `/denied`. **Admin workspace** (`src/culture/web/admin.py`,
+mounted whenever the app requires auth, in *either* mode:
+`ROLE_ADMIN`/`ROLE_OWNER` are treated as the same permission tier so this
+doesn't have to wait for the mode switch): `/admin/approvals`,
+`/admin/users`, `/admin/sources` (source management moves here entirely;
+`/sources` now 303-redirects an owner and 403s everyone else),
+`/admin/audit`, `/admin/settings`.
+
+**New CLI commands** (`src/culture/cli.py`, under `culture auth`):
+
+```bash
+uv run culture auth provision-owner        # idempotent: creates/updates the sole owner account
+uv run culture auth migrate-allowlist --dry-run   # report legacy ALLOWED_EMAILS users, write nothing
+uv run culture auth migrate-allowlist             # create them as pending profiles (nobody auto-approved)
+uv run culture auth reset-owner-password   # recovery path: sets the owner's password via the Supabase
+                                            # admin API, bypassing email entirely; prompts locally, hidden
+uv run culture ingest --queued             # drains /admin/sources "Collect now" requests
+```
+
+**Why a database change is required before cutover**: `profiles.id` is a
+foreign key to Supabase Auth's own `auth.users` table, which only exists
+inside a Supabase-hosted Postgres. Cutting over means moving this app's
+`DATABASE_URL` to that Postgres: a one-time, scheduled data migration from
+the current Neon database, not a code change. `Settings.supabase_database_url`
+lets one environment (e.g. Vercel Preview) point at a Supabase Postgres
+independently of `DATABASE_URL`, so the new system can be built, migrated,
+and tested end-to-end without touching the production database at all.
+
+**Additional environment variables** this branch introduces, all unused
+until `AUTH_MODE=supabase`: `AUTH_MODE`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`,
+`SUPABASE_SERVICE_ROLE_KEY` (server-only), `OWNER_EMAIL`, `SITE_URL`,
+`SUPABASE_DATABASE_URL` (the Preview-only override described above).
+
+**Known blocker**: Supabase locks its email-template editor until custom
+SMTP is configured, and custom SMTP needs a verified sending domain, which
+this project doesn't have yet. Until then, confirmation/reset emails use
+Supabase's own rate-limited sender with its default template: workable for
+testing, not for real onboarding. `culture auth reset-owner-password` exists
+specifically so the owner is never locked out by this.
 
 ## Setup
 

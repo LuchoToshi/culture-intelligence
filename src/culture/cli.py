@@ -1101,5 +1101,57 @@ def auth_migrate_allowlist(
     )
 
 
+@auth_app.command("reset-owner-password")
+def auth_reset_owner_password() -> None:
+    """Owner recovery: set the owner's password directly via the Supabase
+    admin API, bypassing the email-based reset flow entirely. This is the
+    documented recovery path for when the owner is locked out and the
+    normal reset link isn't reachable (e.g. Supabase's default mailer
+    locks email-template customization behind custom SMTP being
+    configured, so no working reset link can be sent yet).
+
+    The new password is entered here, at this prompt, hidden — it is never
+    accepted as a command-line argument, an environment variable, or piped
+    input, so it never ends up in shell history or a chat transcript.
+    """
+    import getpass
+
+    from sqlalchemy import select
+
+    from culture.database import get_engine, session_scope
+    from culture.models.profile import ROLE_OWNER, Profile
+    from culture.web import auth as web_auth
+    from culture.web import supabase
+
+    settings = get_settings()
+    with session_scope(get_engine()) as session:
+        owner = session.scalar(select(Profile).where(Profile.role == ROLE_OWNER))
+        if owner is None:
+            console.print(
+                "[red]No owner is provisioned yet. Run "
+                "`culture auth provision-owner` first.[/red]"
+            )
+            raise typer.Exit(1)
+        owner_id, owner_email = str(owner.id), owner.email
+
+    new_password = getpass.getpass(f"New password for {owner_email}: ")
+    confirm = getpass.getpass("Confirm new password: ")
+    if new_password != confirm:
+        console.print("[red]Passwords don't match. Nothing changed.[/red]")
+        raise typer.Exit(1)
+    if len(new_password) < 8:
+        console.print("[red]Password must be at least 8 characters. Nothing changed.[/red]")
+        raise typer.Exit(1)
+
+    try:
+        supabase.admin_set_user_password(owner_id, new_password, settings)
+    except supabase.SupabaseAuthError as exc:
+        console.print(f"[red]Supabase error: {exc.detail}[/red]")
+        raise typer.Exit(1) from exc
+
+    web_auth.record_event("owner_recovery", email=owner_email)
+    console.print(f"[green]Password set for {owner_email}. You can sign in now.[/green]")
+
+
 if __name__ == "__main__":
     app()

@@ -135,6 +135,23 @@ def update_user_password(access_token: str, new_password: str, settings: Setting
     return _request("PUT", f"{_base_url(settings)}/user", headers, {"password": new_password})
 
 
+def admin_set_user_password(user_id: str, new_password: str, settings: Settings) -> dict:
+    """Sets a user's password directly via the admin API — the documented
+    owner-recovery path (§5 of the auth spec) for when the normal
+    email-based reset isn't reachable at all (e.g. Supabase's default
+    mailer locks email-template customization behind custom SMTP being
+    configured, so no reset link can be sent yet). Server-only: uses the
+    service-role key, never the anon key. Never called from a web route —
+    only from `culture auth reset-owner-password`, which prompts for the
+    new password locally rather than accepting it as an argument."""
+    return _request(
+        "PUT",
+        f"{_base_url(settings)}/admin/users/{user_id}",
+        _service_headers(settings),
+        {"password": new_password},
+    )
+
+
 def admin_sign_out_user(user_id: str, settings: Settings) -> None:
     """Revokes every refresh token for the user (suspend/disable/demote).
     Server-only: uses the service-role key, never reachable from a member

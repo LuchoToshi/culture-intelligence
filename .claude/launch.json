@@ -6,6 +6,12 @@
       "runtimeExecutable": "uv",
       "runtimeArgs": ["run", "culture", "web"],
       "port": 8765
+    },
+    {
+      "name": "culture-web-auth-test",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": ["run", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8765"],
+      "port": 8765
     }
   ]
 }

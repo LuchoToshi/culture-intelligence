@@ -17,6 +17,7 @@ from uuid import UUID
 import pytest
 import typer
 from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session
 
 from culture import cli
 from culture.config import get_settings
@@ -160,3 +161,45 @@ def test_migrate_allowlist_is_idempotent(cli_auth_env):
         cli.auth_migrate_allowlist(dry_run=False)
 
     assert mock_create.call_count == 1
+
+
+def test_reset_owner_password_sets_it_via_admin_api(cli_auth_env):
+    owner_id = "11111111-1111-1111-1111-111111111111"
+    with patch(
+        "culture.web.supabase.admin_get_or_create_user",
+        return_value=_fake_user("owner@example.com", owner_id),
+    ):
+        cli.auth_provision_owner()
+
+    with (
+        patch("getpass.getpass", side_effect=["correct-horse-1", "correct-horse-1"]),
+        patch("culture.web.supabase.admin_set_user_password") as mock_set,
+    ):
+        cli.auth_reset_owner_password()
+
+    mock_set.assert_called_once_with(owner_id, "correct-horse-1", get_settings())
+    with Session(cli_auth_env) as session:
+        events = [e.event for e in session.scalars(select(AuthEvent))]
+        assert "owner_recovery" in events
+
+
+def test_reset_owner_password_rejects_mismatched_confirmation(cli_auth_env):
+    owner_id = "11111111-1111-1111-1111-111111111111"
+    with patch(
+        "culture.web.supabase.admin_get_or_create_user",
+        return_value=_fake_user("owner@example.com", owner_id),
+    ):
+        cli.auth_provision_owner()
+
+    with (
+        patch("getpass.getpass", side_effect=["correct-horse-1", "different-1"]),
+        patch("culture.web.supabase.admin_set_user_password") as mock_set,
+        pytest.raises(typer.Exit),
+    ):
+        cli.auth_reset_owner_password()
+    mock_set.assert_not_called()
+
+
+def test_reset_owner_password_without_a_provisioned_owner_fails_cleanly(cli_auth_env):
+    with pytest.raises(typer.Exit):
+        cli.auth_reset_owner_password()

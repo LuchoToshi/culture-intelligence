@@ -64,11 +64,17 @@ def mount_admin_routes(app: FastAPI) -> None:
         return templates.TemplateResponse(request, template, context)
 
     def _queue_email(session, to_email: str, template: str, dedupe_key: str) -> None:
-        from sqlalchemy import select as _select
+        """Relies on EmailLog.dedupe_key's own unique constraint, not a
+        check-then-act SELECT: a savepoint means a duplicate key rolls back
+        only this insert, not the profile/source mutation already made in
+        the same transaction."""
+        from sqlalchemy.exc import IntegrityError
 
-        already = session.scalar(_select(EmailLog).where(EmailLog.dedupe_key == dedupe_key))
-        if already is None:
-            session.add(EmailLog(to_email=to_email, template=template, dedupe_key=dedupe_key))
+        try:
+            with session.begin_nested():
+                session.add(EmailLog(to_email=to_email, template=template, dedupe_key=dedupe_key))
+        except IntegrityError:
+            pass
 
     # --- landing -------------------------------------------------------
 
@@ -125,9 +131,12 @@ def mount_admin_routes(app: FastAPI) -> None:
                     target_type="profile", target_id=str(profile.id),
                 )
             )
-            _queue_email(
-                session, email, _ACTION_EVENT[verb], f"{verb}:{profile.id}:{now.isoformat()}"
-            )
+            # A stable key, not a fresh timestamp: pending -> approved/rejected
+            # happens exactly once per profile (the WHERE status='pending'
+            # guard above ensures that), so verb+profile_id alone identifies
+            # this transition and a retried/double-submitted request lands on
+            # the same key rather than always minting a new one.
+            _queue_email(session, email, _ACTION_EVENT[verb], f"{verb}:{profile.id}")
 
         return RedirectResponse("/admin/approvals", status_code=303)
 
@@ -163,6 +172,16 @@ def mount_admin_routes(app: FastAPI) -> None:
             if profile.email == actor:
                 raise HTTPException(403, "You can't act on your own account.")
 
+            # Captured before mutating: unlike approve/reject (a one-time
+            # transition), suspend/disable/reactivate can legitimately recur
+            # on the same profile over time, so the dedupe key needs to tell
+            # "the same retried request" from "a later, distinct pass through
+            # this verb" apart. The profile's own last-updated timestamp is a
+            # stable fingerprint of "which transition this is": a retry before
+            # either request commits reads the same pre-mutation value and
+            # lands on the same key; a genuinely later transition reads the
+            # value the intervening mutation left behind.
+            state_fingerprint = profile.updated_at.isoformat() if profile.updated_at else "initial"
             now = datetime.now(UTC)
             if verb == "suspend":
                 profile.status = "suspended"
@@ -171,6 +190,10 @@ def mount_admin_routes(app: FastAPI) -> None:
                 profile.status = "disabled"
                 profile.disabled_at, profile.disabled_by = now, actor
             elif verb == "reactivate":
+                if profile.status not in ("suspended", "disabled"):
+                    raise HTTPException(
+                        409, "Only a suspended or disabled account can be reactivated here."
+                    )
                 profile.status = "approved"
             elif verb == "approve":  # re-admission of a previously rejected account
                 if profile.status != "rejected":
@@ -188,7 +211,7 @@ def mount_admin_routes(app: FastAPI) -> None:
             )
             _queue_email(
                 session, email, _ACTION_EVENT.get(verb, f"account_{verb}"),
-                f"{verb}:{profile.id}:{now.isoformat()}",
+                f"{verb}:{profile.id}:{state_fingerprint}",
             )
             user_id_for_revocation = str(profile.id) if revoke else None
 

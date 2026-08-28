@@ -153,6 +153,65 @@ def test_duplicate_registration_gets_generic_response(client):
     assert "signup_duplicate" in _audit_events(client.app_engine)
 
 
+def test_registration_rejects_when_registration_closed(client):
+    from culture.models.app_settings import AppSettings
+
+    with Session(client.app_engine) as session:
+        session.add(AppSettings(id=1, registration_open=False))
+        session.commit()
+    with patch("culture.web.supabase.sign_up") as fake_sign_up:
+        response = client.post(
+            "/register",
+            data={
+                "full_name": "New Person", "email": "new@example.com",
+                "organization": "", "password": "longenough1", "password_confirm": "longenough1",
+            },
+        )
+    fake_sign_up.assert_not_called()
+    assert "closed" in response.text.lower()
+
+
+def test_registration_rejects_uninvited_email_when_invite_only(client):
+    from culture.models.app_settings import AppSettings
+
+    with Session(client.app_engine) as session:
+        session.add(
+            AppSettings(id=1, invite_only=True, allowlist_emails="invited@example.com")
+        )
+        session.commit()
+    with patch("culture.web.supabase.sign_up") as fake_sign_up:
+        response = client.post(
+            "/register",
+            data={
+                "full_name": "New Person", "email": "new@example.com",
+                "organization": "", "password": "longenough1", "password_confirm": "longenough1",
+            },
+        )
+    fake_sign_up.assert_not_called()
+    assert "invite-only" in response.text.lower()
+
+
+def test_registration_allows_invited_email_when_invite_only(client):
+    from culture.models.app_settings import AppSettings
+
+    with Session(client.app_engine) as session:
+        session.add(
+            AppSettings(id=1, invite_only=True, allowed_domains="example.com")
+        )
+        session.commit()
+    with patch(
+        "culture.web.supabase.sign_up", return_value=_fake_signup_response(MEMBER_ID)
+    ):
+        response = client.post(
+            "/register",
+            data={
+                "full_name": "New Person", "email": "new@example.com",
+                "organization": "", "password": "longenough1", "password_confirm": "longenough1",
+            },
+        )
+    assert "check your email" in response.text.lower()
+
+
 def test_registration_rejects_mismatched_passwords(client):
     response = client.post(
         "/register",

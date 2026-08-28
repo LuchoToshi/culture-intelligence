@@ -36,6 +36,7 @@ from starlette.responses import RedirectResponse, Response
 
 from culture.config import Settings, get_settings
 from culture.logging import get_logger
+from culture.models.profile import ROLE_MEMBER, ROLE_OWNER
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -99,12 +100,11 @@ STATUS_DESTINATION = {
 
 
 ROLE_ADMIN = "admin"
-ROLE_MEMBER = "member"
 ROLE_DEMO = "demo"
-# The Supabase-backed auth model's top role (culture.models.profile.Profile).
-# Treated as synonymous with ROLE_ADMIN everywhere access is checked, so the
-# admin workspace (Phase 4+) works identically under either auth mode.
-ROLE_OWNER = "owner"
+# ROLE_MEMBER / ROLE_OWNER are imported from culture.models.profile — the
+# Supabase-backed auth model's role vocabulary. ROLE_OWNER is treated as
+# synonymous with ROLE_ADMIN everywhere access is checked, so the admin
+# workspace (Phase 4+) works identically under either auth mode.
 OWNER_ROLES = (ROLE_ADMIN, ROLE_OWNER)
 
 # Route-level enforcement. Hiding a nav link is not access control.
@@ -262,14 +262,14 @@ def verify_supabase_session_value(value: str, settings: Settings) -> SupabaseSes
 
 
 def set_supabase_session_cookie(
-    response: Response, info: SupabaseSessionInfo, settings: Settings
+    response: Response, info: SupabaseSessionInfo, settings: Settings, request: Request
 ) -> None:
     response.set_cookie(
         SESSION_COOKIE,
         create_supabase_session_value(info, settings),
         max_age=SUPABASE_SESSION_MAX_AGE,
         httponly=True,
-        secure=True,
+        secure=request.url.scheme == "https",
         samesite="lax",
     )
 
@@ -375,21 +375,38 @@ def require_owner(request: Request) -> None:
         raise HTTPException(403, "You don't have access to this page.")
 
 
+def _csrf_identity(request: Request, settings: Settings) -> str:
+    """A stable identifier for the caller's session, used (not the raw
+    cookie string) so a Supabase-mode silent token refresh mid-session
+    doesn't invalidate a CSRF token minted moments earlier: the cookie's
+    access/refresh tokens rotate, but the signed-in user doesn't."""
+    cookie = request.cookies.get(SESSION_COOKIE, "")
+    if not cookie:
+        return "anonymous"
+    supabase_info = verify_supabase_session_value(cookie, settings)
+    if supabase_info is not None:
+        return f"sb:{supabase_info.user_id}"
+    magiclink_info = verify_session_value(cookie, settings)
+    if magiclink_info is not None:
+        return f"ml:{magiclink_info.email}"
+    return "anonymous"
+
+
 def create_csrf_token(request: Request, settings: Settings) -> str:
-    """A token bound to the caller's own session cookie value, so it can't
-    be replayed from a different session. Every state-changing admin route
-    is POST-only and checks this in addition to SameSite=Lax cookies."""
-    session_value = request.cookies.get(SESSION_COOKIE, "") or "anonymous"
-    return _serializer(settings, "csrf").dumps(session_value)
+    """A token bound to the caller's own signed-in identity, so it can't be
+    replayed from a different session. Every state-changing admin route is
+    POST-only and checks this in addition to SameSite=Lax cookies."""
+    return _serializer(settings, "csrf").dumps(_csrf_identity(request, settings))
 
 
 def verify_csrf_token(token: str, request: Request, settings: Settings) -> bool:
-    session_value = request.cookies.get(SESSION_COOKIE, "") or "anonymous"
     try:
-        bound_value = _serializer(settings, "csrf").loads(token, max_age=SUPABASE_SESSION_MAX_AGE)
+        bound_identity = _serializer(settings, "csrf").loads(
+            token, max_age=SUPABASE_SESSION_MAX_AGE
+        )
     except (BadSignature, SignatureExpired):
         return False
-    return bound_value == session_value
+    return bound_identity == _csrf_identity(request, settings)
 
 
 def require_csrf(token: str, request: Request, settings: Settings) -> None:
@@ -526,19 +543,19 @@ class AuthMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
 
         if refreshed:
-            set_supabase_session_cookie(response, info, settings)
+            set_supabase_session_cookie(response, info, settings, request)
         return response
 
 
 def set_session_cookie(
-    response: Response, email: str, settings: Settings, role: str | None = None
+    response: Response, email: str, settings: Settings, request: Request, role: str | None = None
 ) -> None:
     response.set_cookie(
         SESSION_COOKIE,
         create_session_value(email, settings, role=role),
         max_age=SESSION_MAX_AGE,
         httponly=True,
-        secure=True,
+        secure=request.url.scheme == "https",
         samesite="lax",
     )
 

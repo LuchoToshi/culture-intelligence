@@ -293,7 +293,11 @@ def test_demo_cannot_reach_any_admin_write_route(role_client):
     ]
     assert mutating_admin_routes, "expected the admin workspace to expose POST routes"
     for path in mutating_admin_routes:
-        concrete_path = path.replace("{profile_id}", "1").replace("{verb}", "suspend")
+        concrete_path = (
+            path.replace("{profile_id}", "1")
+            .replace("{verb}", "suspend")
+            .replace("{source_id}", "1")
+        )
         response = role_client.post(concrete_path, data={"csrf_token": "irrelevant"})
         assert response.status_code == 303, path
         assert response.headers["location"] == "/dashboard", path

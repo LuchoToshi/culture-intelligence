@@ -227,7 +227,10 @@ def test_settings_update_persists_and_audits(client):  # noqa: F811
 
 
 def test_admin_reaches_admin_workspace_under_magiclink_mode(monkeypatch):
-    monkeypatch.delenv("AUTH_MODE", raising=False)
+    # Explicit, not delenv: pydantic-settings reads .env directly regardless
+    # of os.environ, so deleting the OS var doesn't stop a real value in a
+    # developer's local .env from winning. Setting it wins over .env.
+    monkeypatch.setenv("AUTH_MODE", "magiclink")
     get_settings.cache_clear()
     from sqlalchemy import create_engine
     from sqlalchemy.pool import StaticPool

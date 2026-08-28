@@ -164,7 +164,9 @@ def _mount_demo_login(app: FastAPI, templates: Jinja2Templates) -> None:
             "demo_login", email=settings.demo_email, ip=ip, engine=request.app.state.engine
         )
         response = RedirectResponse("/dashboard", status_code=303)
-        auth.set_session_cookie(response, settings.demo_email, settings, role=auth.ROLE_DEMO)
+        auth.set_session_cookie(
+            response, settings.demo_email, settings, request, role=auth.ROLE_DEMO
+        )
         return response
 
 
@@ -271,7 +273,7 @@ def _mount_auth_routes(app: FastAPI) -> None:
             engine=request.app.state.engine,
         )
         response = RedirectResponse(next or "/dashboard", status_code=303)
-        auth.set_session_cookie(response, email, settings, role=role)
+        auth.set_session_cookie(response, email, settings, request, role=role)
         return response
 
     @app.get("/logout", include_in_schema=False)
@@ -360,7 +362,7 @@ def _mount_supabase_auth_routes(app: FastAPI) -> None:
             expires_at=time.time() + float(result.get("expires_in", 3600)),
         )
         response = RedirectResponse(next or "/dashboard", status_code=303)
-        auth.set_supabase_session_cookie(response, info, settings)
+        auth.set_supabase_session_cookie(response, info, settings, request)
         return response
 
     _mount_demo_login(app, templates)
@@ -398,6 +400,23 @@ def _mount_supabase_auth_routes(app: FastAPI) -> None:
             return _fail("Passwords don't match.")
         if len(password) < 8:
             return _fail("Password must be at least 8 characters.")
+
+        from culture.models.app_settings import AppSettings
+
+        with session_scope(request.app.state.engine) as session:
+            policy = session.get(AppSettings, 1)
+            if policy is not None:
+                if not policy.registration_open:
+                    return _fail("Registration is currently closed.")
+                if policy.invite_only:
+                    domain = normalized.rsplit("@", 1)[-1]
+                    if (
+                        normalized not in policy.allowlist_email_set
+                        and domain not in policy.allowed_domain_set
+                    ):
+                        return _fail(
+                            "Registration is invite-only. Contact the workspace owner for access."
+                        )
 
         redirect_to = f"{settings.site_url.rstrip('/')}/auth/confirm"
         try:
@@ -457,7 +476,7 @@ def _mount_supabase_auth_routes(app: FastAPI) -> None:
                 refresh_token=result["refresh_token"],
                 expires_at=time.time() + float(result.get("expires_in", 3600)),
             )
-            auth.set_supabase_session_cookie(response, info, settings)
+            auth.set_supabase_session_cookie(response, info, settings, request)
         return response
 
     @app.get("/pending", response_class=HTMLResponse, include_in_schema=False)
