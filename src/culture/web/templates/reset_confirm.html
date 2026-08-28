@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sign in - Culture Intelligence</title>
+<title>Set a new password - Culture Intelligence</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
@@ -13,7 +13,7 @@
   body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
          background:var(--ci-paper); font:14px/1.55 var(--ci-font-text); color:var(--ci-ink);
          padding:1.5rem; }
-  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+  a:focus-visible, button:focus-visible, input:focus-visible {
     outline:2px solid var(--ci-oxblood); outline-offset:2px; }
   .panel { border:var(--ci-rule-mid); padding:2.4rem 2.2rem; width:100%; max-width:400px; }
   .brand { font:600 11px var(--ci-font-text); letter-spacing:var(--ci-track-brand);
@@ -23,8 +23,7 @@
   p.lede { color:var(--ci-ink-3); margin:0 0 1.6rem; font-size:13px; }
   label { display:block; font:500 9px var(--ci-font-text); letter-spacing:var(--ci-track-label);
           text-transform:uppercase; color:var(--ci-ink-4); margin-bottom:0.35rem; }
-  input[type=email], input[type=password] {
-    width:100%; font:inherit; padding:0.6rem 0.8rem; border:var(--ci-rule-mid);
+  input[type=password] { width:100%; font:inherit; padding:0.6rem 0.8rem; border:var(--ci-rule-mid);
     border-radius:0; background:transparent; margin-bottom:1rem; }
   input:focus { outline:2px solid var(--ci-oxblood); outline-offset:1px; border-color:var(--ci-ink); }
   button { width:100%; font:600 11px var(--ci-font-text); letter-spacing:var(--ci-track-chip);
@@ -40,64 +39,31 @@
   .notice.err { color:var(--ci-oxblood); }
   .notice.err::before { background:var(--ci-oxblood); }
   .aside { font-size:12px; color:var(--ci-ink-3); margin:1.1rem 0 0; }
-  details { margin-top:1.2rem; border-top:var(--ci-rule-light); padding-top:1rem; }
-  summary { cursor:pointer; font:400 11px var(--ci-font-text);
-            letter-spacing:var(--ci-track-chip); text-transform:uppercase; color:var(--ci-ink-3); }
 </style>
 </head>
 <body>
   <div class="panel">
     <p class="brand">Culture Intelligence</p>
-    <h1>Sign in</h1>
-    {% if auth_mode == "supabase" %}
-      <p class="lede">Urban taste intelligence: approved members only.</p>
-      {% if error %}
-        <div class="notice err">{{ error }}</div>
-      {% endif %}
-      <form method="post" action="/login">
-        <label for="email">Email</label>
-        <input id="email" name="email" type="email" required autofocus placeholder="you@company.com">
-        <label for="password">Password</label>
-        <input id="password" name="password" type="password" required>
-        <input type="hidden" name="next" value="{{ next or '/dashboard' }}">
-        <button type="submit">Sign in</button>
-      </form>
-      <p class="aside">
-        <a href="/reset">Forgot your password?</a>
-      </p>
-      <p class="aside">
-        No account? <a href="/register">Register</a> for review. Access is
-        granted manually; approval isn't immediate.
-      </p>
+    <h1>Set a new password</h1>
+    {% if invalid %}
+      <p class="lede">This link is invalid or has expired.</p>
+      <p class="aside"><a href="/reset">Request a new one</a></p>
+    {% elif done %}
+      <div class="notice ok">Password changed. Sign in with your new password.</div>
+      <p class="aside"><a href="/login">Sign in</a></p>
     {% else %}
-      <p class="lede">Urban taste intelligence: signed access only.</p>
-      {% if sent %}
-        <div class="notice ok">A sign-in link is on its way to <strong>{{ sent }}</strong>. It expires in 15 minutes.</div>
-      {% endif %}
       {% if error %}
         <div class="notice err">{{ error }}</div>
       {% endif %}
-      <form method="post" action="/login">
-        <label for="email">Email</label>
-        <input id="email" name="email" type="email" required autofocus placeholder="you@company.com">
-        <input type="hidden" name="next" value="{{ next or '/' }}">
-        <button type="submit">Send sign-in link</button>
+      <form method="post" action="/reset/confirm">
+        <input type="hidden" name="token_hash" value="{{ token_hash }}">
+        <label for="password">New password</label>
+        <input id="password" name="password" type="password" required minlength="8" autofocus>
+        <label for="password_confirm">Confirm new password</label>
+        <input id="password_confirm" name="password_confirm" type="password" required minlength="8">
+        <button type="submit">Set password</button>
       </form>
-      <p class="aside">
-        No account? Submitting your work email records an access request for
-        review. Approved members sign in by email link: no password to manage.
-      </p>
     {% endif %}
-    <details>
-      <summary>Have demo credentials?</summary>
-      <form method="post" action="/login/demo" style="margin-top:0.8rem">
-        <label for="demo-email">Demo email</label>
-        <input id="demo-email" name="email" type="email" required>
-        <label for="demo-password">Demo password</label>
-        <input id="demo-password" name="password" type="password" required>
-        <button type="submit">Enter demo</button>
-      </form>
-    </details>
   </div>
 </body>
 </html>

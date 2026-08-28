@@ -5,11 +5,13 @@ Auth is opt-in via require_auth= (see culture.web.auth) — off for local/test
 use, on for the hosted deployment.
 """
 
+import time
 from collections import Counter
 from collections.abc import Iterator
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from uuid import UUID
 
 import markdown as md
 from fastapi import Depends, FastAPI, HTTPException, Request
@@ -114,6 +116,58 @@ def stage_reason(signal: Signal) -> str:
     return base
 
 
+def _mount_demo_login(app: FastAPI, templates: Jinja2Templates) -> None:
+    """POST /login/demo — identical in both auth modes. Demo never has a
+    Supabase identity or a profiles row; it keeps using the plain,
+    differently-salted session payload regardless of Settings.auth_mode
+    (see AuthMiddleware._dispatch_supabase's demo branch)."""
+    from fastapi import Form
+    from fastapi.responses import RedirectResponse
+
+    from culture.config import get_settings
+    from culture.web import auth
+
+    @app.post("/login/demo", response_class=HTMLResponse, include_in_schema=False)
+    def demo_login(request: Request, email: str = Form(...), password: str = Form(...)):
+        settings = get_settings()
+        ip = auth.client_ip(request)
+        if not settings.demo_email:
+            return RedirectResponse("/login", status_code=303)
+        if auth.rate_limited(f"demo:{ip}", limit=5, window_seconds=15 * 60):
+            auth.record_event(
+                "rate_limited", email=email, ip=ip, path="/login/demo",
+                engine=request.app.state.engine,
+            )
+            return templates.TemplateResponse(
+                request,
+                "login.html",
+                {
+                    "next": "/dashboard",
+                    "sent": None,
+                    "auth_mode": settings.auth_mode,
+                    "error": "Too many attempts from this address. Try again in a few minutes.",
+                },
+            )
+        if not auth.demo_credentials_valid(email, password, settings):
+            auth.record_event(
+                "demo_login_failed", email=email, ip=ip, engine=request.app.state.engine
+            )
+            return templates.TemplateResponse(
+                request,
+                "login.html",
+                {
+                    "next": "/dashboard", "sent": None, "auth_mode": settings.auth_mode,
+                    "error": "Demo credentials not recognized.",
+                },
+            )
+        auth.record_event(
+            "demo_login", email=settings.demo_email, ip=ip, engine=request.app.state.engine
+        )
+        response = RedirectResponse("/dashboard", status_code=303)
+        auth.set_session_cookie(response, settings.demo_email, settings, role=auth.ROLE_DEMO)
+        return response
+
+
 def _mount_auth_routes(app: FastAPI) -> None:
     from fastapi import Form
     from fastapi.responses import RedirectResponse
@@ -126,7 +180,9 @@ def _mount_auth_routes(app: FastAPI) -> None:
     @app.get("/login", response_class=HTMLResponse, include_in_schema=False)
     def login_form(request: Request, next: str = "/dashboard", sent: str | None = None):
         return templates.TemplateResponse(
-            request, "login.html", {"next": next, "sent": sent, "error": None}
+            request,
+            "login.html",
+            {"next": next, "sent": sent, "error": None, "auth_mode": "magiclink"},
         )
 
     @app.post("/login", response_class=HTMLResponse, include_in_schema=False)
@@ -145,6 +201,7 @@ def _mount_auth_routes(app: FastAPI) -> None:
                 {
                     "next": next,
                     "sent": None,
+                    "auth_mode": "magiclink",
                     "error": "Too many attempts from this address. Try again in a few minutes.",
                 },
             )
@@ -165,11 +222,14 @@ def _mount_auth_routes(app: FastAPI) -> None:
                     {
                         "next": next,
                         "sent": None,
+                        "auth_mode": "magiclink",
                         "error": "Could not send the sign-in email. Try again shortly.",
                     },
                 )
             return templates.TemplateResponse(
-                request, "login.html", {"next": next, "sent": email, "error": None}
+                request,
+                "login.html",
+                {"next": next, "sent": email, "error": None, "auth_mode": "magiclink"},
             )
         # Unknown email: explicit rejection, per the 26 Aug access-control
         # ruling. This trades allow-list enumeration resistance for clarity —
@@ -185,6 +245,7 @@ def _mount_auth_routes(app: FastAPI) -> None:
             {
                 "next": next,
                 "sent": None,
+                "auth_mode": "magiclink",
                 "error": (
                     "This address does not have access. Your request has been "
                     "recorded — if it's approved, your next sign-in attempt will work."
@@ -192,41 +253,7 @@ def _mount_auth_routes(app: FastAPI) -> None:
             },
         )
 
-    @app.post("/login/demo", response_class=HTMLResponse, include_in_schema=False)
-    def demo_login(request: Request, email: str = Form(...), password: str = Form(...)):
-        settings = get_settings()
-        ip = auth.client_ip(request)
-        if not settings.demo_email:
-            return RedirectResponse("/login", status_code=303)
-        if auth.rate_limited(f"demo:{ip}", limit=5, window_seconds=15 * 60):
-            auth.record_event(
-                "rate_limited", email=email, ip=ip, path="/login/demo",
-                engine=request.app.state.engine,
-            )
-            return templates.TemplateResponse(
-                request,
-                "login.html",
-                {
-                    "next": "/dashboard",
-                    "sent": None,
-                    "error": "Too many attempts from this address. Try again in a few minutes.",
-                },
-            )
-        if not auth.demo_credentials_valid(email, password, settings):
-            auth.record_event(
-                "demo_login_failed", email=email, ip=ip, engine=request.app.state.engine
-            )
-            return templates.TemplateResponse(
-                request,
-                "login.html",
-                {"next": "/dashboard", "sent": None, "error": "Demo credentials not recognized."},
-            )
-        auth.record_event(
-            "demo_login", email=settings.demo_email, ip=ip, engine=request.app.state.engine
-        )
-        response = RedirectResponse("/dashboard", status_code=303)
-        auth.set_session_cookie(response, settings.demo_email, settings, role=auth.ROLE_DEMO)
-        return response
+    _mount_demo_login(app, templates)
 
     @app.get("/auth/verify", include_in_schema=False)
     def verify(request: Request, token: str, next: str = "/dashboard"):
@@ -261,6 +288,285 @@ def _mount_auth_routes(app: FastAPI) -> None:
         return response
 
 
+def _mount_supabase_auth_routes(app: FastAPI) -> None:
+    """Register/verify/login/reset/pending/denied — mounted instead of
+    _mount_auth_routes when Settings.auth_mode == "supabase". Every mutating
+    route opens its own transaction via session_scope(request.app.state.engine)
+    rather than a Depends(db) dependency: that dependency is defined later,
+    as a closure inside create_app, after auth routes are mounted (matching
+    where _mount_auth_routes already sits in that ordering) — see
+    culture.web.auth.record_event and the CLI's provision-owner for the same
+    self-contained-transaction convention used here.
+    """
+    from fastapi import Form
+    from fastapi.responses import RedirectResponse
+
+    from culture.config import get_settings
+    from culture.database import session_scope
+    from culture.models.profile import Profile
+    from culture.web import auth, supabase
+
+    templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+
+    def _login_page(request: Request, next: str, error: str | None):
+        return templates.TemplateResponse(
+            request,
+            "login.html",
+            {"next": next, "sent": None, "error": error, "auth_mode": "supabase"},
+        )
+
+    @app.get("/login", response_class=HTMLResponse, include_in_schema=False)
+    def login_form(request: Request, next: str = "/dashboard"):
+        return _login_page(request, next, None)
+
+    @app.post("/login", response_class=HTMLResponse, include_in_schema=False)
+    def login_submit(
+        request: Request,
+        email: str = Form(...),
+        password: str = Form(...),
+        next: str = Form("/dashboard"),
+    ):
+        settings = get_settings()
+        normalized = email.strip().lower()
+        ip = auth.client_ip(request)
+        generic_error = "Email or password is incorrect."
+        if auth.rate_limited(f"login:{ip}", limit=5, window_seconds=15 * 60):
+            auth.record_event(
+                "rate_limited", email=normalized, ip=ip, path="/login",
+                engine=request.app.state.engine,
+            )
+            return _login_page(
+                request, next, "Too many attempts from this address. Try again in a few minutes."
+            )
+        try:
+            result = supabase.sign_in_with_password(normalized, password, settings)
+            user_id = (result.get("user") or {}).get("id")
+            if not user_id:
+                raise supabase.SupabaseAuthError(400, "no user in response")
+        except supabase.SupabaseAuthError:
+            auth.record_event(
+                "login_failed", email=normalized, ip=ip, engine=request.app.state.engine
+            )
+            return _login_page(request, next, generic_error)
+
+        auth.record_event(
+            "login_success", email=normalized, ip=ip, engine=request.app.state.engine
+        )
+        info = auth.SupabaseSessionInfo(
+            user_id=user_id,
+            email=normalized,
+            access_token=result["access_token"],
+            refresh_token=result["refresh_token"],
+            expires_at=time.time() + float(result.get("expires_in", 3600)),
+        )
+        response = RedirectResponse(next or "/dashboard", status_code=303)
+        auth.set_supabase_session_cookie(response, info, settings)
+        return response
+
+    _mount_demo_login(app, templates)
+
+    @app.get("/register", response_class=HTMLResponse, include_in_schema=False)
+    def register_form(request: Request):
+        return templates.TemplateResponse(
+            request,
+            "register.html",
+            {"sent": None, "error": None, "full_name": None, "email": None, "organization": None},
+        )
+
+    @app.post("/register", response_class=HTMLResponse, include_in_schema=False)
+    def register_submit(
+        request: Request,
+        full_name: str = Form(...),
+        email: str = Form(...),
+        organization: str = Form(""),
+        password: str = Form(...),
+        password_confirm: str = Form(...),
+    ):
+        settings = get_settings()
+        normalized = email.strip().lower()
+        ip = auth.client_ip(request)
+        ctx = {
+            "full_name": full_name, "email": email, "organization": organization, "sent": None,
+        }
+
+        def _fail(error: str):
+            return templates.TemplateResponse(request, "register.html", {**ctx, "error": error})
+
+        if auth.rate_limited(f"register:{ip}", limit=5, window_seconds=60 * 60):
+            return _fail("Too many attempts from this address. Try again later.")
+        if password != password_confirm:
+            return _fail("Passwords don't match.")
+        if len(password) < 8:
+            return _fail("Password must be at least 8 characters.")
+
+        redirect_to = f"{settings.site_url.rstrip('/')}/auth/confirm"
+        try:
+            result = supabase.sign_up(normalized, password, redirect_to, settings)
+        except supabase.SupabaseAuthError as exc:
+            if exc.status_code in (400, 422) and "already" in exc.detail.lower():
+                auth.record_event(
+                    "signup_duplicate", email=normalized, ip=ip,
+                    engine=request.app.state.engine,
+                )
+                return templates.TemplateResponse(request, "register.html", {**ctx, "sent": True})
+            return _fail(exc.detail)
+
+        user_id = (result.get("user") or {}).get("id")
+        if user_id:
+            with session_scope(request.app.state.engine) as session:
+                profile = session.get(Profile, UUID(user_id))
+                if profile is not None:
+                    profile.full_name = full_name.strip()
+                    profile.organization = organization.strip() or None
+        auth.record_event(
+            "access_requested", email=normalized, ip=ip, engine=request.app.state.engine
+        )
+        return templates.TemplateResponse(request, "register.html", {**ctx, "sent": True})
+
+    @app.get("/auth/confirm", include_in_schema=False)
+    def auth_confirm(request: Request, token_hash: str, type: str = "signup"):  # noqa: A002
+        settings = get_settings()
+        try:
+            result = supabase.verify_otp(token_hash, type, settings)
+        except supabase.SupabaseAuthError as exc:
+            raise HTTPException(400, "This confirmation link is invalid or has expired.") from exc
+        user = result.get("user") or {}
+        user_id = user.get("id")
+        if not user_id:
+            raise HTTPException(400, "This confirmation link is invalid or has expired.")
+
+        profile_email: str | None
+        with session_scope(request.app.state.engine) as session:
+            profile = session.get(Profile, UUID(user_id))
+            if profile is not None and profile.email_verified_at is None:
+                profile.email_verified_at = datetime.now(UTC)
+                profile_email = profile.email
+            else:
+                profile_email = user.get("email")
+        auth.record_event(
+            "email_verified", email=profile_email, engine=request.app.state.engine
+        )
+
+        response = RedirectResponse("/pending", status_code=303)
+        access_token = result.get("access_token")
+        if access_token and result.get("refresh_token"):
+            info = auth.SupabaseSessionInfo(
+                user_id=user_id,
+                email=str(profile_email or ""),
+                access_token=access_token,
+                refresh_token=result["refresh_token"],
+                expires_at=time.time() + float(result.get("expires_in", 3600)),
+            )
+            auth.set_supabase_session_cookie(response, info, settings)
+        return response
+
+    @app.get("/pending", response_class=HTMLResponse, include_in_schema=False)
+    def pending_page(request: Request):
+        return templates.TemplateResponse(request, "pending.html", {})
+
+    @app.get("/denied", response_class=HTMLResponse, include_in_schema=False)
+    def denied_page(request: Request, state: str | None = None):
+        return templates.TemplateResponse(request, "denied.html", {"state": state})
+
+    @app.get("/reset", response_class=HTMLResponse, include_in_schema=False)
+    def reset_form(request: Request):
+        return templates.TemplateResponse(request, "reset.html", {"sent": False})
+
+    @app.post("/reset", response_class=HTMLResponse, include_in_schema=False)
+    def reset_submit(request: Request, email: str = Form(...)):
+        settings = get_settings()
+        normalized = email.strip().lower()
+        ip = auth.client_ip(request)
+        if not auth.rate_limited(f"reset:{ip}", limit=5, window_seconds=60 * 60):
+            redirect_to = f"{settings.site_url.rstrip('/')}/reset/confirm"
+            try:
+                supabase.request_password_recovery(normalized, redirect_to, settings)
+            except supabase.SupabaseAuthError:
+                log.info("password recovery request failed for %s", normalized, exc_info=True)
+            auth.record_event(
+                "password_reset_requested", email=normalized, ip=ip,
+                engine=request.app.state.engine,
+            )
+        # Same response whether rate-limited, unknown, or sent — enumeration
+        # resistance (§11.3): a caller can't tell which case happened.
+        return templates.TemplateResponse(request, "reset.html", {"sent": True})
+
+    @app.get("/reset/confirm", response_class=HTMLResponse, include_in_schema=False)
+    def reset_confirm_form(request: Request, token_hash: str = ""):
+        return templates.TemplateResponse(
+            request,
+            "reset_confirm.html",
+            {"token_hash": token_hash, "invalid": not token_hash, "done": False, "error": None},
+        )
+
+    @app.post("/reset/confirm", response_class=HTMLResponse, include_in_schema=False)
+    def reset_confirm_submit(
+        request: Request,
+        token_hash: str = Form(...),
+        password: str = Form(...),
+        password_confirm: str = Form(...),
+    ):
+        settings = get_settings()
+        if password != password_confirm:
+            return templates.TemplateResponse(request, "reset_confirm.html", {
+                "token_hash": token_hash, "invalid": False, "done": False,
+                "error": "Passwords don't match.",
+            })
+        if len(password) < 8:
+            return templates.TemplateResponse(request, "reset_confirm.html", {
+                "token_hash": token_hash, "invalid": False, "done": False,
+                "error": "Password must be at least 8 characters.",
+            })
+        try:
+            verified = supabase.verify_otp(token_hash, "recovery", settings)
+            access_token = verified["access_token"]
+            user = verified.get("user") or {}
+            supabase.update_user_password(access_token, password, settings)
+        except (supabase.SupabaseAuthError, KeyError):
+            return templates.TemplateResponse(request, "reset_confirm.html", {
+                "token_hash": token_hash, "invalid": True, "done": False, "error": None,
+            })
+
+        user_id = user.get("id")
+        if user_id:
+            try:
+                supabase.admin_sign_out_user(user_id, settings)
+            except supabase.SupabaseAuthError:
+                log.info("post-reset sign-out failed for uid=%s", user_id, exc_info=True)
+            auth.record_event(
+                "password_reset_completed", email=user.get("email"),
+                engine=request.app.state.engine,
+            )
+        response = templates.TemplateResponse(request, "reset_confirm.html", {
+            "token_hash": token_hash, "invalid": False, "done": True, "error": None,
+        })
+        response.delete_cookie(auth.SESSION_COOKIE)
+        return response
+
+    @app.get("/logout", include_in_schema=False)
+    def logout(request: Request):
+        settings = get_settings()
+        cookie = request.cookies.get(auth.SESSION_COOKIE)
+        demo_info = auth.verify_session_value(cookie, settings) if cookie else None
+        if demo_info is not None:
+            auth.record_event(
+                "logout", email=demo_info.email, engine=request.app.state.engine
+            )
+        else:
+            info = auth.verify_supabase_session_value(cookie, settings) if cookie else None
+            if info is not None:
+                try:
+                    supabase.admin_sign_out_user(info.user_id, settings)
+                except supabase.SupabaseAuthError:
+                    log.info("sign-out revocation failed for uid=%s", info.user_id, exc_info=True)
+                auth.record_event(
+                    "logout", email=info.email, engine=request.app.state.engine
+                )
+        response = RedirectResponse("/login", status_code=303)
+        auth.clear_session_cookie(response)
+        return response
+
+
 def _dmy(value: datetime | None, fallback: str = "-") -> str:
     """User-facing date format is DD-MM-YYYY everywhere (operator standard).
     Machine timestamps stay ISO/UTC internally — this is display-only."""
@@ -290,17 +596,23 @@ def create_app(
     engine: Engine | None = None,
     require_auth: bool = False,
 ) -> FastAPI:
+    from culture.config import get_settings
+
     app = FastAPI(title="Culture Intelligence", docs_url=None, redoc_url=None)
     if require_auth:
         from culture.web.auth import AuthMiddleware
 
         app.add_middleware(AuthMiddleware)
-        _mount_auth_routes(app)
+        if get_settings().auth_mode == "supabase":
+            _mount_supabase_auth_routes(app)
+        else:
+            _mount_auth_routes(app)
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
     templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
     templates.env.globals["stage_labels"] = queries.STAGE_LABELS
     templates.env.globals["stage_glyphs"] = queries.STAGE_GLYPHS
     templates.env.globals["signal_diverges"] = queries.signal_diverges
+    templates.env.globals["auth_mode"] = get_settings().auth_mode
     templates.env.filters["dmy"] = _dmy
     templates.env.filters["public_city_first"] = citypolicy.first_public_city
     templates.env.filters["public_cities"] = citypolicy.public_cities

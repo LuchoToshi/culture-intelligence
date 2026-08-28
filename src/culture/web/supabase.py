@@ -122,6 +122,19 @@ def verify_otp(token_hash: str, otp_type: str, settings: Settings) -> dict:
     )
 
 
+def update_user_password(access_token: str, new_password: str, settings: Settings) -> dict:
+    """Sets a new password on the session established by verify_otp's
+    recovery flow. Uses the recovery session's own access token, not the
+    service-role key — this is the user acting on their own account, not an
+    admin action."""
+    headers = {
+        "apikey": settings.supabase_anon_key,
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+    return _request("PUT", f"{_base_url(settings)}/user", headers, {"password": new_password})
+
+
 def admin_sign_out_user(user_id: str, settings: Settings) -> None:
     """Revokes every refresh token for the user (suspend/disable/demote).
     Server-only: uses the service-role key, never reachable from a member

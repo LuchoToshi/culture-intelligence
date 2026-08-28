@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Awaiting review - Culture Intelligence</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500&family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+{% include "_tokens.css" %}
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+         background:var(--ci-paper); color:var(--ci-ink);
+         font:14px/1.55 var(--ci-font-text); padding:1.5rem; }
+  a:focus-visible { outline:2px solid var(--ci-oxblood); outline-offset:2px; }
+  .panel { max-width: 440px; border:var(--ci-rule-mid); padding:2.4rem 2.2rem; }
+  .brand { font:600 11px var(--ci-font-text); letter-spacing:var(--ci-track-brand);
+           text-transform:uppercase; margin:0 0 1rem; }
+  .band { font:600 10px var(--ci-font-text); letter-spacing:var(--ci-track-label);
+          text-transform:uppercase; color:var(--ci-ink-3); border-top:var(--ci-rule-light);
+          border-bottom:var(--ci-rule-light); padding:0.6rem 0; margin:0 0 1.2rem; }
+  h1 { font-family:var(--ci-font-display); font-weight:400; font-size:28px;
+       line-height:var(--ci-leading-tight); margin:0 0 0.6rem; letter-spacing:-0.01em; }
+  p { color:var(--ci-ink-3); margin:0 0 1.6rem; }
+  nav a { display:inline-block; font:400 11px var(--ci-font-text);
+          letter-spacing:var(--ci-track-chip); text-transform:uppercase; color:var(--ci-ink);
+          border:var(--ci-rule-mid); padding:0.6rem 1rem; text-decoration:none; }
+  nav a:hover { border-color:var(--ci-ink); }
+</style>
+</head>
+<body>
+  <div class="panel">
+    <p class="brand">Culture Intelligence</p>
+    <p class="band">Awaiting review</p>
+    <h1>Your access request is in review.</h1>
+    <p>Someone on the team reviews every request by hand. There's nothing else to do here.</p>
+    <nav aria-label="Account"><a href="/logout">Sign out</a></nav>
+  </div>
+</body>
+</html>

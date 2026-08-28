@@ -46,7 +46,15 @@ log = get_logger("culture.web.auth")
 
 SESSION_COOKIE = "ci_session"
 LOGIN_TOKEN_MAX_AGE = 15 * 60  # 15 minutes to click the link
-SESSION_MAX_AGE = 30 * 24 * 60 * 60  # 30 days
+SESSION_MAX_AGE = 30 * 24 * 60 * 60  # 30 days (magic-link mode)
+# Supabase-mode sessions carry their own access/refresh token pair, signed
+# under a separate itsdangerous salt ("sb-session") so the two payload
+# shapes never collide when decoding — see verify_supabase_session_value.
+# Shorter absolute lifetime than magic-link's 30 days (spec D6).
+SUPABASE_SESSION_MAX_AGE = 14 * 24 * 60 * 60  # 14 days
+# Refresh this many seconds before the access token's real expiry, so a
+# request never races a token that's about to die mid-flight.
+SUPABASE_REFRESH_SKEW = 60
 
 # Paths reachable without a session. /logout must stay public — it needs to
 # clear a stale or already-invalid cookie, not require a valid one first.
@@ -68,6 +76,25 @@ PUBLIC_PATHS = {
     "/methodology",
     "/robots.txt",
     "/sitemap.xml",
+    # Supabase-mode routes reachable with no session yet. Harmless to list
+    # unconditionally: in magic-link mode these paths simply aren't mounted,
+    # so a request to them 404s exactly as before. /pending and /denied are
+    # deliberately NOT here — they're reached through the per-request status
+    # gate below, which is what makes "only the matching status screen is
+    # allowed" enforceable rather than a plain bypass.
+    "/register",
+    "/auth/confirm",
+    "/reset",
+    "/reset/confirm",
+}
+
+# Where a non-approved profile is sent, keyed by status. /denied carries a
+# ?state= so the template can show the right copy without a second lookup.
+STATUS_DESTINATION = {
+    "pending": "/pending",
+    "rejected": "/denied",
+    "suspended": "/denied?state=suspended",
+    "disabled": "/denied?state=disabled",
 }
 
 
@@ -188,14 +215,119 @@ def verify_session_value(value: str, settings: Settings) -> SessionInfo | None:
     return None
 
 
+@dataclass(frozen=True)
+class SupabaseSessionInfo:
+    """A Supabase-mode session. Deliberately carries no role/status: the
+    spec requires re-reading the profiles row fresh on every request (§4) —
+    trusting a cached role/status here would let a suspended account keep
+    working until the access token happened to expire."""
+
+    user_id: str
+    email: str
+    access_token: str
+    refresh_token: str
+    expires_at: float
+
+    def needs_refresh(self) -> bool:
+        return time.time() >= self.expires_at - SUPABASE_REFRESH_SKEW
+
+
+def create_supabase_session_value(info: SupabaseSessionInfo, settings: Settings) -> str:
+    payload = {
+        "uid": info.user_id,
+        "e": info.email.strip().lower(),
+        "at": info.access_token,
+        "rt": info.refresh_token,
+        "exp": info.expires_at,
+    }
+    return _serializer(settings, "sb-session").dumps(payload)
+
+
+def verify_supabase_session_value(value: str, settings: Settings) -> SupabaseSessionInfo | None:
+    try:
+        payload = _serializer(settings, "sb-session").loads(
+            value, max_age=SUPABASE_SESSION_MAX_AGE
+        )
+    except (BadSignature, SignatureExpired):
+        return None
+    if not isinstance(payload, dict) or not payload.get("uid"):
+        return None
+    return SupabaseSessionInfo(
+        user_id=payload["uid"],
+        email=payload["e"],
+        access_token=payload["at"],
+        refresh_token=payload["rt"],
+        expires_at=payload["exp"],
+    )
+
+
+def set_supabase_session_cookie(
+    response: Response, info: SupabaseSessionInfo, settings: Settings
+) -> None:
+    response.set_cookie(
+        SESSION_COOKIE,
+        create_supabase_session_value(info, settings),
+        max_age=SUPABASE_SESSION_MAX_AGE,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+    )
+
+
+def refresh_supabase_session(
+    info: SupabaseSessionInfo, settings: Settings
+) -> SupabaseSessionInfo | None:
+    """Best-effort silent refresh. Returns None on any failure (expired or
+    revoked refresh token, network error) — the caller sends the user back
+    to /login rather than propagating a raw Supabase error mid-request."""
+    try:
+        from culture.web import supabase
+
+        data = supabase.refresh_session(info.refresh_token, settings)
+        return SupabaseSessionInfo(
+            user_id=info.user_id,
+            email=info.email,
+            access_token=data["access_token"],
+            refresh_token=data["refresh_token"],
+            expires_at=time.time() + float(data.get("expires_in", 3600)),
+        )
+    except Exception:  # noqa: BLE001
+        log.info("supabase session refresh failed for uid=%s", info.user_id, exc_info=True)
+        return None
+
+
+_STATUS_PAGES = {home.split("?", 1)[0] for home in STATUS_DESTINATION.values()}
+
+
+def status_destination(status: str, path: str) -> str | None:
+    """Where a profile must be redirected from `path`, or None if `path` is
+    already correct. Approved profiles are sent to /dashboard if they land
+    on a status page meant for someone else (e.g. a stale /pending
+    bookmark after approval) and otherwise pass through untouched — the
+    normal ADMIN_ONLY_PREFIXES/role check runs separately, after this."""
+    if path == "/logout":
+        return None
+    if status == "approved":
+        return "/dashboard" if path in _STATUS_PAGES else None
+    home = STATUS_DESTINATION.get(status, "/denied")
+    if path == home.split("?", 1)[0]:
+        return None
+    return home
+
+
 def resolve_profile(session: "Session", user_id: str) -> "Profile | None":
     """The current profiles row for a Supabase user id, or None. A thin
     wrapper (not a bare `session.get(Profile, user_id)` at call sites) so the
     lazy import matches this module's own convention and callers never need
-    to import the model themselves."""
+    to import the model themselves. `user_id` arrives as a plain string
+    (from the session cookie payload, JSON-serialized) but `profiles.id` is
+    a Uuid column — SQLAlchemy's Uuid bind processor requires an actual
+    uuid.UUID instance, not its string form."""
+    from uuid import UUID
+
     from culture.models.profile import Profile
 
-    return session.get(Profile, user_id)
+    return session.get(Profile, UUID(user_id))
 
 
 def require_authenticated(request: Request) -> None:
@@ -255,21 +387,35 @@ def send_login_email(email: str, token: str, base_url: str, settings: Settings) 
     log.info("login email sent to %s", email)
 
 
+def _login_redirect(request: Request) -> RedirectResponse:
+    next_param = request.url.path
+    if request.url.query:
+        next_param += f"?{request.url.query}"
+    return RedirectResponse(f"/login?next={next_param}", status_code=303)
+
+
 class AuthMiddleware(BaseHTTPMiddleware):
-    """Gates every route except the login flow behind a valid session cookie."""
+    """Gates every route except the login flow behind a valid session cookie.
+
+    Branches on Settings.auth_mode: "magiclink" is today's behavior,
+    unchanged (see _dispatch_magiclink); "supabase" additionally re-reads
+    the profiles row on every request (§4 of the auth spec) rather than
+    trusting anything cached in the session cookie as truth.
+    """
 
     async def dispatch(self, request: Request, call_next):
         if request.url.path in PUBLIC_PATHS or request.url.path.startswith("/static"):
             return await call_next(request)
-
         settings = get_settings()
+        if settings.auth_mode == "supabase":
+            return await self._dispatch_supabase(request, call_next, settings)
+        return await self._dispatch_magiclink(request, call_next, settings)
+
+    async def _dispatch_magiclink(self, request: Request, call_next, settings: Settings):
         cookie = request.cookies.get(SESSION_COOKIE)
         info = verify_session_value(cookie, settings) if cookie else None
         if info is None:
-            next_param = request.url.path
-            if request.url.query:
-                next_param += f"?{request.url.query}"
-            return RedirectResponse(f"/login?next={next_param}", status_code=303)
+            return _login_redirect(request)
 
         path = request.url.path
         blocked = (
@@ -286,6 +432,67 @@ class AuthMiddleware(BaseHTTPMiddleware):
         request.state.user_email = info.email
         request.state.user_role = info.role
         return await call_next(request)
+
+    async def _dispatch_supabase(self, request: Request, call_next, settings: Settings):
+        cookie = request.cookies.get(SESSION_COOKIE)
+
+        # The demo account never has a Supabase identity or a profiles row —
+        # it keeps using the plain magic-link-shaped, differently-salted
+        # session payload regardless of auth_mode (D3: kept unchanged).
+        demo = verify_session_value(cookie, settings) if cookie else None
+        if demo is not None and demo.role == ROLE_DEMO:
+            path = request.url.path
+            if path.startswith(DEMO_BLOCKED_PREFIXES):
+                record_event(
+                    "access_denied", email=demo.email, ip=client_ip(request), path=path,
+                    detail="role=demo", engine=getattr(request.app.state, "engine", None),
+                )
+                return RedirectResponse("/dashboard", status_code=303)
+            request.state.user_email = demo.email
+            request.state.user_role = ROLE_DEMO
+            request.state.user_status = "approved"
+            return await call_next(request)
+
+        info = verify_supabase_session_value(cookie, settings) if cookie else None
+        if info is None:
+            return _login_redirect(request)
+
+        refreshed = False
+        if info.needs_refresh():
+            new_info = refresh_supabase_session(info, settings)
+            if new_info is None:
+                response = _login_redirect(request)
+                response.delete_cookie(SESSION_COOKIE)
+                return response
+            info = new_info
+            refreshed = True
+
+        from culture.database import session_scope
+
+        with session_scope(getattr(request.app.state, "engine", None)) as session:
+            profile = resolve_profile(session, info.user_id)
+            status = profile.status if profile is not None else "pending"
+            is_owner = profile is not None and profile.role == ROLE_OWNER
+
+        path = request.url.path
+        destination = status_destination(status, path)
+        if destination is not None:
+            response = RedirectResponse(destination, status_code=303)
+        elif not is_owner and path.startswith(ADMIN_ONLY_PREFIXES):
+            record_event(
+                "access_denied", email=info.email, ip=client_ip(request), path=path,
+                detail="role=member", engine=getattr(request.app.state, "engine", None),
+            )
+            response = RedirectResponse("/dashboard", status_code=303)
+        else:
+            request.state.user_email = info.email
+            request.state.user_role = ROLE_OWNER if is_owner else ROLE_MEMBER
+            request.state.user_status = status
+            response = await call_next(request)
+
+        if refreshed:
+            set_supabase_session_cookie(response, info, settings)
+        return response
 
 
 def set_session_cookie(
