@@ -367,6 +367,28 @@ def require_owner(request: Request) -> None:
         raise HTTPException(403, "You don't have access to this page.")
 
 
+def create_csrf_token(request: Request, settings: Settings) -> str:
+    """A token bound to the caller's own session cookie value, so it can't
+    be replayed from a different session. Every state-changing admin route
+    is POST-only and checks this in addition to SameSite=Lax cookies."""
+    session_value = request.cookies.get(SESSION_COOKIE, "") or "anonymous"
+    return _serializer(settings, "csrf").dumps(session_value)
+
+
+def verify_csrf_token(token: str, request: Request, settings: Settings) -> bool:
+    session_value = request.cookies.get(SESSION_COOKIE, "") or "anonymous"
+    try:
+        bound_value = _serializer(settings, "csrf").loads(token, max_age=SUPABASE_SESSION_MAX_AGE)
+    except (BadSignature, SignatureExpired):
+        return False
+    return bound_value == session_value
+
+
+def require_csrf(token: str, request: Request, settings: Settings) -> None:
+    if not verify_csrf_token(token, request, settings):
+        raise HTTPException(403, "This form has expired. Reload the page and try again.")
+
+
 def send_login_email(email: str, token: str, base_url: str, settings: Settings) -> None:
     import resend
 

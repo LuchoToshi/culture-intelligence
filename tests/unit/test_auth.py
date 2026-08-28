@@ -270,12 +270,25 @@ def test_invite_enforced_even_with_a_valid_token_for_unknown_email(role_client):
     assert role_client.cookies.get("ci_session") is None
 
 
-def test_demo_access_is_read_only_by_construction(role_client):
-    # The demo account cannot modify anything because nothing modifiable is
-    # exposed: the only non-GET routes in the whole app are the login forms.
-    mutating = [
+def test_demo_cannot_reach_any_admin_write_route(role_client):
+    # The admin workspace (/admin/*) is this app's only write surface —
+    # everything else stays read-only, the pipeline is the sole writer of
+    # product data. The demo account must be unable to reach any of it:
+    # blocked coarsely by AuthMiddleware's DEMO_BLOCKED_PREFIXES, and again
+    # at the route by require_owner, in case a prefix ever changes.
+    role_client.post(
+        "/login/demo", data={"email": "demo@example.com", "password": "demo-pass"}
+    )
+    mutating_admin_routes = [
         route.path
         for route in role_client.app.routes
-        if hasattr(route, "methods") and (route.methods - {"GET", "HEAD"})
+        if hasattr(route, "methods")
+        and (route.methods - {"GET", "HEAD"})
+        and route.path.startswith("/admin")
     ]
-    assert sorted(mutating) == ["/login", "/login/demo"]
+    assert mutating_admin_routes, "expected the admin workspace to expose POST routes"
+    for path in mutating_admin_routes:
+        concrete_path = path.replace("{profile_id}", "1").replace("{verb}", "suspend")
+        response = role_client.post(concrete_path, data={"csrf_token": "irrelevant"})
+        assert response.status_code == 303, path
+        assert response.headers["location"] == "/dashboard", path

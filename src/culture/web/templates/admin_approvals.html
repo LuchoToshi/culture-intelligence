@@ -1,0 +1,38 @@
+{% extends "admin_base.html" %}
+{% block title %}Approvals{% endblock %}
+{% block content %}
+<p class="eyebrow">Admin</p>
+<h1>Approvals</h1>
+<p class="lede">{{ profiles | length }} pending request{{ "s" if profiles | length != 1 }}. Approve grants member access; reject is final until re-admitted from Users.</p>
+{% if profiles %}
+<table class="index">
+  <thead>
+    <tr><th>Name</th><th>Email</th><th>Organization</th><th>Requested</th><th>Verified</th><th></th></tr>
+  </thead>
+  <tbody>
+  {% for p in profiles %}
+    <tr>
+      <td>{{ p.full_name or "-" }}</td>
+      <td>{{ p.email }}</td>
+      <td>{{ p.organization or "-" }}</td>
+      <td>{{ p.created_at.strftime("%d-%m-%Y") if p.created_at else "-" }}</td>
+      <td>{{ "Yes" if p.email_verified_at else "Not yet" }}</td>
+      <td>
+        <form method="post" action="/admin/approvals/{{ p.id }}/approve" style="display:inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button class="btn primary" type="submit" {% if not p.email_verified_at %}disabled title="Email not verified yet"{% endif %}>Approve</button>
+        </form>
+        <form method="post" action="/admin/approvals/{{ p.id }}/reject" style="display:inline"
+              onsubmit="return confirm('Reject this request? This can be undone from Users later.')">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button class="btn danger" type="submit">Reject</button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">No pending requests.</p>
+{% endif %}
+{% endblock %}

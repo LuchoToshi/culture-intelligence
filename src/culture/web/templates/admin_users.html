@@ -1,0 +1,78 @@
+{% extends "admin_base.html" %}
+{% block title %}Users{% endblock %}
+{% block content %}
+<p class="eyebrow">Admin</p>
+<h1>Users</h1>
+<p class="lede">{{ profiles | length }} account{{ "s" if profiles | length != 1 }}.</p>
+<form method="get" action="/admin/users" class="eyebrow" style="margin-bottom:18px; gap:16px;">
+  <input type="search" name="q" value="{{ q or '' }}" placeholder="Search name or email"
+         style="font:inherit; padding:6px 10px; border:var(--ci-rule-mid); background:transparent;">
+  <select name="status" style="font:inherit; padding:6px 10px; border:var(--ci-rule-mid); background:transparent;">
+    <option value="">All statuses</option>
+    {% for s in ["pending", "approved", "rejected", "suspended", "disabled"] %}
+      <option value="{{ s }}" {% if status == s %}selected{% endif %}>{{ s | capitalize }}</option>
+    {% endfor %}
+  </select>
+  <button class="btn" type="submit">Filter</button>
+</form>
+{% if profiles %}
+<table class="index">
+  <thead>
+    <tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Approved</th><th>Legacy</th><th></th></tr>
+  </thead>
+  <tbody>
+  {% for p in profiles %}
+    <tr>
+      <td>{{ p.full_name or "-" }}</td>
+      <td>{{ p.email }}</td>
+      <td>{{ p.role or "-" }}</td>
+      <td><span class="status-{{ p.status }}"><span class="status-dot"></span>{{ p.status | capitalize }}</span></td>
+      <td>{{ p.approved_at.strftime("%d-%m-%Y") if p.approved_at else "-" }}{% if p.approved_by %} by {{ p.approved_by }}{% endif %}</td>
+      <td>{{ "Yes" if p.legacy_magic_link else "-" }}</td>
+      <td>
+        {% if p.role == "owner" %}
+          <span class="protected">Protected · server-assigned</span>
+        {% else %}
+          {% if p.status == "approved" %}
+            <form method="post" action="/admin/users/{{ p.id }}/suspend" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button class="btn" type="submit">Suspend</button>
+            </form>
+            <form method="post" action="/admin/users/{{ p.id }}/disable" style="display:inline"
+                  onsubmit="return confirm('Disable this account?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button class="btn danger" type="submit">Disable</button>
+            </form>
+          {% elif p.status == "suspended" %}
+            <form method="post" action="/admin/users/{{ p.id }}/reactivate" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button class="btn primary" type="submit">Reactivate</button>
+            </form>
+            <form method="post" action="/admin/users/{{ p.id }}/disable" style="display:inline"
+                  onsubmit="return confirm('Disable this account?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button class="btn danger" type="submit">Disable</button>
+            </form>
+          {% elif p.status == "pending" %}
+            <span class="protected">See Approvals</span>
+          {% elif p.status == "rejected" %}
+            <form method="post" action="/admin/users/{{ p.id }}/approve" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button class="btn primary" type="submit">Approve</button>
+            </form>
+          {% elif p.status == "disabled" %}
+            <form method="post" action="/admin/users/{{ p.id }}/reactivate" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button class="btn primary" type="submit">Reactivate</button>
+            </form>
+          {% endif %}
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">No accounts match this filter.</p>
+{% endif %}
+{% endblock %}

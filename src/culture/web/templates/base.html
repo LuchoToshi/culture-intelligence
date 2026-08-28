@@ -51,6 +51,23 @@
   }
   .searchbox input:focus { border-color: var(--ci-ink); outline: none; }
   .searchbox input::placeholder { color: var(--ci-ink-4); }
+  .account-menu { position: relative; font-size: 11px; }
+  .account-menu summary {
+    cursor: pointer; list-style: none; color: var(--ci-ink-3);
+    letter-spacing: 0.04em; padding: 4px 0;
+  }
+  .account-menu summary::-webkit-details-marker { display: none; }
+  .account-menu summary::after { content: " ▾"; }
+  .account-menu summary:hover { color: var(--ci-ink); }
+  .account-menu-panel {
+    position: absolute; right: 0; top: 100%; z-index: 5; min-width: 160px;
+    background: var(--ci-paper); border: var(--ci-rule-mid); padding: 6px 0;
+  }
+  .account-menu-panel a {
+    display: block; padding: 7px 14px; color: var(--ci-ink-2);
+    text-transform: uppercase; letter-spacing: 0.1em; font-size: 10px;
+  }
+  .account-menu-panel a:hover { background: var(--ci-hover-bg); color: var(--ci-ink); }
 
   /* ── page scaffolding ───────────────────────────────── */
   main { max-width: var(--ci-page-max); margin: 0 auto;
@@ -436,6 +453,15 @@
       <input id="q" name="q" type="search" placeholder="Search signals, cities, archetypes…"
              value="{{ q or '' }}">
     </form>
+    {% if user_email %}
+    <details class="account-menu">
+      <summary>{{ user_email }}</summary>
+      <div class="account-menu-panel">
+        {% if is_admin %}<a href="/admin">Admin workspace</a>{% endif %}
+        <a href="/logout">Sign out</a>
+      </div>
+    </details>
+    {% endif %}
   </div>
 </header>
 <main id="content">

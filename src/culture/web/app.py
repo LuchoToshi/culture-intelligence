@@ -607,6 +607,10 @@ def create_app(
             _mount_supabase_auth_routes(app)
         else:
             _mount_auth_routes(app)
+
+        from culture.web.admin import mount_admin_routes
+
+        mount_admin_routes(app)
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
     templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
     templates.env.globals["stage_labels"] = queries.STAGE_LABELS
@@ -633,12 +637,13 @@ def create_app(
         if not require_auth:
             return True
 
-        return getattr(request.state, "user_role", None) == "admin"
+        return getattr(request.state, "user_role", None) in ("admin", "owner")
 
     def render(request: Request, session: Session | None, template: str, context: dict):
         context.setdefault("q", None)
         context.setdefault("is_admin", _request_is_admin(request))
         context.setdefault("user_role", getattr(request.state, "user_role", None))
+        context.setdefault("user_email", getattr(request.state, "user_email", None))
         context.setdefault(
             "freshness", queries.pipeline_status(session) if session is not None else None
         )

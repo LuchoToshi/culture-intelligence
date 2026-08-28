@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>{% block title %}Admin{% endblock %} - Culture Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500&family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+{% include "_tokens.css" %}
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--ci-paper); color:var(--ci-ink);
+         font:14px/1.55 var(--ci-font-text); }
+  a { color:inherit; }
+  a:focus-visible, button:focus-visible, summary:focus-visible {
+    outline:2px solid var(--ci-oxblood); outline-offset:2px; }
+  header.topbar { border-bottom:var(--ci-rule-heavy); }
+  .topbar-inner {
+    max-width:var(--ci-page-max); margin:0 auto; padding:26px var(--ci-page-pad-x) 13px;
+    display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;
+  }
+  .wordmark { font:600 12px var(--ci-font-text); letter-spacing:var(--ci-track-brand);
+              text-transform:uppercase; white-space:nowrap; }
+  .admin-tag { font:600 12px var(--ci-font-text); letter-spacing:var(--ci-track-brand);
+               text-transform:uppercase; color:var(--ci-oxblood); }
+  .back-link { margin-left:auto; font-size:11px; letter-spacing:0.08em;
+               text-transform:uppercase; color:var(--ci-ink-3); }
+  .back-link:hover { color:var(--ci-ink); }
+  .account-menu { font-size:11px; color:var(--ci-ink-3); }
+  .account-menu a { color:var(--ci-ink-3); margin-left:10px; }
+  .account-menu a:hover { color:var(--ci-ink); }
+  nav.admin-tabs { border-bottom:var(--ci-rule-mid); }
+  nav.admin-tabs .tabs-inner {
+    max-width:var(--ci-page-max); margin:0 auto; padding:0 var(--ci-page-pad-x);
+    display:flex; gap:26px; flex-wrap:wrap;
+  }
+  nav.admin-tabs a {
+    display:inline-block; padding:12px 0; font-size:11px; letter-spacing:0.14em;
+    text-transform:uppercase; color:var(--ci-ink-3); border-bottom:2px solid transparent;
+  }
+  nav.admin-tabs a:hover { color:var(--ci-ink); }
+  nav.admin-tabs a[aria-current="page"] { color:var(--ci-ink); border-bottom-color:var(--ci-oxblood); }
+  main { max-width:var(--ci-page-max); margin:0 auto; padding:32px var(--ci-page-pad-x) 80px; }
+  h1 { font-family:var(--ci-font-display); font-weight:400; font-size:26px;
+       line-height:var(--ci-leading-tight); margin:0 0 6px; }
+  p.lede { color:var(--ci-ink-3); max-width:64ch; margin:0 0 24px; font-size:13px; }
+  table.index { width:100%; border-collapse:collapse; font-size:13px; }
+  table.index th { text-align:left; font:500 10px var(--ci-font-text); letter-spacing:0.08em;
+                   text-transform:uppercase; color:var(--ci-ink-4); padding:0 16px 8px 0;
+                   border-bottom:var(--ci-rule-mid); }
+  table.index td { padding:12px 16px 12px 0; border-bottom:var(--ci-rule-light); vertical-align:top; }
+  table.index tr:last-child td { border-bottom:none; }
+  .empty { color:var(--ci-ink-4); padding:24px 0; }
+  .btn { display:inline-block; font:500 10px var(--ci-font-text); letter-spacing:0.08em;
+         text-transform:uppercase; padding:6px 12px; border:var(--ci-rule-mid); background:none;
+         color:var(--ci-ink); cursor:pointer; }
+  .btn:hover { border-color:var(--ci-ink); }
+  .btn.primary { background:var(--ci-ink); color:var(--ci-paper); border-color:var(--ci-ink); }
+  .btn.primary:hover { background:var(--ci-oxblood); border-color:var(--ci-oxblood); }
+  .btn.danger { color:var(--ci-oxblood); border-color:var(--ci-oxblood); }
+  .btn.danger:hover { background:var(--ci-oxblood); color:var(--ci-paper); }
+  .status-dot { display:inline-block; width:7px; height:7px; margin-right:6px; vertical-align:middle; }
+  .status-pending .status-dot { background:var(--ci-ink-4); }
+  .status-approved .status-dot { background:var(--ci-ink); }
+  .status-rejected .status-dot, .status-suspended .status-dot, .status-disabled .status-dot {
+    background:var(--ci-oxblood); }
+  .protected { color:var(--ci-ink-4); font-size:11px; letter-spacing:0.06em; text-transform:uppercase; }
+{% block extra_style %}{% endblock %}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <span class="wordmark">Culture Intelligence</span>
+    <span class="admin-tag">Admin</span>
+    <a class="back-link" href="/dashboard">&larr; Product</a>
+  </div>
+</header>
+<nav class="admin-tabs" aria-label="Admin sections">
+  <div class="tabs-inner">
+    <a href="/admin/approvals" {% if active_tab == "approvals" %}aria-current="page"{% endif %}>Approvals</a>
+    <a href="/admin/users" {% if active_tab == "users" %}aria-current="page"{% endif %}>Users</a>
+    <a href="/admin/sources" {% if active_tab == "sources" %}aria-current="page"{% endif %}>Sources</a>
+    <a href="/admin/audit" {% if active_tab == "audit" %}aria-current="page"{% endif %}>Audit</a>
+    <a href="/admin/settings" {% if active_tab == "settings" %}aria-current="page"{% endif %}>Settings</a>
+    <span class="account-menu" style="margin-left:auto; align-self:center;">
+      {{ user_email }}<a href="/logout">Sign out</a>
+    </span>
+  </div>
+</nav>
+<main>
+{% block content %}{% endblock %}
+</main>
+</body>
+</html>

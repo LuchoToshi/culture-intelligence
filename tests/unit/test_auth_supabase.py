@@ -270,8 +270,9 @@ def test_member_is_denied_admin_routes_owner_is_not(client):
         client.app_engine, OWNER_ID, "owner@example.com", status="approved", role=ROLE_OWNER
     )
     _login_as(client, OWNER_ID, "owner@example.com")
-    # No /admin route is mounted yet (Phase 4) — 404, not the member's 303.
-    assert client.get("/admin").status_code == 404
+    admin_response = client.get("/admin")
+    assert admin_response.status_code == 303
+    assert admin_response.headers["location"] == "/admin/approvals"
 
 
 # --- sign-in -----------------------------------------------------------------

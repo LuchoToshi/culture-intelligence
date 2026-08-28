@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from culture.models.analysis import ContentAnalysis
 from culture.models.content import ContentItem
+from culture.models.profile import Profile
 from culture.models.signal import Signal, SignalEvidence, SignalState
 from culture.models.source import Source
 from culture.utils.dates import ensure_utc, now_utc
@@ -727,3 +728,26 @@ def archetype_groups(
     else:  # recurrence — the default and the page's argument
         groups.sort(key=lambda g: (g.source_count, g.sightings), reverse=True)
     return groups
+
+
+def pending_approvals(session: Session) -> list[Profile]:
+    return list(
+        session.scalars(
+            select(Profile).where(Profile.status == "pending").order_by(Profile.created_at)
+        )
+    )
+
+
+def all_profiles(
+    session: Session, status: str | None = None, q: str | None = None
+) -> list[Profile]:
+    stmt = select(Profile).order_by(Profile.created_at.desc())
+    if status:
+        stmt = stmt.where(Profile.status == status)
+    if q:
+        needle = f"%{q.strip().lower()}%"
+        stmt = stmt.where(
+            func.lower(Profile.email).like(needle)
+            | func.lower(func.coalesce(Profile.full_name, "")).like(needle)
+        )
+    return list(session.scalars(stmt))

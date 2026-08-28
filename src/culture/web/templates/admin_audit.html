@@ -1,0 +1,34 @@
+{% extends "admin_base.html" %}
+{% block title %}Audit{% endblock %}
+{% block content %}
+<p class="eyebrow">Admin</p>
+<h1>Audit</h1>
+<p class="lede">Most recent 200 events. Append-only: nothing here can be edited or deleted.</p>
+<form method="get" action="/admin/audit" class="eyebrow" style="margin-bottom:18px; gap:16px;">
+  <input type="text" name="event" value="{{ event or '' }}" placeholder="Filter by event name"
+         style="font:inherit; padding:6px 10px; border:var(--ci-rule-mid); background:transparent;">
+  <button class="btn" type="submit">Filter</button>
+  {% if event %}<a class="btn" href="/admin/audit">Clear</a>{% endif %}
+</form>
+{% if rows %}
+<table class="index">
+  <thead>
+    <tr><th>When</th><th>Event</th><th>Email</th><th>Actor</th><th>Target</th><th>Detail</th></tr>
+  </thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td>{{ r.created_at.strftime("%d-%m-%Y %H:%M") if r.created_at else "-" }}</td>
+      <td>{{ r.event }}</td>
+      <td>{{ r.email or "-" }}</td>
+      <td>{{ r.actor or "-" }}</td>
+      <td>{{ (r.target_type + ":" + r.target_id) if r.target_type else "-" }}</td>
+      <td>{{ r.detail or "-" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">No events match this filter.</p>
+{% endif %}
+{% endblock %}

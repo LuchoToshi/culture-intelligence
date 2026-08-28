@@ -1,0 +1,36 @@
+{% extends "admin_base.html" %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<p class="eyebrow">Admin</p>
+<h1>Settings</h1>
+<p class="lede">Registration controls. These are additional gates, not a substitute for manual approval: every account still needs an explicit decision in Approvals.</p>
+<form method="post" action="/admin/settings" style="max-width:480px;">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <p>
+    <label>
+      <input type="checkbox" name="registration_open" {% if settings.registration_open %}checked{% endif %}>
+      Registration open
+    </label>
+  </p>
+  <p>
+    <label>
+      <input type="checkbox" name="invite_only" {% if settings.invite_only %}checked{% endif %}>
+      Invite only (allowlist below is the only address that can register)
+    </label>
+  </p>
+  <p>
+    <label style="display:block; margin-bottom:4px;">Allowed domains (comma-separated, empty = no restriction)</label>
+    <input type="text" name="allowed_domains" value="{{ settings.allowed_domains }}"
+           style="width:100%; font:inherit; padding:6px 10px; border:var(--ci-rule-mid); background:transparent;">
+  </p>
+  <p>
+    <label style="display:block; margin-bottom:4px;">Pre-approval allowlist emails (comma-separated)</label>
+    <input type="text" name="allowlist_emails" value="{{ settings.allowlist_emails }}"
+           style="width:100%; font:inherit; padding:6px 10px; border:var(--ci-rule-mid); background:transparent;">
+  </p>
+  <button class="btn primary" type="submit">Save</button>
+</form>
+{% if settings.updated_at %}
+<p class="lede" style="margin-top:20px;">Last changed {{ settings.updated_at.strftime("%d-%m-%Y %H:%M") }}{% if settings.updated_by %} by {{ settings.updated_by }}{% endif %}.</p>
+{% endif %}
+{% endblock %}
