@@ -164,6 +164,34 @@ def test_signal_profile_shows_evidence_and_provenance(client):
     assert client.get("/signals/99999").status_code == 404
 
 
+def test_signal_peek_returns_evidence_json(client):
+    response = client.get(f"/signals/{client.ids['signal']}/peek")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["peek"]
+    assert data["peek"][0]["title"] == "Tokyo workwear moves west"
+    assert client.get("/signals/999999/peek").status_code == 404
+
+
+def test_signals_index_carries_interaction_data_attributes(client):
+    page = client.get("/signals").text
+    assert 'data-row-id="' in page
+    assert 'data-city="London"' in page
+    assert 'class="pin-btn"' in page
+    assert 'class="peek-btn"' in page
+    assert 'id="compare-panel"' in page
+    assert 'id="saved-views"' in page
+
+
+def test_dashboard_signal_tables_carry_row_ids_but_no_pin_controls(client):
+    """The dashboard's embedded tables get keynav/cross-highlight data
+    (data-row-id, data-city) but not the registry-only pin/watch/peek
+    controls -- those are scoped to signal_table(..., interactive=True)."""
+    page = client.get("/dashboard").text
+    assert 'data-row-id="' in page
+    assert 'class="pin-btn"' not in page
+
+
 def test_item_evidence_page_separates_provenance(client):
     response = client.get(f"/items/{client.ids['item']}")
     assert response.status_code == 200

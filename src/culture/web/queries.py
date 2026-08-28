@@ -97,6 +97,21 @@ def evidence_items_for_signal(
     return [(item, note) for item, note in rows]
 
 
+def signal_peek(session: Session, signal_id: int, limit: int = 3) -> list[dict]:
+    """The newest few evidence items for a signal, for the registry's inline
+    peek disclosure — same shape signal_detail already renders, just capped
+    and without the full page."""
+    pairs = evidence_items_for_signal(session, signal_id)
+    sources = {s.id: s for s in session.scalars(select(Source))}
+    rows = [
+        {"title": item.title or "(untitled)", "source_name": sources[item.source_id].name,
+         "when": item_time(item)}
+        for item, _ in pairs
+    ]
+    rows.sort(key=lambda r: r["when"] or datetime.min.replace(tzinfo=UTC), reverse=True)
+    return rows[:limit]
+
+
 def evidence_deltas(session: Session, signal_ids: list[int], days: int = 7) -> dict[int, int]:
     if not signal_ids:
         return {}

@@ -27,8 +27,8 @@
   </tr></thead>
   <tbody>
   {% for city in ci.rows %}
-    <tr>
-      <td class="cell-primary"><a href="/cities/{{ city.name | urlencode }}">{{ city.name }}</a>{% if city.origin_signals %}<span class="origin-tag" title="{{ city.origin_signals }} signal{{ 's' if city.origin_signals != 1 }} first observed here">origin</span>{% endif %}</td>
+    <tr data-row-id="{{ city.name | urlencode }}">
+      <td class="cell-primary"><a href="/cities/{{ city.name | urlencode }}" data-city="{{ city.name }}">{{ city.name }}</a>{% if city.origin_signals %}<span class="origin-tag" title="{{ city.origin_signals }} signal{{ 's' if city.origin_signals != 1 }} first observed here">origin</span>{% endif %}</td>
       <td class="num">{{ city.item_count }}</td>
       <td class="num">{{ city.signal_count }}</td>
       <td class="num">{{ city.adopted_count }}</td>

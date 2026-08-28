@@ -23,8 +23,8 @@
   <tbody>
   {% for r in rows %}
     {% set s = r.source %}
-    <tr id="state-{{ r.state }}">
-      <td class="cell-primary">{% if s.url %}<a href="{{ s.url }}" rel="noopener">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}</td>
+    <tr id="state-{{ r.state }}" data-row-id="{{ loop.index }}">
+      <td class="cell-primary">{% if s.url %}<a href="{{ s.url }}" rel="noopener" data-source="{{ s.name }}">{{ s.name }}</a>{% else %}<span data-source="{{ s.name }}" tabindex="0">{{ s.name }}</span>{% endif %}</td>
       <td class="mono">{{ s.platform }}</td>
       <td>{{ tier_badge(s.tier) }}</td>
       <td>{{ [s.city, s.country] | select | join(", ") }}</td>

@@ -318,6 +318,67 @@
                     text-transform: uppercase; color: var(--ci-ink-4);
                     display: flex; gap: 24px; flex-wrap: wrap; }
 
+  /* ── interaction layer (interactions.js) ────────────── */
+  table.index tr[data-row-id] { cursor: pointer; }
+  table.index tr[data-row-id]:focus-visible { outline: 2px solid var(--ci-oxblood);
+                                              outline-offset: -2px; }
+  [data-city], [data-source] { cursor: default; }
+  .xh { background: var(--ci-hover-bg); }
+
+  td.ctl { white-space: nowrap; width: 1%; }
+  td.ctl button { background: none; border: none; padding: 2px 4px; cursor: pointer;
+                  font-size: 13px; color: var(--ci-ink-4); }
+  td.ctl button:hover { color: var(--ci-ink); }
+  td.ctl .pin-btn[aria-pressed="true"] { color: var(--ci-oxblood); }
+  td.ctl .watch-btn[aria-pressed="true"] { color: var(--ci-ink); }
+
+  tr.peek-row td { padding: 0 0 var(--ci-row-pad-y) 0; border-bottom: var(--ci-rule-light); }
+  .peek-list { list-style: none; margin: 0; padding: 8px 0 8px 16px;
+               border-left: 2px solid var(--ci-line-mid); font-size: var(--ci-size-caption); }
+  .peek-list li { padding: 3px 0; color: var(--ci-ink-3); }
+
+  .saved-views { margin: 0 0 14px; }
+  .views-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .view-chip { display: inline-flex; align-items: center; gap: 4px;
+               border: var(--ci-rule-mid); padding: 3px 4px 3px 10px; font-size: 11px; }
+  .view-chip a { color: var(--ci-ink); }
+  .view-moves button { background: none; border: none; cursor: pointer; color: var(--ci-ink-4);
+                       padding: 0 3px; font-size: 11px; }
+  .view-moves button:hover { color: var(--ci-ink); }
+  .save-view-form { display: flex; gap: 6px; align-items: center; }
+  .save-view-form button { font: 400 11px var(--ci-font-text); letter-spacing: var(--ci-track-chip);
+                           text-transform: uppercase; color: var(--ci-ink-3); background: none;
+                           border: var(--ci-rule-mid); padding: 5px 10px; cursor: pointer; }
+  .save-view-form button:hover { color: var(--ci-ink); border-color: var(--ci-line-mid); }
+  .save-view-form input { width: 180px; }
+
+  .compare-panel { border: var(--ci-rule-mid); padding: 16px; margin: 0 0 20px; }
+  .compare-heading { font: 500 9px var(--ci-font-text); letter-spacing: var(--ci-track-label);
+                     text-transform: uppercase; color: var(--ci-ink-4); margin-bottom: 12px; }
+  .compare-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 var(--ci-col-gap);
+                   position: relative; }
+  .compare-slot { border-left: var(--ci-rule-light); padding: 0 14px; cursor: grab; }
+  .compare-slot:first-child { border-left: none; padding-left: 0; }
+  .compare-name { font-family: var(--ci-font-display); font-size: 15px; margin-bottom: 8px; }
+  .compare-row { display: flex; justify-content: space-between; align-items: baseline;
+                padding: 4px 0; border-bottom: var(--ci-rule-light); font-size: 11px; }
+  .compare-moves { margin-top: 8px; display: flex; gap: 6px; align-items: center; }
+  .compare-moves button { background: none; border: var(--ci-rule-mid); cursor: pointer;
+                          font: 10px var(--ci-font-text); color: var(--ci-ink-3); padding: 2px 6px; }
+  .compare-moves button:hover { color: var(--ci-ink); }
+  .compare-moves .unpin { text-transform: uppercase; letter-spacing: 0.08em; }
+  .insert-mark { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--ci-oxblood); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .compare-slot { transition: none; }
+  }
+  @media (max-width: 900px) {
+    .compare-slots { grid-template-columns: 1fr; }
+    .compare-slot { border-left: none; padding-left: 0; padding-top: 14px;
+                    border-top: var(--ci-rule-light); }
+    .compare-slot:first-child { border-top: none; padding-top: 0; }
+  }
+
   /* ── responsive ─────────────────────────────────────── */
   @media (max-width: 1100px) {
     :root { --ci-page-pad-x: 32px; --ci-section-gap: 36px; }
@@ -380,6 +441,7 @@
 <main id="content">
 {% block content %}{% endblock %}
 </main>
+<script src="/static/interactions.js" defer></script>
 <footer class="pagefoot">
   {% if freshness %}
   <span>Last collection: {{ freshness.last_check.strftime("%d-%m-%Y %H:%M") if freshness.last_check else "never" }}</span>

@@ -14,6 +14,7 @@ from pathlib import Path
 import markdown as md
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
 from sqlalchemy.engine import Engine
@@ -32,6 +33,7 @@ from culture.web import queries
 log = get_logger("culture.web.app")
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
+STATIC_DIR = Path(__file__).parent / "static"
 
 SCORE_LABELS = [
     ("Cultural origin", "cultural_origin_score"),
@@ -294,6 +296,7 @@ def create_app(
 
         app.add_middleware(AuthMiddleware)
         _mount_auth_routes(app)
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
     templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
     templates.env.globals["stage_labels"] = queries.STAGE_LABELS
     templates.env.globals["stage_glyphs"] = queries.STAGE_GLYPHS
@@ -645,6 +648,22 @@ def create_app(
                 "active_nav": "signals",
             },
         )
+
+    @app.get("/signals/{signal_id}/peek")
+    def signal_peek(signal_id: int, request: Request, session: Session = Depends(db)):
+        signal = session.get(Signal, signal_id)
+        if signal is None:
+            raise HTTPException(404, "No such signal")
+        demo = getattr(request.state, "user_role", None) == "demo"
+        peek = [
+            {
+                "title": e["title"],
+                "source_name": "Monitored source" if demo else e["source_name"],
+                "when": _dmy(e["when"], "?"),
+            }
+            for e in queries.signal_peek(session, signal_id)
+        ]
+        return {"peek": peek}
 
     @app.get("/taste-systems", response_class=HTMLResponse)
     def taste_systems(request: Request, session: Session = Depends(db)):

@@ -21,6 +21,9 @@
   {% if stage or sort != "moving" %}<a class="clear" href="/signals">Clear</a>{% endif %}
 </form>
 
-{{ signal_table(rows) }}
+<div id="saved-views" class="saved-views" data-current-query="{{ request.url.query }}"></div>
+<div id="compare-panel" class="compare-panel" hidden></div>
+
+{{ signal_table(rows, interactive=True) }}
 <p class="mono muted">{{ rows | length }} signal{{ "s" if rows | length != 1 }} shown · lifecycle stages are computed from evidence counts, source spread, time span and score averages: <a href="/taste-systems#method">how staging works</a></p>
 {% endblock %}
