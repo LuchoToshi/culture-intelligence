@@ -645,7 +645,9 @@ def create_app(
         if not require_auth:
             return True
 
-        return getattr(request.state, "user_role", None) in ("admin", "owner")
+        from culture.web.auth import OWNER_ROLES
+
+        return getattr(request.state, "user_role", None) in OWNER_ROLES
 
     def render(request: Request, session: Session | None, template: str, context: dict):
         context.setdefault("q", None)
