@@ -207,3 +207,30 @@ def test_get_routing_provider_requires_credentials(monkeypatch):
     settings = Settings(_env_file=None, ai_provider="anthropic", anthropic_api_key="")
     with pytest.raises(ProviderError, match="ANTHROPIC_API_KEY"):
         get_routing_provider(settings)
+
+
+def test_get_routing_provider_uses_configured_cheap_model_and_effort():
+    settings = Settings(
+        _env_file=None,
+        ai_provider="anthropic",
+        anthropic_api_key="sk-test",
+        ai_model="claude-sonnet-5",
+        ai_cheap_model="claude-haiku-5-5",
+        ai_cheap_effort="low",
+    )
+    router = get_routing_provider(settings)
+    assert router.cheap.model == "claude-haiku-5-5"
+    assert router.cheap.effort == "low"
+    assert router.capable.effort is None  # image items keep the capable model's defaults
+
+
+def test_effort_is_only_sent_when_configured():
+    # Haiku 4.5 rejects output_config.effort, so an unset effort must send nothing.
+    assert AnthropicProvider(model="claude-haiku-4-5", api_key="sk-test")._effort_kwargs() == {}
+    provider = AnthropicProvider(model="claude-haiku-5-5", api_key="sk-test", effort="low")
+    assert provider._effort_kwargs() == {"output_config": {"effort": "low"}}
+
+
+def test_haiku_5_5_spend_is_tracked():
+    usage = type("U", (), {"input_tokens": 1_000_000, "output_tokens": 1_000_000})()
+    assert estimate_cost_usd(usage, "claude-haiku-5-5") == pytest.approx(0.60)

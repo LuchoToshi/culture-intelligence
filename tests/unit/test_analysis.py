@@ -431,3 +431,38 @@ def test_apply_batch_results_processes_analyzing_items(session):
     assert row.analysis_model == "claude-sonnet-5"
     session.refresh(item)
     assert item.processing_status == "analyzed"
+
+
+def test_effort_for_follows_routing():
+    from culture.analysis.item_analyzer import _effort_for
+    from culture.analysis.provider import RoutingProvider
+
+    class FakeSub:
+        def __init__(self, model, effort=None):
+            self.model = model
+            self.effort = effort
+            self.spent_usd = 0.0
+            self.client = object()
+
+    router = RoutingProvider(
+        cheap=FakeSub("claude-haiku-5-5", effort="low"),
+        capable=FakeSub("claude-sonnet-5"),
+        max_spend_usd=None,
+    )
+    assert _effort_for(router, images=[]) == "low"
+    assert _effort_for(router, images=[("image/jpeg", b"x")]) is None
+    assert _effort_for(FakeProvider(), images=[]) is None
+
+
+def test_failed_batch_submission_requeues_items(session):
+    class Batches:
+        def create(self, requests):
+            raise RuntimeError("credit balance too low")
+
+    provider = FakeProvider()
+    provider.client = type("C", (), {"messages": type("M", (), {"batches": Batches()})()})()
+    item = make_item(session)
+    with pytest.raises(RuntimeError):
+        ItemAnalyzer(session, provider).analyze_pending_batch(limit=10, wait_seconds=0)
+    session.refresh(item)
+    assert item.processing_status == "ready"

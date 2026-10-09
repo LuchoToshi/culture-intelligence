@@ -22,6 +22,10 @@ PRICING_PER_TOKEN: dict[str, tuple[float, float]] = {
     "claude-opus-5": (5.00 / 1_000_000, 25.00 / 1_000_000),
     "claude-sonnet-5": (2.00 / 1_000_000, 10.00 / 1_000_000),  # intro price
     "claude-haiku-4-5": (1.00 / 1_000_000, 5.00 / 1_000_000),
+    # Haiku 5.5 rate for prompts up to 100K tokens; items stay far below that.
+    "claude-haiku-5-5": (0.10 / 1_000_000, 0.50 / 1_000_000),
+    "claude-sonnet-5-5": (2.00 / 1_000_000, 10.00 / 1_000_000),
+    "claude-opus-5-5": (4.00 / 1_000_000, 20.00 / 1_000_000),
 }
 # Cache reads cost ~10% of the input rate; cache writes cost ~125%.
 CACHE_READ_MULTIPLIER = 0.1
@@ -151,10 +155,12 @@ class AnthropicProvider:
         model: str,
         api_key: str | None = None,
         max_spend_usd: float | None = None,
+        effort: str | None = None,
     ) -> None:
         import anthropic
 
         self.model = model
+        self.effort = effort or None
         self.client = anthropic.Anthropic(api_key=api_key or None)
         self.max_spend_usd = max_spend_usd
         self.spent_usd = 0.0
@@ -162,6 +168,9 @@ class AnthropicProvider:
     def _check_budget(self) -> None:
         if self.max_spend_usd is not None and self.spent_usd >= self.max_spend_usd:
             raise BudgetExceededError(self.spent_usd, self.max_spend_usd)
+
+    def _effort_kwargs(self) -> dict[str, Any]:
+        return {"output_config": {"effort": self.effort}} if self.effort else {}
 
     def _track_spend(self, response) -> None:
         _log_cache_usage(response)
@@ -188,6 +197,7 @@ class AnthropicProvider:
             system=_cached_system(system),
             messages=[{"role": "user", "content": build_message_content(user, images)}],
             output_format=output_format,
+            **self._effort_kwargs(),
         )
         self._track_spend(response)
         if response.stop_reason == "refusal":
@@ -203,6 +213,7 @@ class AnthropicProvider:
             max_tokens=max_tokens,
             system=_cached_system(system),
             messages=[{"role": "user", "content": user}],
+            **self._effort_kwargs(),
         ) as stream:
             response = stream.get_final_message()
         self._track_spend(response)
@@ -323,9 +334,13 @@ def get_routing_provider(settings: Settings, max_spend_usd: float | None = -1.0)
         raise ProviderError("Model routing is only implemented for AI_PROVIDER=anthropic.")
     api_key = _anthropic_api_key(settings)
     capable_model = settings.ai_model or DEFAULT_ANTHROPIC_MODEL
+    cheap_model = settings.ai_cheap_model or DEFAULT_CHEAP_MODEL
     cheap = AnthropicProvider(
-        model=DEFAULT_CHEAP_MODEL, api_key=api_key or None, max_spend_usd=None
+        model=cheap_model,
+        api_key=api_key or None,
+        max_spend_usd=None,
+        effort=settings.ai_cheap_effort or None,
     )
     capable = AnthropicProvider(model=capable_model, api_key=api_key or None, max_spend_usd=None)
-    log.debug("using routing provider: cheap=%s capable=%s", DEFAULT_CHEAP_MODEL, capable_model)
+    log.debug("using routing provider: cheap=%s capable=%s", cheap_model, capable_model)
     return RoutingProvider(cheap=cheap, capable=capable, max_spend_usd=max_spend_usd)
