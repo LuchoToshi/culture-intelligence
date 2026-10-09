@@ -79,6 +79,14 @@ def _model_for(provider: AIProvider, images: list) -> str:
     return provider.model
 
 
+def _effort_for(provider: AIProvider, images: list) -> str | None:
+    """The effort setting the routed model takes, so Batch API requests match
+    what a live call through the same provider would send."""
+    if isinstance(provider, RoutingProvider):
+        return getattr(provider.capable if images else provider.cheap, "effort", None)
+    return getattr(provider, "effort", None)
+
+
 class ItemAnalyzer:
     def __init__(self, session: Session, provider: AIProvider) -> None:
         self.session = session
@@ -188,6 +196,10 @@ class ItemAnalyzer:
             images = load_item_images(item) if item.metadata_json.get("images") else []
             prompt = build_item_prompt(source, item, text, has_images=bool(images))
             model = _model_for(self.provider, images)
+            output_config: dict = {"format": output_format_param}
+            effort = _effort_for(self.provider, images)
+            if effort:
+                output_config["effort"] = effort
             requests.append(
                 Request(
                     custom_id=str(item.id),
@@ -198,7 +210,7 @@ class ItemAnalyzer:
                         messages=[
                             {"role": "user", "content": build_message_content(prompt, images)}
                         ],
-                        output_config={"format": output_format_param},
+                        output_config=output_config,
                     ),
                 )
             )
@@ -206,7 +218,15 @@ class ItemAnalyzer:
         self.session.commit()
 
         client = self.provider.client
-        batch = client.messages.batches.create(requests=requests)
+        try:
+            batch = client.messages.batches.create(requests=requests)
+        except Exception:
+            # Nothing was submitted (e.g. credit balance empty): put the items back in
+            # the queue, or they'd sit in 'analyzing' forever and never be retried.
+            for item in items:
+                item.processing_status = ProcessingStatus.READY.value
+            self.session.commit()
+            raise
         stats.batch_id = batch.id
         log.info("batch submitted: %s (%d items)", batch.id, len(requests))
 

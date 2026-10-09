@@ -13,6 +13,11 @@ class Settings(BaseSettings):
     # Weekly synthesis is one call a week where judgment quality is the product;
     # it defaults to a stronger model than per-item analysis.
     ai_synthesis_model: str = ""
+    # Text-only item analysis (see RoutingProvider). Empty = DEFAULT_CHEAP_MODEL.
+    ai_cheap_model: str = ""
+    # output_config.effort for the cheap model. Empty = not sent, because Haiku 4.5
+    # rejects the parameter. Haiku 5.5 thinks by default; "low" keeps that cheap.
+    ai_cheap_effort: str = ""
     anthropic_api_key: str = ""
     openai_api_key: str = ""
     # Hard ceiling on real dollar spend per `culture analyze` invocation
