@@ -352,7 +352,11 @@ def generate_report(
 
     digest = build_digest(sources, items_by_source, analyses)
     registry_digest, registry_rows = build_signal_registry_digest(session, since)
+    registry_changes = build_registry_changes(session, since)
     prior = previous_synthesis(reports_dir, filename)
+    # The synthesis call takes minutes; end the read transaction first or
+    # Neon kills the connection for idling in a transaction.
+    session.commit()
     synthesis = provider.generate_text(
         WEEKLY_SYSTEM_PROMPT,
         build_weekly_prompt(digest, prior, days, signal_registry=registry_digest or None),
@@ -374,7 +378,7 @@ def generate_report(
     ]
     part2 = ["# Part 2. Weekly Cultural Intelligence", "", synthesis, ""]
     part3 = render_signal_appendix(registry_rows) if registry_rows else []
-    part3 += [""] + build_registry_changes(session, since)
+    part3 += [""] + registry_changes
 
     content = "\n".join(header + part1 + [""] + part2 + part3)
     path.write_text(content, encoding="utf-8")
