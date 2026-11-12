@@ -1,6 +1,10 @@
-import pytest
+from types import SimpleNamespace
 
-from culture.database import _with_psycopg_driver, get_engine
+import pytest
+from sqlalchemy.exc import OperationalError
+
+import culture.database as database
+from culture.database import _with_psycopg_driver, get_engine, retry_on_disconnect
 
 
 @pytest.mark.parametrize(
@@ -43,3 +47,72 @@ def test_get_engine_uses_psycopg_driver_for_bare_postgres_url():
     # default, which this project doesn't install anywhere.
     engine = get_engine("postgresql://user:pass@host/db")
     assert engine.url.drivername == "postgresql+psycopg"
+
+
+class FakeSession:
+    def __init__(self):
+        self.rollbacks = 0
+
+    def rollback(self):
+        self.rollbacks += 1
+
+
+def dropped_connection():
+    # What psycopg raises when the socket under a session is dead (see logs/analyze.log).
+    return OperationalError(
+        "SELECT 1",
+        {},
+        Exception("consuming input failed: server closed the connection unexpectedly"),
+    )
+
+
+@pytest.fixture
+def pauses(monkeypatch):
+    recorded = []
+    monkeypatch.setattr(database, "time", SimpleNamespace(sleep=recorded.append))
+    return recorded
+
+
+def test_retry_on_disconnect_runs_again_on_a_fresh_connection(pauses):
+    session = FakeSession()
+    calls = []
+
+    def operation():
+        calls.append(1)
+        if len(calls) < 3:
+            raise dropped_connection()
+        return "done"
+
+    assert retry_on_disconnect(session, operation) == "done"
+    assert len(calls) == 3
+    assert session.rollbacks == 2  # the dead connection is discarded before each retry
+    assert pauses == [10.0, 20.0]
+
+
+def test_retry_on_disconnect_gives_up_after_the_last_attempt(pauses):
+    session = FakeSession()
+    calls = []
+
+    def operation():
+        calls.append(1)
+        raise dropped_connection()
+
+    with pytest.raises(OperationalError):
+        retry_on_disconnect(session, operation, attempts=3)
+    assert len(calls) == 3
+    assert len(pauses) == 2
+
+
+def test_retry_on_disconnect_does_not_hide_other_errors(pauses):
+    session = FakeSession()
+    calls = []
+
+    def operation():
+        calls.append(1)
+        raise ValueError("a bug, not a network problem")
+
+    with pytest.raises(ValueError):
+        retry_on_disconnect(session, operation)
+    assert len(calls) == 1
+    assert session.rollbacks == 0
+    assert pauses == []

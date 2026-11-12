@@ -1,8 +1,18 @@
-import pytest
+from types import SimpleNamespace
 
+import pytest
+from sqlalchemy import event
+from sqlalchemy.exc import OperationalError
+
+import culture.database as database
 from culture.analysis.item_analyzer import BatchAnalyzeStats, ItemAnalyzer
 from culture.analysis.prompts import MAX_ANALYSIS_CHARS, build_item_prompt
-from culture.analysis.provider import BudgetExceededError, ProviderError, get_provider
+from culture.analysis.provider import (
+    BudgetExceededError,
+    ProviderError,
+    estimate_cost_usd,
+    get_provider,
+)
 from culture.config import Settings
 from culture.models.analysis import ContentAnalysis
 from culture.models.content import ContentItem
@@ -466,3 +476,82 @@ def test_failed_batch_submission_requeues_items(session):
         ItemAnalyzer(session, provider).analyze_pending_batch(limit=10, wait_seconds=0)
     session.refresh(item)
     assert item.processing_status == "ready"
+
+
+def drop_connection_once(session, when):
+    """Fail the first statement that matches `when` the way a dead socket does."""
+    fired = []
+
+    @event.listens_for(session.get_bind(), "before_cursor_execute")
+    def _drop(conn, cursor, statement, parameters, context, executemany):
+        if not fired and when(" ".join(statement.split())):
+            fired.append(True)
+            raise OperationalError(
+                statement, parameters, Exception("server closed the connection unexpectedly")
+            )
+
+    return fired
+
+
+def provider_with_finished_batch(items):
+    """A provider whose batch is already done, with one good result per item."""
+    good = GOOD_RESPONSE.model_dump_json()
+    results = [
+        FakeBatchResult(str(item.id), FakeBatchResultInner("succeeded", FakeBatchMessage(good)))
+        for item in items
+    ]
+
+    class Batches:
+        created = 0
+
+        def create(self, requests):
+            Batches.created += 1
+            return SimpleNamespace(id="msgbatch_test", processing_status="ended")
+
+        def results(self, batch_id):
+            return results
+
+    provider = FakeProvider()
+    provider.client = SimpleNamespace(messages=SimpleNamespace(batches=Batches()))
+    provider.batches = Batches
+    return provider
+
+
+@pytest.fixture
+def no_retry_pause(monkeypatch):
+    monkeypatch.setattr(database, "time", SimpleNamespace(sleep=lambda seconds: None))
+
+
+def test_batch_survives_a_dropped_connection_while_building_requests(session, no_retry_pause):
+    items = [make_item(session, title=f"Item {n}", text=f"Body {n}") for n in range(3)]
+    provider = provider_with_finished_batch(items)
+    # The per-item boilerplate query: the long loop where the weekly run used to die.
+    fired = drop_connection_once(session, lambda sql: "WHERE content_items.source_id" in sql)
+
+    stats = ItemAnalyzer(session, provider).analyze_pending_batch(limit=10, wait_seconds=0)
+
+    assert fired
+    assert provider.batches.created == 1  # restarted the build, submitted once
+    assert stats.submitted == 3
+    assert stats.succeeded == 3
+    assert session.query(ContentItem).filter_by(processing_status="analyzed").count() == 3
+
+
+def test_batch_survives_a_dropped_connection_while_applying_results(session, no_retry_pause):
+    items = [make_item(session, title=f"Item {n}", text=f"Body {n}") for n in range(3)]
+    provider = provider_with_finished_batch(items)
+    fired = drop_connection_once(
+        session, lambda sql: sql.startswith("INSERT INTO content_analyses")
+    )
+
+    stats = ItemAnalyzer(session, provider).analyze_pending_batch(limit=10, wait_seconds=0)
+
+    assert fired
+    assert provider.batches.created == 1
+    # The retried result is counted once, and its row is written once.
+    assert stats.succeeded == 3
+    assert stats.errored == 0
+    one_result = estimate_cost_usd(FakeBatchUsage(), "claude-haiku-4-5", batch=True)
+    assert stats.spent_usd == pytest.approx(3 * one_result)
+    assert session.query(ContentAnalysis).count() == 3
+    assert session.query(ContentItem).filter_by(processing_status="analyzed").count() == 3

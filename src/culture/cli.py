@@ -306,7 +306,7 @@ def analyze(
         get_provider,
         get_routing_provider,
     )
-    from culture.database import get_engine, session_scope
+    from culture.database import get_engine, retry_on_disconnect, session_scope
 
     if batch and not limit:
         console.print(
@@ -330,7 +330,8 @@ def analyze(
         assert limit is not None  # enforced by the --batch/--limit check above
         with session_scope(get_engine()) as session:
             analyzer = ItemAnalyzer(session, provider)
-            pending = len(analyzer.pending_items())
+            # First query of the run: where a connection that died while the Mac slept shows up.
+            pending = len(retry_on_disconnect(session, analyzer.pending_items))
             if pending == 0:
                 console.print("Nothing to analyze — all content is processed.")
                 return
