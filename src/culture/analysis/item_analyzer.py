@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from functools import partial
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -10,6 +11,7 @@ from culture.analysis.provider import (
     RoutingProvider,
     estimate_cost_usd,
 )
+from culture.database import retry_on_disconnect
 from culture.logging import get_logger
 from culture.models.analysis import ContentAnalysis
 from culture.models.content import ContentItem, ProcessingStatus
@@ -170,50 +172,16 @@ class ItemAnalyzer:
         """
         import time
 
-        from anthropic import transform_schema
-        from anthropic.types.json_output_format_param import JSONOutputFormatParam
-        from anthropic.types.message_create_params import MessageCreateParamsNonStreaming
-        from anthropic.types.messages.batch_create_params import Request
-
-        from culture.analysis.provider import _cached_system, build_message_content
-        from culture.services.intake import load_item_images
-
         stats = BatchAnalyzeStats()
-        stats.stale_skipped = self.skip_stale_items()
-        items = self.pending_items(limit)
+        items, requests = retry_on_disconnect(
+            self.session, lambda: self._build_batch_requests(limit, stats)
+        )
         if not items:
             return stats
         stats.submitted = len(items)
-
-        output_format_param = JSONOutputFormatParam(
-            type="json_schema", schema=transform_schema(ItemAnalysisResponse)
-        )
-        requests = []
+        # Deliberately not retried: if the server applied this commit but the reply was
+        # lost, a rerun would no longer see these items as pending and would orphan them.
         for item in items:
-            source = self.session.get(Source, item.source_id)
-            assert source is not None
-            text = cleaned_text_for(self.session, item)
-            images = load_item_images(item) if item.metadata_json.get("images") else []
-            prompt = build_item_prompt(source, item, text, has_images=bool(images))
-            model = _model_for(self.provider, images)
-            output_config: dict = {"format": output_format_param}
-            effort = _effort_for(self.provider, images)
-            if effort:
-                output_config["effort"] = effort
-            requests.append(
-                Request(
-                    custom_id=str(item.id),
-                    params=MessageCreateParamsNonStreaming(
-                        model=model,
-                        max_tokens=16000,
-                        system=_cached_system(ITEM_SYSTEM_PROMPT),
-                        messages=[
-                            {"role": "user", "content": build_message_content(prompt, images)}
-                        ],
-                        output_config=output_config,
-                    ),
-                )
-            )
             item.processing_status = ProcessingStatus.ANALYZING.value
         self.session.commit()
 
@@ -250,6 +218,60 @@ class ItemAnalyzer:
         self._apply_batch_results(client, batch.id, stats)
         return stats
 
+    def _build_batch_requests(
+        self, limit: int, stats: BatchAnalyzeStats
+    ) -> tuple[list[ContentItem], list]:
+        """The pending items and one Batch API request for each.
+
+        The slow, read-heavy part of a batch run: the boilerplate check re-queries a
+        source's full text for every item, which makes this the likeliest place for a
+        connection to drop. A rollback loses nothing here and skipping stale items is
+        safe to repeat, so retry_on_disconnect can restart it from the top.
+        """
+        from anthropic import transform_schema
+        from anthropic.types.json_output_format_param import JSONOutputFormatParam
+        from anthropic.types.message_create_params import MessageCreateParamsNonStreaming
+        from anthropic.types.messages.batch_create_params import Request
+
+        from culture.analysis.provider import _cached_system, build_message_content
+        from culture.services.intake import load_item_images
+
+        stats.stale_skipped += self.skip_stale_items()
+        items = self.pending_items(limit)
+        if not items:
+            return items, []
+
+        output_format_param = JSONOutputFormatParam(
+            type="json_schema", schema=transform_schema(ItemAnalysisResponse)
+        )
+        requests = []
+        for item in items:
+            source = self.session.get(Source, item.source_id)
+            assert source is not None
+            text = cleaned_text_for(self.session, item)
+            images = load_item_images(item) if item.metadata_json.get("images") else []
+            prompt = build_item_prompt(source, item, text, has_images=bool(images))
+            model = _model_for(self.provider, images)
+            output_config: dict = {"format": output_format_param}
+            effort = _effort_for(self.provider, images)
+            if effort:
+                output_config["effort"] = effort
+            requests.append(
+                Request(
+                    custom_id=str(item.id),
+                    params=MessageCreateParamsNonStreaming(
+                        model=model,
+                        max_tokens=16000,
+                        system=_cached_system(ITEM_SYSTEM_PROMPT),
+                        messages=[
+                            {"role": "user", "content": build_message_content(prompt, images)}
+                        ],
+                        output_config=output_config,
+                    ),
+                )
+            )
+        return items, requests
+
     def collect_batch(self, batch_id: str) -> BatchAnalyzeStats:
         """Finish a batch that was still processing when analyze_pending_batch
         gave up waiting. Safe to call repeatedly — reports still_processing
@@ -265,41 +287,8 @@ class ItemAnalyzer:
 
     def _apply_batch_results(self, client, batch_id: str, stats: BatchAnalyzeStats) -> None:
         for result in client.messages.batches.results(batch_id):
-            item = self.session.get(ContentItem, int(result.custom_id))
-            if item is None:
-                log.error("batch result for unknown item id %s", result.custom_id)
-                continue
-            if item.processing_status != ProcessingStatus.ANALYZING.value:
-                # Already collected by an earlier call (results stay
-                # retrievable for 29 days) — re-applying would duplicate
-                # the ContentAnalysis row. Not a per-result failure.
-                continue
-            if result.result.type == "succeeded":
-                message = result.result.message
-                usage = getattr(message, "usage", None)
-                if usage is not None:
-                    cost = estimate_cost_usd(usage, message.model, batch=True)
-                    if cost is not None:
-                        stats.spent_usd += cost
-                try:
-                    text = next(b.text for b in message.content if b.type == "text")
-                    response = ItemAnalysisResponse.model_validate_json(text)
-                    self.session.add(self._to_row(item, response, model=message.model))
-                    item.processing_status = ProcessingStatus.ANALYZED.value
-                    stats.succeeded += 1
-                except (StopIteration, ValueError) as exc:
-                    item.processing_status = ProcessingStatus.FAILED.value
-                    stats.errored += 1
-                    stats.errors.append(f"[{item.id}] {item.title or item.url}: {exc}")
-                    log.error("batch result failed validation: [%d] %s", item.id, exc)
-            else:
-                item.processing_status = ProcessingStatus.FAILED.value
-                stats.errored += 1
-                stats.errors.append(
-                    f"[{item.id}] {item.title or item.url}: batch result {result.result.type}"
-                )
-                log.error("batch item failed: [%d] %s", item.id, result.result.type)
-            self.session.commit()
+            # One result per attempt: a dropped connection repeats one row, not the batch.
+            retry_on_disconnect(self.session, partial(self._apply_batch_result, result, stats))
         log.info(
             "batch %s collected: %d succeeded, %d errored, $%.4f",
             batch_id,
@@ -307,6 +296,50 @@ class ItemAnalyzer:
             stats.errored,
             stats.spent_usd,
         )
+
+    def _apply_batch_result(self, result, stats: BatchAnalyzeStats) -> None:
+        item = self.session.get(ContentItem, int(result.custom_id))
+        if item is None:
+            log.error("batch result for unknown item id %s", result.custom_id)
+            return
+        if item.processing_status != ProcessingStatus.ANALYZING.value:
+            # Already collected by an earlier call (results stay
+            # retrievable for 29 days). Re-applying would duplicate
+            # the ContentAnalysis row. Not a per-result failure.
+            return
+        # Counted in `outcome` and merged only after the commit, so an attempt
+        # that is retried after a dropped connection cannot count this result twice.
+        outcome = BatchAnalyzeStats()
+        if result.result.type == "succeeded":
+            message = result.result.message
+            usage = getattr(message, "usage", None)
+            if usage is not None:
+                cost = estimate_cost_usd(usage, message.model, batch=True)
+                if cost is not None:
+                    outcome.spent_usd += cost
+            try:
+                text = next(b.text for b in message.content if b.type == "text")
+                response = ItemAnalysisResponse.model_validate_json(text)
+                self.session.add(self._to_row(item, response, model=message.model))
+                item.processing_status = ProcessingStatus.ANALYZED.value
+                outcome.succeeded += 1
+            except (StopIteration, ValueError) as exc:
+                item.processing_status = ProcessingStatus.FAILED.value
+                outcome.errored += 1
+                outcome.errors.append(f"[{item.id}] {item.title or item.url}: {exc}")
+                log.error("batch result failed validation: [%d] %s", item.id, exc)
+        else:
+            item.processing_status = ProcessingStatus.FAILED.value
+            outcome.errored += 1
+            outcome.errors.append(
+                f"[{item.id}] {item.title or item.url}: batch result {result.result.type}"
+            )
+            log.error("batch item failed: [%d] %s", item.id, result.result.type)
+        self.session.commit()
+        stats.spent_usd += outcome.spent_usd
+        stats.succeeded += outcome.succeeded
+        stats.errored += outcome.errored
+        stats.errors.extend(outcome.errors)
 
     def _analyze_item(self, item: ContentItem) -> None:
         from culture.services.intake import load_item_images
