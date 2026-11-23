@@ -126,19 +126,36 @@ def evidence_deltas(session: Session, signal_ids: list[int], days: int = 7) -> d
     return deltas
 
 
-def monthly_series(session: Session, signal_id: int, months: int = 12) -> list[int]:
-    """Evidence per calendar month for the trailing window, oldest first."""
-    items = [item for item, _ in evidence_items_for_signal(session, signal_id)]
+def monthly_series_bulk(
+    session: Session, signal_ids: list[int], months: int = 12
+) -> dict[int, list[int]]:
+    """Evidence per calendar month for many signals in one query, oldest month first.
+
+    Reads only the dates it needs; loading whole items per signal made the signal
+    index and dashboard run one heavy query per signal (~25 s on Neon)."""
     now = now_utc()
-    buckets = [0] * months
-    for item in items:
-        when = item_time(item)
-        if when is None:
+    series = {sid: [0] * months for sid in signal_ids}
+    if not signal_ids:
+        return series
+    rows = session.execute(
+        select(SignalEvidence.signal_id, ContentItem.published_at, ContentItem.discovered_at)
+        .join(ContentItem, ContentItem.id == SignalEvidence.content_item_id)
+        .where(SignalEvidence.signal_id.in_(signal_ids))
+    )
+    for signal_id, published, discovered in rows:
+        value = published or discovered
+        if value is None:
             continue
+        when = ensure_utc(value)
         age_months = (now.year - when.year) * 12 + (now.month - when.month)
         if 0 <= age_months < months:
-            buckets[months - 1 - age_months] += 1
-    return buckets
+            series[signal_id][months - 1 - age_months] += 1
+    return series
+
+
+def monthly_series(session: Session, signal_id: int, months: int = 12) -> list[int]:
+    """Evidence per calendar month for the trailing window, oldest first."""
+    return monthly_series_bulk(session, [signal_id], months)[signal_id]
 
 
 def sparkline_svg(series: list[int], width: int = 96, height: int = 20) -> str:
@@ -197,11 +214,12 @@ def signal_rows(
         ]
     deltas = evidence_deltas(session, [s.id for s in signals])
     related = co_occurrence_counts(session)
+    series = monthly_series_bulk(session, [s.id for s in signals])
     rows = [
         SignalRow(
             signal=s,
             delta_7d=deltas.get(s.id, 0),
-            spark=sparkline_svg(monthly_series(session, s.id)),
+            spark=sparkline_svg(series[s.id]),
             related_count=related.get(s.id, 0),
         )
         for s in signals
@@ -727,3 +745,123 @@ def archetype_groups(
     else:  # recurrence — the default and the page's argument
         groups.sort(key=lambda g: (g.source_count, g.sightings), reverse=True)
     return groups
+
+
+# ── overview visuals (dashboard, cities, stream) ─────────────────────────
+
+
+def weekly_series(
+    session: Session, signal_ids: list[int], weeks: int = 12
+) -> dict[int, list[dict]]:
+    """Evidence linked per week for each signal, oldest first, shaped for the
+    ``spark`` macro ({"v": count, "pct": height}). The last bar is the
+    current seven days, the same window as ``evidence_deltas``."""
+    if not signal_ids:
+        return {}
+    now = now_utc()
+    since = now - timedelta(weeks=weeks)
+    counts: dict[int, list[int]] = {sid: [0] * weeks for sid in signal_ids}
+    for signal_id, created in session.execute(
+        select(SignalEvidence.signal_id, SignalEvidence.created_at).where(
+            SignalEvidence.signal_id.in_(signal_ids), SignalEvidence.created_at >= since
+        )
+    ):
+        when = ensure_utc(created)
+        if when is None:
+            continue
+        age = min(weeks - 1, max(0, (now - when).days // 7))
+        counts[signal_id][weeks - 1 - age] += 1
+    out = {}
+    for sid, series in counts.items():
+        peak = max(series) or 1
+        out[sid] = [{"v": v, "pct": round(100 * v / peak, 1)} for v in series]
+    return out
+
+
+def item_card(item: ContentItem, source: Source | None) -> dict:
+    """Card data for the ``shot`` macro; image only from ``images.image_url``."""
+    from culture.services.images import image_url
+
+    when = item_time(item)
+    return {
+        "id": item.id,
+        "title": (item.title or "").strip() or "Untitled",
+        "source": source.name if source else "",
+        "date": when.strftime("%d-%m-%Y") if when else "",
+        "image": image_url(item),
+    }
+
+
+def signal_lead_images(session: Session, signal_ids: list[int]) -> dict[int, dict]:
+    """The newest evidence item with a real image, per signal. Signals whose
+    evidence has no image are simply absent from the result."""
+    from culture.services.images import image_url
+
+    if not signal_ids:
+        return {}
+    sources = {s.id: s for s in session.scalars(select(Source))}
+    rows = session.execute(
+        select(SignalEvidence.signal_id, ContentItem)
+        .join(ContentItem, ContentItem.id == SignalEvidence.content_item_id)
+        .where(SignalEvidence.signal_id.in_(signal_ids))
+    ).all()
+    epoch = datetime(1970, 1, 1, tzinfo=UTC)
+    rows.sort(key=lambda r: item_time(r[1]) or epoch, reverse=True)
+    out: dict[int, dict] = {}
+    for signal_id, item in rows:
+        if signal_id in out or not image_url(item):
+            continue
+        out[signal_id] = item_card(item, sources.get(item.source_id))
+    return out
+
+
+def city_map_points(rows: list, limit: int = 40) -> list[dict]:
+    """Map points for the ``world_map`` macro from rows with ``name`` and
+    ``item_count``. Same projection and radius rule as the report map; a city
+    without known coordinates is left off the map, never guessed."""
+    from culture.web.report_layout import CITY_COORDS
+
+    coords = {k.lower(): (k, v) for k, v in CITY_COORDS.items()}
+    placed = [(r, coords[r.name.lower()]) for r in rows if r.name.lower() in coords][:limit]
+    if not placed:
+        return []
+    peak = max(r.item_count for r, _ in placed) or 1
+    return [
+        {
+            "city": r.name,
+            "value": r.item_count,
+            "x": round((lon + 180) / 360 * 1000, 1),
+            "y": round((90 - lat) / 180 * 500, 1),
+            "r": round(4 + 18 * (r.item_count / peak) ** 0.5, 1),
+        }
+        for r, (_, (lat, lon)) in placed
+    ]
+
+
+def daily_item_counts(session: Session, days: int = 14) -> list[dict]:
+    """Items collected per day (by discovery date), oldest first, shaped for
+    the ``column_chart`` macro."""
+    today = now_utc().date()
+    start = today - timedelta(days=days - 1)
+    since = datetime.combine(start, datetime.min.time(), tzinfo=UTC)
+    counts: Counter = Counter()
+    for (discovered,) in session.execute(
+        select(ContentItem.discovered_at).where(ContentItem.discovered_at >= since)
+    ):
+        when = ensure_utc(discovered)
+        if when:
+            counts[when.date()] += 1
+    span = [start + timedelta(days=n) for n in range(days)]
+    peak = max([counts.get(d, 0) for d in span] or [1]) or 1
+    return [
+        {"label": d.strftime("%d"), "value": counts.get(d, 0),
+         "pct": round(100 * counts.get(d, 0) / peak, 1)}
+        for d in span
+    ]
+
+
+def bars_from_counts(pairs: list[tuple[str, int]], limit: int = 10) -> list[dict]:
+    """(label, count) pairs to ``bar_list`` rows, largest first."""
+    top = sorted(((k, v) for k, v in pairs if v), key=lambda kv: kv[1], reverse=True)[:limit]
+    peak = top[0][1] if top else 1
+    return [{"label": k, "value": v, "pct": round(100 * v / peak, 1)} for k, v in top]

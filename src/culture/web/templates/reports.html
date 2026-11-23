@@ -1,13 +1,59 @@
 {% extends "base.html" %}
+{% from "_viz.html" import shot with context %}
 {% block title %}Reports - Culture Intelligence{% endblock %}
 {% block content %}
-<p class="eyebrow">Reports</p>
+<p class="kicker">Reports</p>
 <h1>Weekly intelligence reports</h1>
-<p class="lede">Each report pairs a complete source roundup with cross-source synthesis grounded in the signal registry.</p>
-{% if reports %}
-{% for name in reports %}
-  <div class="card"><h3><a href="/reports/{{ name }}">{{ name }}</a></h3></div>
-{% endfor %}
+<p class="lede">Each week the platform reads every monitored source and writes one cross-source synthesis, grounded in the signal registry. Start with the latest, or search the archive.</p>
+
+{% if summaries %}
+{% set latest = summaries[0] %}
+<section class="rx-lead" aria-labelledby="latest-title">
+  <div>
+    <p class="kicker"><span class="acc">Latest</span><span>{{ latest.name }}</span>
+      {% if latest.window %}<span>{{ latest.window[0].strftime("%d %b") }} to {{ latest.window[1].strftime("%d %b %Y") }}</span>{% endif %}</p>
+    <h2 id="latest-title"><a href="/reports/{{ latest.name }}">{{ latest.headline }}</a></h2>
+    {% if latest.points %}
+    <ol start="2">{% for p in latest.points %}<li>{{ p }}</li>{% endfor %}</ol>
+    {% endif %}
+    <p style="margin-top:18px"><a class="btn solid" href="/reports/{{ latest.name }}">Read the report</a></p>
+  </div>
+  {% if cover %}{{ shot(cover, "r-32") }}{% endif %}
+</section>
+
+<div class="rx-tools noprint">
+  <label for="rx-q" class="kicker">Search the archive</label>
+  <input id="rx-q" type="search" placeholder="A brand, a city, a theme…" autocomplete="off">
+  <span class="finetext" id="rx-count" aria-live="polite">{{ summaries | length }} reports</span>
+</div>
+
+<div class="rx-grid" id="rx-grid">
+  {% for r in summaries %}
+  <article class="rx-card" data-text="{{ (r.name ~ ' ' ~ r.headline ~ ' ' ~ (r.points | join(' ')) ~ ' ' ~ r.week_title ~ ' ' ~ r.search_text) | lower }}">
+    <p class="kicker"><span{% if loop.first %} class="acc"{% endif %}>{{ r.name }}</span>
+      {% if r.window %}<span>{{ r.window[0].strftime("%d %b") }} to {{ r.window[1].strftime("%d %b") }}</span>{% endif %}</p>
+    <h3><a href="/reports/{{ r.name }}">{{ r.headline }}</a></h3>
+    <div class="facts"><span>{{ r.items }} items</span><span>{{ r.sources }} sources</span>
+      {% if r.brief_count %}<span>{{ r.brief_count }} key developments</span>{% endif %}
+      {% if r.hypotheses %}<span>{{ r.hypotheses }} hypotheses</span>{% endif %}</div>
+    <a class="more" href="/reports/{{ r.name }}">Open</a>
+  </article>
+  {% endfor %}
+</div>
+<p class="empty" id="rx-none" hidden>No report mentions that. Try a brand or a city.</p>
+<script>
+(function () {
+  var q = document.getElementById("rx-q"), cards = document.querySelectorAll(".rx-card");
+  var count = document.getElementById("rx-count"), none = document.getElementById("rx-none");
+  if (!q) return;
+  q.addEventListener("input", function () {
+    var term = q.value.trim().toLowerCase(), shown = 0;
+    cards.forEach(function (c) { var hit = !term || c.dataset.text.indexOf(term) !== -1; c.hidden = !hit; if (hit) shown++; });
+    count.textContent = shown + (shown === 1 ? " report" : " reports");
+    none.hidden = shown !== 0;
+  });
+})();
+</script>
 {% else %}
 <div class="empty"><b>No reports yet.</b> Generate the first with <code>uv run culture report --days 7</code>.</div>
 {% endif %}

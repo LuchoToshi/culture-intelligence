@@ -406,6 +406,8 @@
     :root { --ci-size-h1: 28px; }
     .scoregrid { grid-template-columns: 1fr; }
   }
+{% include "_app.css" %}
+{% include "_app_pages.css" %}
 </style>
 </head>
 <body>
@@ -424,16 +426,16 @@
     <span class="wordmark"><a href="/dashboard">Culture Intelligence</a></span>
     <nav class="primary" aria-label="Main">
       <a href="/dashboard" {% if active_nav == "home" %}aria-current="page"{% endif %}>Overview</a>
+      <a href="/reports" {% if active_nav == "reports" %}aria-current="page"{% endif %}>Reports</a>
       <a href="/signals" {% if active_nav == "signals" %}aria-current="page"{% endif %}>Signals</a>
+      <a href="/cities" {% if active_nav == "cities" %}aria-current="page"{% endif %}>Cities</a>
       <a href="/taste-systems" {% if active_nav == "taste-systems" %}aria-current="page"{% endif %}>Taste Systems</a>
       <a href="/archetypes" {% if active_nav == "archetypes" %}aria-current="page"{% endif %}>Archetypes</a>
-      <a href="/cities" {% if active_nav == "cities" %}aria-current="page"{% endif %}>Cities</a>
-      <a href="/reports" {% if active_nav == "reports" %}aria-current="page"{% endif %}>Reports</a>
       {% if is_admin %}<a href="/sources" {% if active_nav == "sources" %}aria-current="page"{% endif %}>Sources</a>{% endif %}
     </nav>
     <form class="searchbox" action="/search" method="get" role="search">
       <label for="q" class="skip-link">Search the intelligence</label>
-      <input id="q" name="q" type="search" placeholder="Search signals, cities, archetypes…"
+      <input id="q" name="q" type="search" placeholder="Search the intelligence…"
              value="{{ q or '' }}">
     </form>
   </div>

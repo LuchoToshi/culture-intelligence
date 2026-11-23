@@ -1,16 +1,29 @@
 {% extends "base.html" %}
 {% from "_macros.html" import signal_table %}
+{% from "_viz.html" import bar_list %}
 {% block title %}Signals - Culture Intelligence{% endblock %}
 {% block content %}
-<p class="eyebrow">Signal registry</p>
-<h1>Signals</h1>
-<p class="lede">Objects, aesthetics, behaviors, places and references that are appearing across the monitored universe. Each signal is a persistent entity accumulating evidence: the ledger shows twelve months of observations.</p>
+<div class="app-page">
+<div class="rp-grid">
+  <header class="pg-head span-7">
+    <div class="kicker"><span class="acc">Signal registry</span><span>{{ stage_counts.values() | sum }} active signals</span></div>
+    <h1>Signals</h1>
+    <p class="standfirst">Objects, aesthetics, behaviors, places and references that are appearing across the monitored universe. Each signal is a persistent entity accumulating evidence: the ledger shows twelve months of observations.</p>
+  </header>
+  <div class="span-5">
+    <h2 class="panel-title">By lifecycle stage <span>all active signals</span></h2>
+    {% set stage_rows = [] %}
+    {% for s in stage_order %}{% if stage_counts.get(s) %}{% set _ = stage_rows.append((stage_labels[s], stage_counts[s])) %}{% endif %}{% endfor %}
+    {{ bar_list(count_bars(stage_rows, 6)) }}
+  </div>
+</div>
 
+<div class="filters">
 <form class="filterbar" method="get" action="/signals">
   <span class="label">Lifecycle</span>
   <a href="/signals{{ '?sort=' + sort if sort != 'moving' else '' }}" {% if not stage %}aria-current="true"{% endif %}>All</a>
   {% for s in stage_order %}
-    <a href="/signals?stage={{ s }}{{ '&sort=' + sort if sort != 'moving' else '' }}" {% if stage == s %}aria-current="true"{% endif %}>{{ stage_labels[s] }}</a>
+    <a href="/signals?stage={{ s }}{{ '&sort=' + sort if sort != 'moving' else '' }}" {% if stage == s %}aria-current="true"{% endif %}>{{ stage_labels[s] }}{% if stage_counts.get(s) %}<span class="n">{{ stage_counts[s] }}</span>{% endif %}</a>
   {% endfor %}
 </form>
 <form class="filterbar" method="get" action="/signals">
@@ -20,10 +33,12 @@
   {% endfor %}
   {% if stage or sort != "moving" %}<a class="clear" href="/signals">Clear</a>{% endif %}
 </form>
+</div>
 
 <div id="saved-views" class="saved-views" data-current-query="{{ request.url.query }}"></div>
 <div id="compare-panel" class="compare-panel" hidden></div>
 
 {{ signal_table(rows, interactive=True) }}
 <p class="mono muted">{{ rows | length }} signal{{ "s" if rows | length != 1 }} shown · lifecycle stages are computed from evidence counts, source spread, time span and score averages: <a href="/taste-systems#method">how staging works</a></p>
+</div>
 {% endblock %}

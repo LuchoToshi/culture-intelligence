@@ -1,14 +1,242 @@
 {% extends "base.html" %}
-{% block title %}{{ name }} - Culture Intelligence{% endblock %}
+{% from "_viz.html" import bar_list, column_chart, spark, world_map, shot, stage_pill, figures with context %}
+{% block title %}{{ name }}{% if page and page.parsed.brief %}: {{ page.parsed.brief[0].headline | truncate(70) }}{% endif %} - Culture Intelligence{% endblock %}
 {% block content %}
-<p class="eyebrow"><a href="/reports">Reports</a> <span aria-hidden="true">/</span> <span>{{ name }}</span></p>
-<h1>Cultural Intelligence Report - {{ name }}</h1>
-<div class="prose">{{ content | safe }}</div>
-{% if appendix %}
-<details class="disclosure" style="margin-top:1.5rem;">
-  <summary>Research appendix: complete source roundup</summary>
-  <p class="lede" style="margin-top:0.6rem;">Every monitored source's items for the reporting window, in full. Kept for transparency and inspection; the synthesis above is the report.</p>
-  <div class="prose">{{ appendix | safe }}</div>
-</details>
+{% set P = page.parsed %}
+{% macro entry_list(section, cls="entries", limit=None, tag=None) -%}
+{% if section %}
+  {% if section.entries %}
+  <div class="{{ cls }}">
+    {% for e in (section.entries[:limit] if limit else section.entries) %}
+    <article class="entry">
+      {% if tag %}<span class="tag">{{ tag }}</span>{% endif %}
+      <h4>{{ e.name }}</h4>
+      <p>{{ e.text | truncate(210) }}</p>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="gist" style="max-width:70ch">{{ section.lead }}</p>
+  {% endif %}
+  <details class="deep"><summary>Full analysis: {{ section.title }}</summary><div class="prose">{{ section.html | safe }}</div></details>
 {% endif %}
+{%- endmacro %}
+
+<p class="kicker"><a href="/reports">Reports</a><span aria-hidden="true">/</span><span>{{ name }}</span>
+  <span class="acc">{{ page.since.strftime("%d %b") }} to {{ page.until.strftime("%d %b %Y") }}</span></p>
+
+<section class="rp-hero" aria-labelledby="rp-title">
+  <div>
+    <p class="kicker" style="margin-top:18px">Weekly intelligence · {{ name }}</p>
+    <h1 id="rp-title">{% if P.brief %}{{ P.brief[0].headline }}{% else %}Cultural Intelligence Report {{ name }}{% endif %}</h1>
+    {% if P.week_title %}<p class="standfirst">{{ P.week_title }}</p>{% endif %}
+    <p class="meta">{{ page.total_items }} items in this window · {{ page.report.sources_covered }} monitored sources · generated {{ page.report.generated_at.strftime("%d-%m-%Y") if page.report.generated_at else "" }}</p>
+    <div class="rp-actions noprint">
+      <button type="button" class="btn solid" onclick="window.print()">Save as PDF</button>
+      <a class="btn" href="/reports/{{ name }}/signals.csv">Signals CSV</a>
+      <a class="btn" href="/reports/{{ name }}/items.csv">Items CSV</a>
+    </div>
+  </div>
+  {% if page.cover %}
+  <figure class="shot">
+    <a href="#brief-{{ page.cover.point }}" class="ph r-32" style="display:block"><img src="{{ page.cover.image }}" alt="{{ page.cover.title }}" referrerpolicy="no-referrer"></a>
+    <figcaption>Pictured for point {{ "%02d" | format(page.cover.point) }}: {{ page.cover.source }}, <a href="/items/{{ page.cover.id }}">{{ page.cover.title | truncate(70) }}</a></figcaption>
+  </figure>
+  {% endif %}
+</section>
+
+{{ figures(page.figures) }}
+
+{% if P.intro_html %}
+<div class="rp-note">{{ P.intro_html | safe }}</div>
+{% endif %}
+
+<nav class="rp-chapters noprint" aria-label="Report chapters" style="margin-top:36px">
+  {% for c in page.chapters %}<a href="#{{ c.slug }}">{{ c.title }}</a>{% endfor %}
+</nav>
+
+{% if not P.brief and not P.sections %}
+{# Unstructured report: show it whole, as written. #}
+<div class="prose" style="margin-top:32px">{{ content | safe }}</div>
+{% else %}
+
+<!-- Executive summary -->
+<section id="summary" aria-labelledby="h-summary">
+  <div class="chapter-head"><div><p class="kicker">01</p><h2 id="h-summary">Executive summary</h2></div>
+    <p class="note">{{ P.brief | length }} developments that mattered most, in the order the analysis ranked them.</p></div>
+  {% if P.brief %}
+  <div class="rp-brief">
+    {% for b in P.brief %}
+    {% set cls = "lead" if loop.first else ("wide" if b.image and loop.index <= 3 else "") %}
+    <article class="bp {{ cls }}{% if not b.image %} textonly{% endif %}" id="brief-{{ b.number }}">
+      {% if b.image %}{{ shot(b.image, "r-169" if loop.first else "r-32") }}{% endif %}
+      <span class="num">{{ "%02d" | format(b.number) }}</span>
+      <h3>{{ b.headline }}</h3>
+      <p class="gist">{{ b.body_text | truncate(230 if loop.first else 150) }}</p>
+      <details class="deep"><summary>Read the analysis</summary><div class="prose">{{ b.body_html | safe }}</div></details>
+    </article>
+    {% endfor %}
+  </div>
+  {% elif P.sections.get("Executive Brief") %}
+  <div class="prose">{{ content | safe }}</div>
+  {% endif %}
+</section>
+
+<!-- Main cultural trends -->
+<section id="trends" aria-labelledby="h-trends">
+  <div class="chapter-head"><div><p class="kicker">02</p><h2 id="h-trends">Main cultural trends</h2></div>
+    <p class="note">Signals ranked by evidence linked this week. Bars show the last twelve weeks; the red bar is this week.</p></div>
+  <div class="rp-trends">
+    <div>
+      <h3 class="panel-title">Moving this week <span>{{ page.signals | length }} of the most active signals</span></h3>
+      {% if page.signals %}
+      <div class="sig-list">
+        {% for s in page.signals[:10] %}
+        <article class="sig">
+          {% if s.image %}<a class="thumb" href="/items/{{ s.image.id }}"><img src="{{ s.image.image }}" alt="" loading="lazy" referrerpolicy="no-referrer"></a>
+          {% else %}<span class="thumb blank" aria-hidden="true">{{ s.name[:1] }}</span>{% endif %}
+          <a class="name" href="/signals/{{ s.id }}">{{ s.name }}</a>
+          <div class="delta"><b>+{{ s.window }}</b><span>this week · {{ s.total }} total</span>{{ spark(s.series) }}</div>
+          <div class="facts">{{ stage_pill(s.stage, stage_labels) }}<span>{{ s.sources }} sources</span>
+            {% if s.cities %}<span>{{ s.cities | join(", ") }}</span>{% endif %}
+            {% if s.new %}<span class="acc" style="color:var(--app-accent)">New this week</span>{% endif %}</div>
+        </article>
+        {% endfor %}
+      </div>
+      <p style="margin-top:14px"><a class="more" href="/signals">All signals</a></p>
+      {% else %}
+      <p class="empty">No signal evidence was linked in this window.</p>
+      {% endif %}
+    </div>
+    <div>
+      {% for title in trend_sections %}{% set sec = P.sections.get(title) %}
+      {% if sec %}
+      <h3 class="panel-title" {% if not loop.first %}style="margin-top:30px"{% endif %}>{{ title }} <span>{{ sec.entries | length }} named</span></h3>
+      {{ entry_list(sec, "entries", 6) }}
+      {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- Underlying signals -->
+<section id="signals" aria-labelledby="h-signals">
+  <div class="chapter-head"><div><p class="kicker">03</p><h2 id="h-signals">Underlying signals</h2></div>
+    <p class="note">Where the evidence came from, what it showed, and the products, brands, people and scenes behind it.</p></div>
+  <div class="rp-grid">
+    {% if page.map_points %}
+    <div class="span-7">
+      <h3 class="panel-title">Where it happened <span>cities named in this week's analyses</span></h3>
+      {{ world_map(page.map_points) }}
+    </div>
+    <div class="span-5">
+      <h3 class="panel-title">Cities by items <span>top {{ page.cities | length }}</span></h3>
+      {{ bar_list(page.cities, hot_first=True) }}
+      {% set ci = P.sections.get("City Intelligence") %}
+      {% if ci %}<details class="deep"><summary>City intelligence</summary><div class="prose">{{ ci.html | safe }}</div></details>{% endif %}
+    </div>
+    {% endif %}
+
+    {% if page.gallery %}
+    <div class="span-12">
+      <h3 class="panel-title">Seen this week <span>images from the evidence, each links to its item</span></h3>
+      <div class="gallery">{% for g in page.gallery[:8] %}{{ shot(g, "") }}{% endfor %}</div>
+    </div>
+    {% endif %}
+
+    {% set radar = P.sections.get("Product & Object Radar") %}
+    {% if radar %}
+    <div class="span-12">
+      <h3 class="panel-title">Product &amp; object radar <span>{{ radar.entries | length }} things</span></h3>
+      {{ entry_list(radar, "radar") }}
+    </div>
+    {% endif %}
+
+    {% for title in ["Brands to Watch", "People to Watch"] %}{% set sec = P.sections.get(title) %}
+    {% if sec %}<div class="span-6"><h3 class="panel-title">{{ title }} <span>{{ sec.entries | length }}</span></h3>{{ entry_list(sec, "entries", 6) }}</div>{% endif %}
+    {% endfor %}
+
+    {% for title in ["Scene & Subculture Movement", "Consumer Archetypes", "Psychology & Desire"] %}{% set sec = P.sections.get(title) %}
+    {% if sec %}<div class="span-4"><h3 class="panel-title">{{ title }}</h3>{{ entry_list(sec, "entries", 3) }}</div>{% endif %}
+    {% endfor %}
+  </div>
+</section>
+
+<!-- Strategic insights -->
+<section id="insights" aria-labelledby="h-insights">
+  <div class="chapter-head"><div><p class="kicker">04</p><h2 id="h-insights">Strategic insights</h2></div>
+    <p class="note">What the evidence means commercially, where it contradicts itself, and what to test next.</p></div>
+  <div class="insights">
+    {% for title in strategic_sections %}{% set sec = P.sections.get(title) %}
+    {% if sec %}
+    <article class="insight{% if loop.first %} dark{% endif %}">
+      <p class="kicker">{{ title }}</p>
+      <h3>{{ sec.entries[0].name if sec.entries else sec.lead | truncate(90) }}</h3>
+      <p>{{ (sec.entries[0].text if sec.entries else sec.lead) | truncate(240) }}</p>
+      {% if sec.entries | length > 1 %}<p style="font-size:12px">+ {{ sec.entries | length - 1 }} more {{ "point" if sec.entries | length == 2 else "points" }}</p>{% endif %}
+      <details class="deep"><summary>Full analysis</summary><div class="prose">{{ sec.html | safe }}</div></details>
+    </article>
+    {% endif %}
+    {% endfor %}
+  </div>
+  {% if P.hypotheses %}
+  <h3 class="panel-title" style="margin-top:40px">What to watch next <span>{{ P.hypotheses | length }} testable hypotheses</span></h3>
+  <div class="hyps">
+    {% for h in P.hypotheses %}<article class="hyp"><div><h4>{{ h.name }}</h4><p>{{ h.text | truncate(220) }}</p></div></article>{% endfor %}
+  </div>
+  {% endif %}
+</section>
+
+<!-- Sources -->
+<section id="sources" aria-labelledby="h-sources">
+  <div class="chapter-head"><div><p class="kicker">05</p><h2 id="h-sources">Sources</h2></div>
+    <p class="note">What this report is built on. Every claim above traces back to these items.</p></div>
+  <div class="rp-grid">
+    <div class="span-4"><h3 class="panel-title">By platform <span>{{ page.total_items }} items</span></h3>{{ bar_list(page.platform_bars, hot_first=True) }}</div>
+    <div class="span-4"><h3 class="panel-title">By day <span>items published</span></h3>{{ column_chart(page.daily) }}</div>
+    <div class="span-4"><h3 class="panel-title">Most items <span>top {{ page.source_bars | length }} sources</span></h3>{{ bar_list(page.source_bars) }}</div>
+  </div>
+  {% if appendix_available %}
+  <details class="disclosure noprint" style="margin-top:32px" data-appendix="/reports/{{ name }}/appendix">
+    <summary>Research appendix: complete source roundup</summary>
+    <p class="lede" style="margin-top:0.6rem;">Every monitored source's items for the reporting window, in full. Kept for transparency and inspection.
+      <a href="/reports/{{ name }}/appendix">Open it on its own page</a>.</p>
+    <div class="prose" data-appendix-body></div>
+  </details>
+  {% endif %}
+</section>
+{% endif %}
+
+<script>
+(function () {
+  // Open every analysis before printing, so the PDF carries the full depth.
+  window.addEventListener("beforeprint", function () {
+    document.querySelectorAll("details.deep").forEach(function (d) { d.dataset.wasOpen = d.open; d.open = true; });
+  });
+  window.addEventListener("afterprint", function () {
+    document.querySelectorAll("details.deep").forEach(function (d) { d.open = d.dataset.wasOpen === "true"; });
+  });
+  // The appendix is large: load it only when someone opens it.
+  var ap = document.querySelector("details[data-appendix]");
+  if (ap) ap.addEventListener("toggle", function () {
+    var body = ap.querySelector("[data-appendix-body]");
+    if (!ap.open || body.dataset.loaded) return;
+    body.dataset.loaded = "1"; body.textContent = "Loading…";
+    fetch(ap.dataset.appendix + "?fragment=1").then(function (r) { return r.text(); })
+      .then(function (html) { body.innerHTML = html; })
+      .catch(function () { body.textContent = "Could not load the appendix. Use the link above."; });
+  });
+  // Highlight the chapter in view.
+  var links = Array.prototype.slice.call(document.querySelectorAll(".rp-chapters a"));
+  if ("IntersectionObserver" in window && links.length) {
+    var obs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        links.forEach(function (a) { a.classList.toggle("on", a.getAttribute("href") === "#" + e.target.id); });
+      });
+    }, { rootMargin: "-40% 0px -55% 0px" });
+    links.forEach(function (a) { var t = document.querySelector(a.getAttribute("href")); if (t) obs.observe(t); });
+  }
+})();
+</script>
 {% endblock %}

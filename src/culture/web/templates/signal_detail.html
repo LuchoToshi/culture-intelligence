@@ -1,89 +1,126 @@
 {% extends "base.html" %}
-{% from "_macros.html" import stage_chip, evidence_record, score_meter, stat_block, divergence with context %}
+{% from "_macros.html" import score_meter, divergence with context %}
+{% from "_viz.html" import figures as figure_row, column_chart, bar_list, shot, stage_pill with context %}
+{% from "_viz_pages.html" import evidence_card, signal_line with context %}
 {% block title %}{{ signal.name }} - Culture Intelligence{% endblock %}
 {% block content %}
-<p class="eyebrow"><a href="/signals">Signals</a> <span aria-hidden="true">/</span> <span>Signal profile</span></p>
-<h1>{{ signal.name }}{{ divergence(signal) }}</h1>
-{% if signal.description %}<p class="lede">{{ signal.description }}</p>{% endif %}
+<div class="app-page">
+<section class="sp-hero">
+  <div>
+    <p class="eyebrow"><a href="/signals">Signals</a> <span aria-hidden="true">/</span> <span>Signal profile</span></p>
+    <h1>{{ signal.name }}{{ divergence(signal) }}</h1>
+    {% if signal.description %}<p class="standfirst">{{ signal.description }}</p>{% endif %}
+    <div class="sp-tags">
+      {{ stage_pill(signal.lifecycle_stage or "unknown", stage_labels) }}
+      <span>First observed {{ signal.first_detected_at | dmy }}</span>
+      <span>Last observed {{ signal.last_evidence_at | dmy }}</span>
+    </div>
+    <p class="sp-reason">{{ stage_reason }}</p>
+  </div>
+  {% if lead %}{{ shot(lead) }}{% endif %}
+</section>
 
-<div class="eyebrow">
-  {{ stage_chip(signal.lifecycle_stage) }}
-  <span>First observed {{ signal.first_detected_at | dmy }}</span>
-  <span>Last observed {{ signal.last_evidence_at | dmy }}</span>
+{{ figure_row([
+  {"value": signal.evidence_count, "label": "Evidence items"},
+  {"value": signal.source_count, "label": "Sources"},
+  {"value": ("+" ~ delta) if delta else "0", "label": "New this week"},
+  {"value": related | length, "label": "Connected signals"},
+]) }}
+
+<div class="chapter-head">
+  <div><div class="kicker">Evidence over time</div><h2>Observation ledger</h2></div>
+  <p class="note">Evidence per month, last 12 months, {{ ledger_start }} to {{ ledger_end }}.</p>
 </div>
-<div class="statline">
-  {{ stat_block(signal.evidence_count, "Evidence items") }}
-  {{ stat_block(signal.source_count, "Sources") }}
-  {{ stat_block(("+" ~ delta) if delta else "0", "New this week") }}
-</div>
-
-<p class="mono muted">{{ stage_reason }}</p>
-
-<h2 class="section">Observation ledger <span class="note">evidence per month, last 12 months</span></h2>
+{% if month_cols %}
+{{ column_chart(month_cols, label="Evidence per month") }}
+{% else %}
 <div class="ledger-wide">
   {{ big_spark | safe }}
   <div class="ledger-caption"><span>{{ ledger_start }}</span><span>{{ ledger_end }}</span></div>
 </div>
+{% endif %}
 
-{% if signal.cities or signal.categories %}
-<h2 class="section">Where and what</h2>
-{% if signal.cities %}
-<p class="mono muted" style="margin-bottom:0.2rem">CITIES · in order of evidence frequency</p>
-<div class="tagrow">{% for city in signal.cities %}<a href="/cities/{{ city | urlencode }}">{{ city }}</a>{% endfor %}</div>
-{% endif %}
-{% if signal.categories %}
-<p class="mono muted" style="margin:0.8rem 0 0.2rem">THEMES</p>
-<div class="tagrow">{% for topic in signal.categories %}<span>{{ topic }}</span>{% endfor %}</div>
-{% endif %}
-{% endif %}
+<div class="rp-grid section-gap">
+  {% if signal.cities or signal.categories %}
+  <section class="span-6">
+    <h2 class="panel-title">Where and what <span>cities by evidence items</span></h2>
+    {% if city_bars %}
+      {{ bar_list(city_bars, hot_first=True) }}
+    {% endif %}
+    {% if signal.cities %}
+    <div class="tagrow">{% for city in signal.cities %}<a href="/cities/{{ city | urlencode }}">{{ city }}</a>{% endfor %}</div>
+    {% endif %}
+    {% if signal.categories %}
+    <p class="mono muted" style="margin:0.8rem 0 0.2rem">THEMES</p>
+    <div class="tagrow">{% for topic in signal.categories %}<span>{{ topic }}</span>{% endfor %}</div>
+    {% endif %}
+  </section>
+  {% endif %}
+  <section class="span-6">
+    <h2 class="panel-title">Score profile <span>averaged across evidence · 1–5</span></h2>
+    <div class="scoregrid">
+      {% for label, value in scores %}
+        <div class="row"><span>{{ label }}</span>
+          {{ score_meter(value, accent=(label == "Saturation risk"), none_text="no evidence") }}</div>
+      {% endfor %}
+    </div>
+    <p class="finetext">Blank means the evidence doesn't support a judgment.</p>
+  </section>
+</div>
 
 {% if related %}
-<h2 class="section">Appears alongside <span class="note">signals sharing evidence items, computed, not asserted</span></h2>
+<div class="chapter-head">
+  <div><div class="kicker">Connections</div><h2>Appears alongside</h2></div>
+  <p class="note">Signals sharing evidence items, computed, not asserted.</p>
+</div>
+<div class="rp-grid" style="row-gap:0">
 {% for other, shared in related %}
-  <div class="card">
-    <div class="meta">{{ shared }} shared evidence item{{ "s" if shared != 1 }}</div>
-    <h3><a href="/signals/{{ other.id }}">{{ other.name }}</a></h3>
-    {{ stage_chip(other.lifecycle_stage) }}
-  </div>
+  <div class="span-6">{{ signal_line(other, shared ~ " shared evidence item" ~ ("s" if shared != 1 else "")) }}</div>
 {% endfor %}
+</div>
 {% endif %}
 
 {% if archetype_observations %}
-<h2 class="section">Who is combining it <span class="note">archetype observations from this signal's evidence</span></h2>
+<div class="chapter-head">
+  <div><div class="kicker">People</div><h2>Who is combining it</h2></div>
+  <p class="note">Archetype observations from this signal's evidence.</p>
+</div>
+<div class="arch-grid">
 {% for obs in archetype_observations %}
-  <div class="card">
-    <div class="meta">{{ obs.source.name }} · {{ obs.when | dmy("?") }}{% if obs.cities %} · {{ obs.cities | join(", ") }}{% endif %}</div>
-    <p style="margin:0">{{ obs.text }}</p>
+  <div class="obs">
+    <div class="kicker"><span>{{ "Monitored source" if user_role == "demo" else obs.source.name }}</span><span>{{ obs.when | dmy("?") }}</span>{% if obs.cities %}<span>{{ obs.cities | join(", ") }}</span>{% endif %}</div>
+    <p class="quote">{{ obs.text }}</p>
   </div>
 {% endfor %}
+</div>
 {% endif %}
 
-<h2 class="section">Score profile <span class="note">averaged across evidence · 1–5 · blank means the evidence doesn't support a judgment</span></h2>
-<div class="scoregrid">
-  {% for label, value in scores %}
-    <div class="row"><span>{{ label }}</span>
-      {{ score_meter(value, accent=(label == "Saturation risk"), none_text="no evidence") }}</div>
-  {% endfor %}
+<div class="chapter-head">
+  <div><div class="kicker">Sequence</div><h2>Diffusion story</h2></div>
+  <p class="note">Order of appearance in monitored media, not proof of adoption order.</p>
 </div>
-
-<h2 class="section">Diffusion story <span class="note">order of appearance in monitored media, not proof of adoption order</span></h2>
 {% if diffusion_steps %}
-<div class="evidence-list">
+<ol class="timeline">
   {% for step in diffusion_steps %}
-  <div class="record">
-    <div class="provenance"><span class="kind kind-inference"></span><span class="mono">{{ step.when | dmy("?") }}</span></div>
-    <p style="margin:0"><strong>{{ "Monitored source" if user_role == "demo" else step.source_name }}</strong>{% if step.cities %} · {{ step.cities | join(", ") }}{% endif %}: {{ step.item.title or "(untitled)" }}</p>
-  </div>
+  <li>
+    <div class="when"><span class="kind kind-inference"></span> · {{ step.when | dmy("?") }}</div>
+    <div class="what"><a href="/items/{{ step.item.id }}">{{ step.item.title or "(untitled)" }}</a></div>
+    <div class="who">{{ "Monitored source" if user_role == "demo" else step.source_name }}{% if step.cities %} · {{ step.cities | join(", ") }}{% endif %}</div>
+  </li>
   {% endfor %}
-</div>
+</ol>
 {% else %}
 <div class="empty">Not enough dated evidence to sequence yet.</div>
 {% endif %}
 
-<h2 class="section">Evidence <span class="note">{{ evidence | length }} records, newest first</span></h2>
-<div class="evidence-list">
+<div class="chapter-head">
+  <div><div class="kicker">Evidence</div><h2>{{ evidence | length }} records</h2></div>
+  <p class="note">Newest first. Images are the publisher's own, where the item has one.</p>
+</div>
+<div class="evidence-grid">
 {% for e in evidence %}
-  {{ evidence_record(e.item, e.source, summary=e.summary, note=e.note, when=e.when, limitations=e.limitations) }}
+  {{ evidence_card(e.item, e.source, summary=e.summary, note=e.note, when=e.when, limitations=e.limitations) }}
 {% endfor %}
+</div>
 </div>
 {% endblock %}

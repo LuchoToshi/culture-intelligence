@@ -1,18 +1,29 @@
 {% extends "base.html" %}
-{% from "_macros.html" import stage_chip %}
+{% from "_viz_pages.html" import signal_line with context %}
 {% block title %}{{ item.title or "Evidence" }} - Culture Intelligence{% endblock %}
 {% block content %}
-<p class="eyebrow"><a href="/stream">Evidence</a> <span aria-hidden="true">/</span> <span>Source record</span></p>
-<h1>{{ item.title or "(untitled)" }}</h1>
-
-<div class="factline">
-  <span class="f"><b>Source</b> {{ source.name }}</span>
-  <span class="f"><b>Type</b> {{ item.content_type }}</span>
-  <span class="f"><b>Published</b> <span class="mono">{{ when | dmy("unknown") }}</span></span>
-  <span class="f"><b>Collected</b> <span class="mono">{{ item.discovered_at | dmy }}</span></span>
-  {% if item.author %}<span class="f"><b>Author</b> {{ item.author }}</span>{% endif %}
-  <span class="f"><b>Original</b> <a href="{{ item.url }}" rel="noopener">open ↗</a></span>
-</div>
+<div class="app-page">
+{% set img = item_image(item) %}
+<section class="{{ 'it-hero' if img else 'pg-head' }}">
+  <div>
+    <p class="eyebrow"><a href="/stream">Evidence</a> <span aria-hidden="true">/</span> <span>Source record</span></p>
+    <h1>{{ item.title or "(untitled)" }}</h1>
+    <div class="factline">
+      <span class="f"><b>Source</b> {{ source.name }}</span>
+      <span class="f"><b>Type</b> {{ item.content_type }}</span>
+      <span class="f"><b>Published</b> <span class="mono">{{ when | dmy("unknown") }}</span></span>
+      <span class="f"><b>Collected</b> <span class="mono">{{ item.discovered_at | dmy }}</span></span>
+      {% if item.author %}<span class="f"><b>Author</b> {{ item.author }}</span>{% endif %}
+      <span class="f"><b>Original</b> <a href="{{ item.url }}" rel="noopener">open ↗</a></span>
+    </div>
+  </div>
+  {% if img %}
+  <figure class="shot">
+    <img src="{{ img }}" alt="{{ item.title or '' }}" referrerpolicy="no-referrer" onerror="this.closest('.shot').remove()">
+    <figcaption>Image: {{ source.name }}{% if item.url %}, <a href="{{ item.url }}" rel="noopener">from the original</a>{% endif %}.</figcaption>
+  </figure>
+  {% endif %}
+</section>
 
 {% for l in limitations %}<p class="limitation">{{ l }}</p>{% endfor %}
 
@@ -50,12 +61,11 @@
 
 {% if signals %}
 <h2 class="section">Signals this item evidences</h2>
+<div class="rp-grid" style="row-gap:0">
 {% for signal in signals %}
-  <div class="card">
-    <h3><a href="/signals/{{ signal.id }}">{{ signal.name }}</a></h3>
-    {{ stage_chip(signal.lifecycle_stage) }}
-  </div>
+  <div class="span-6">{{ signal_line(signal, signal.evidence_count ~ " items") }}</div>
 {% endfor %}
+</div>
 {% endif %}
 
 {% if item.raw_text %}
@@ -66,4 +76,5 @@
   <p style="white-space: pre-line">{{ item.raw_text[:6000] }}{% if item.raw_text | length > 6000 %}…{% endif %}</p></article>
 </details>
 {% endif %}
+</div>
 {% endblock %}

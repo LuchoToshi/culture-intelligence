@@ -1,0 +1,74 @@
+{# Reusable, server-rendered visual components for reports and overviews.
+   Each one renders nothing when its data is empty: no chart without evidence. #}
+
+{% macro bar_list(rows, hot_first=False, unit="") -%}
+{% if rows %}
+<div class="bars" role="list">
+  {% for r in rows %}
+  <div class="bar{% if hot_first and loop.first %} hot{% endif %}" role="listitem">
+    <span class="k" title="{{ r.label }}">{{ r.label }}</span>
+    <span class="t" aria-hidden="true"><i style="width:{{ r.pct }}%"></i></span>
+    <span class="n">{{ r.value }}{{ unit }}</span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{%- endmacro %}
+
+{% macro column_chart(days, label="items per day") -%}
+{% if days %}
+<div class="cols" role="img" aria-label="{{ label }}: {% for d in days %}{{ d.label }} {{ d.value }}{% if not loop.last %}, {% endif %}{% endfor %}">
+  {% for d in days %}<div class="c"><b>{{ d.value }}</b><i style="height:{{ d.pct }}%"></i></div>{% endfor %}
+</div>
+<div class="cols-x" aria-hidden="true">{% for d in days %}<span>{{ d.label }}</span>{% endfor %}</div>
+{% endif %}
+{%- endmacro %}
+
+{% macro spark(series, weeks_label="last 12 weeks") -%}
+<div class="spark" role="img" aria-label="Evidence per week, {{ weeks_label }}: {{ series | map(attribute='v') | join(', ') }}">
+  {% for s in series %}<i class="{% if loop.last %}now{% endif %}" style="height:{{ [s.pct, 3] | max }}%" title="{{ s.v }}"></i>{% endfor %}
+</div>
+{%- endmacro %}
+
+{% macro world_map(points, label="Cities named in this week's evidence") -%}
+{% if points %}
+<div class="mapbox">
+  <img src="/static/world-land.svg" alt="" aria-hidden="true">
+  <svg viewBox="0 0 1000 500" role="img" aria-label="{{ label }}: {% for p in points %}{{ p.city }} {{ p.value }}{% if not loop.last %}, {% endif %}{% endfor %}">
+    {% for p in points | sort(attribute='r', reverse=True) %}
+    <circle cx="{{ p.x }}" cy="{{ p.y }}" r="{{ p.r }}"><title>{{ p.city }}: {{ p.value }} items</title></circle>
+    {% endfor %}
+    {% for p in points[:6] %}
+    <text x="{{ p.x + p.r + 4 }}" y="{{ p.y + 4 }}">{{ p.city }}</text>
+    {% endfor %}
+  </svg>
+</div>
+{% endif %}
+{%- endmacro %}
+
+{% macro shot(card, ratio="r-32", caption=True) -%}
+{% if card and card.image %}
+<figure class="shot">
+  <a href="/items/{{ card.id }}" class="ph {{ ratio }}" style="display:block"><img src="{{ card.image }}" alt="{{ card.title }}" loading="lazy" referrerpolicy="no-referrer"></a>
+  {% if caption %}<figcaption>{{ "Monitored source" if user_role == "demo" else card.source }}{% if card.date %}, {{ card.date }}{% endif %}. <a href="/items/{{ card.id }}">{{ card.title | truncate(80) }}</a></figcaption>{% endif %}
+</figure>
+{% endif %}
+{%- endmacro %}
+
+{% macro stage_pill(stage, labels) -%}
+<span class="stage-pill {{ stage }}">{{ labels.get(stage, stage) }}</span>
+{%- endmacro %}
+
+{% macro figures(items) -%}
+{% if items %}
+<div class="figures">
+  {% for f in items %}
+  <div class="figure">
+    <div class="v{% if f.value is string %} word{% endif %}">{{ f.value }}</div>
+    <div class="l">{{ f.label }}</div>
+    {% if f.note %}<div class="n">{{ f.note }}</div>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{%- endmacro %}

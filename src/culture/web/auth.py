@@ -70,7 +70,7 @@ ROLE_DEMO = "demo"
 
 # Route-level enforcement. Hiding a nav link is not access control.
 ADMIN_ONLY_PREFIXES = ("/sources", "/admin")
-DEMO_BLOCKED_PREFIXES = ("/sources", "/admin", "/stream", "/search", "/items", "/reports")
+DEMO_BLOCKED_PREFIXES = ("/sources", "/admin", "/stream", "/search", "/items", "/reports", "/media")
 
 
 @dataclass(frozen=True)

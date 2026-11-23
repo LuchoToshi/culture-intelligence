@@ -522,6 +522,21 @@ def discover(
 
 
 @app.command()
+def images(
+    days: int = typer.Option(60, "--days", help="Look at items discovered in the last N days."),
+) -> None:
+    """Store each recent article's own share image, so reports can show it (no API cost)."""
+    from culture.database import get_engine
+    from culture.services.images import backfill_image_urls
+
+    stats = backfill_image_urls(get_engine(), days=days)
+    console.print(
+        f"Items checked: {stats.checked} · images found: [green]{stats.found}[/green] · "
+        f"none: {stats.missing} (of which {len(stats.failed)} failed to load)"
+    )
+
+
+@app.command()
 def add(
     url: str = typer.Argument(..., help="Post URL (Instagram, TikTok, ...)."),
     caption: str | None = typer.Option(None, "--caption", help="Post caption / text."),

@@ -1,30 +1,46 @@
 {% extends "base.html" %}
-{% from "_macros.html" import evidence_record with context %}
+{% from "_viz.html" import column_chart %}
+{% from "_viz_pages.html" import evidence_card with context %}
 {% block title %}Evidence stream - Culture Intelligence{% endblock %}
 {% block content %}
-<p class="eyebrow">Evidence stream</p>
-<h1>Latest collected evidence</h1>
-<p class="lede">The most recent {{ rows | length }} items across every monitored source, as collected. Items still in the analysis queue are marked.</p>
+<div class="app-page">
+<div class="rp-grid">
+  <header class="pg-head span-6">
+    <div class="kicker"><span class="acc">Evidence stream</span><span>{{ rows | length }} items shown</span></div>
+    <h1>Latest collected evidence</h1>
+    <p class="standfirst">The most recent {{ rows | length }} items across every monitored source, as collected. Items still in the analysis queue are marked.</p>
+  </header>
+  {% if daily and daily | map(attribute="value") | sum %}
+  <div class="span-6">
+    <h2 class="panel-title">Collected per day <span>all sources, last 14 days</span></h2>
+    {{ column_chart(daily, label="Items collected per day") }}
+  </div>
+  {% endif %}
+</div>
 
 {% macro qs(p, k, d) -%}?{% if p %}platform={{ p }}&{% endif %}{% if k %}kind={{ k }}&{% endif %}{% if d %}days={{ d }}{% endif %}{%- endmacro %}
+<div class="filters">
 <div class="filterbar" aria-label="Stream filters">
   <span class="label">Platform</span>
   <a href="{{ qs(none, kind, days) }}" aria-current="{{ 'true' if not platform else 'false' }}">All</a>
   {% for p in platforms %}<a href="{{ qs(p, kind, days) }}" aria-current="{{ 'true' if platform == p else 'false' }}">{{ p }}</a>{% endfor %}
 </div>
-<div class="filterbar" aria-label="Type and recency filters">
+<div class="filterbar" aria-label="Type filter">
   <span class="label">Type</span>
   <a href="{{ qs(platform, none, days) }}" aria-current="{{ 'true' if not kind else 'false' }}">All</a>
   {% for k in kinds %}<a href="{{ qs(platform, k, days) }}" aria-current="{{ 'true' if kind == k else 'false' }}">{{ k }}</a>{% endfor %}
-  <span class="label" style="margin-left:0.8rem">Window</span>
+</div>
+<div class="filterbar" aria-label="Recency filter">
+  <span class="label">Window</span>
   <a href="{{ qs(platform, kind, none) }}" aria-current="{{ 'true' if not days else 'false' }}">All time</a>
   <a href="{{ qs(platform, kind, 7) }}" aria-current="{{ 'true' if days == 7 else 'false' }}">7 days</a>
   <a href="{{ qs(platform, kind, 30) }}" aria-current="{{ 'true' if days == 30 else 'false' }}">30 days</a>
 </div>
+</div>
 
-<div class="evidence-list">
+<div class="evidence-grid">
 {% for r in rows %}
-  {{ evidence_record(r.item, r.source, summary=r.summary, when=r.when, limitations=r.limitations) }}
+  {{ evidence_card(r.item, r.source, summary=r.summary, when=r.when, limitations=r.limitations) }}
 {% else %}
   {% if platform or kind or days %}
   <div class="empty"><b>Nothing matches these filters.</b> <a href="/stream">Clear filters</a>.</div>
@@ -32,5 +48,6 @@
   <div class="empty"><b>Nothing collected yet.</b> Run <code>uv run culture ingest</code> to collect from the monitored sources.</div>
   {% endif %}
 {% endfor %}
+</div>
 </div>
 {% endblock %}

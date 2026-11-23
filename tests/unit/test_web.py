@@ -443,3 +443,30 @@ def test_city_compare_page(client):
     assert both.status_code == 200
     # Fixture signal names both London and Tokyo -> shared
     assert "Japanese workwear in London menswear" in both.text
+
+
+def test_report_exports_and_appendix(client):
+    signals = client.get("/reports/2026-W35/signals.csv")
+    assert signals.status_code == 200
+    assert signals.headers["content-type"].startswith("text/csv")
+    assert signals.text.splitlines()[0].startswith("signal,stage,evidence_this_week")
+    items = client.get("/reports/2026-W35/items.csv")
+    assert items.status_code == 200 and items.text.startswith("date,source,platform,title,url")
+    fragment = client.get("/reports/2026-W35/appendix?fragment=1")
+    assert fragment.status_code == 200 and "hello" in fragment.text and "<html" not in fragment.text
+    page = client.get("/reports/2026-W35/appendix")
+    assert page.status_code == 200 and "Research appendix" in page.text
+    assert client.get("/reports/nope/signals.csv").status_code == 404
+
+
+def test_report_view_has_chapters_and_print_export(client):
+    view = client.get("/reports/2026-W35").text
+    chapters = ("Executive summary", "Main cultural trends", "Underlying signals")
+    for chapter in chapters + ("Strategic insights", "Sources"):
+        assert chapter in view
+    assert "window.print()" in view
+
+
+def test_media_route_rejects_unsafe_names(client):
+    assert client.get("/media/..%2F.env").status_code == 404
+    assert client.get("/media/notthere.jpg").status_code == 404
