@@ -24,6 +24,8 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 
 import markdown as md
+from markdown.extensions import Extension
+from markdown.treeprocessors import Treeprocessor
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -249,19 +251,33 @@ def _md(text: str) -> str:
 
 
 def _escape_html(text: str) -> str:
-    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
 
-_URL_ATTR = re.compile(r'\s(href|src)="([^"]*)"', re.IGNORECASE)
 _SAFE_URL = re.compile(r"^(https?://|mailto:|/(?!/)|#)", re.IGNORECASE)
 
 
+class _SafeLinks(Treeprocessor):
+    """Drop href/src values whose scheme is not http(s), mailto or a local path,
+    checked on the parsed element tree, not on serialized HTML."""
+
+    def run(self, root):
+        for el in root.iter():
+            for attr in ("href", "src"):
+                value = el.get(attr)
+                if value is not None and not _SAFE_URL.match(value.strip()):
+                    del el.attrib[attr]
+
+
+class _SafeLinksExtension(Extension):
+    def extendMarkdown(self, md_instance):  # noqa: N802 (Markdown API name)
+        md_instance.treeprocessors.register(_SafeLinks(md_instance), "safe_links", 0)
+
+
 def render_markdown(text: str) -> str:
-    """Markdown to HTML for text built from scraped pages: raw HTML is escaped, and
-    links or images with any scheme other than http(s), mailto or a local path are
-    dropped (Markdown itself would happily emit javascript: links)."""
-    html = md.markdown(_escape_html(text), extensions=["tables"])
-    return _URL_ATTR.sub(lambda m: m.group(0) if _SAFE_URL.match(m.group(2).strip()) else "", html)
+    """Markdown to HTML for text built from scraped pages: raw HTML is escaped and
+    unsafe link schemes are removed (Markdown would emit javascript: links)."""
+    return md.markdown(_escape_html(text), extensions=["tables", _SafeLinksExtension()])
 
 
 def _plain(text: str) -> str:
