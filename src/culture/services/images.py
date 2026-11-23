@@ -143,7 +143,7 @@ def _read_head(client, url: str, max_hops: int = 5) -> tuple[str, str]:
                 url = str(response.url.join(response.headers["location"]))
                 continue
             response.raise_for_status()
-            if "html" not in response.headers.get("content-type", "html"):
+            if "html" not in response.headers.get("content-type", ""):
                 raise ValueError("not html")
             data = bytearray()
             for chunk in response.iter_bytes():
