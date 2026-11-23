@@ -251,10 +251,20 @@ def _md(text: str) -> str:
 
 
 def _escape_html(text: str) -> str:
-    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+    for raw, safe in (("&", "&amp;"), ("<", "&lt;"), (">", "&gt;"), ('"', "&quot;")):
+        text = text.replace(raw, safe)
+    return text
 
 
-_SAFE_URL = re.compile(r"^(https?://|mailto:|/(?!/)|#)", re.IGNORECASE)
+def _safe_url(value: str) -> bool:
+    """http(s), mailto, or a same-site path. Normalised the way browsers read it."""
+    from urllib.parse import urlsplit
+
+    url = re.sub(r"[\t\r\n]", "", value.strip()).replace("\\", "/")
+    parts = urlsplit(url)
+    if parts.scheme:
+        return parts.scheme.lower() in {"http", "https", "mailto"}
+    return not parts.netloc and not url.startswith("//")
 
 
 class _SafeLinks(Treeprocessor):
@@ -265,7 +275,7 @@ class _SafeLinks(Treeprocessor):
         for el in root.iter():
             for attr in ("href", "src"):
                 value = el.get(attr)
-                if value is not None and not _SAFE_URL.match(value.strip()):
+                if value is not None and not _safe_url(value):
                     del el.attrib[attr]
 
 

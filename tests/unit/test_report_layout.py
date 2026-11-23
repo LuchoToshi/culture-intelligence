@@ -102,3 +102,5 @@ def test_markdown_drops_unsafe_links_and_html():
     assert "javascript:" not in html and "<script>" not in html
     assert 'href="https://ok.example"' in html
     assert "//evil.example" not in render_markdown("[c](//evil.example/x)")
+    assert "evil" not in render_markdown("[d](/\\\\evil.example)") .replace("[d]", "")
+    assert 'href="/reports"' in render_markdown("[e](/reports)")
