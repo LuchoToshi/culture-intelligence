@@ -244,7 +244,12 @@ def _slug(text: str) -> str:
 
 
 def _md(text: str) -> str:
-    return md.markdown(text.strip(), extensions=["tables"])
+    # Report text quotes scraped titles; raw HTML in it must not render.
+    return md.markdown(_escape_html(text.strip()), extensions=["tables"])
+
+
+def _escape_html(text: str) -> str:
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 def _plain(text: str) -> str:

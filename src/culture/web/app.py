@@ -30,6 +30,9 @@ from culture.models.source import Source
 from culture.utils import citypolicy
 from culture.utils.dates import ensure_utc, now_utc
 from culture.web import queries
+from culture.web.report_layout import _escape_html
+
+_MD_EXT = ["tables"]
 
 _MEDIA_NAME = re.compile(r"[A-Za-z0-9_.-]{1,120}\.(?:jpg|jpeg|png|webp)")
 
@@ -1040,7 +1043,7 @@ def create_app(
             appendix_available = True
         else:
             reader_md, appendix_available = markdown_text, False
-        content = _demote_report_headings(md.markdown(reader_md, extensions=["tables"]))
+        content = _demote_report_headings(md.markdown(_escape_html(reader_md), extensions=_MD_EXT))
         page = _report_page(session, report_row)
         return render(
             request,
@@ -1068,7 +1071,7 @@ def create_app(
         appendix_md = report_layout.parse_report(report_row.content_markdown).appendix_md
         if not appendix_md:
             raise HTTPException(404, "This report has no appendix")
-        html = _demote_report_headings(md.markdown(appendix_md, extensions=["tables"]))
+        html = _demote_report_headings(md.markdown(_escape_html(appendix_md), extensions=_MD_EXT))
         if fragment:
             return HTMLResponse(html)
         return render(
@@ -1114,7 +1117,7 @@ def create_app(
         path = Path(__file__).resolve().parents[3] / "media" / "items" / filename
         if not path.is_file():
             raise HTTPException(404, "Not found")
-        return FileResponse(path, headers={"Cache-Control": "public, max-age=604800"})
+        return FileResponse(path, headers={"Cache-Control": "private, max-age=604800"})
 
     @app.get("/brief", response_class=HTMLResponse)
     def public_brief(request: Request, session: Session = Depends(db)):

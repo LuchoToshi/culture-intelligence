@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_viz.html" import bar_list, column_chart, spark, world_map, shot, stage_pill, figures %}
+{% from "_viz.html" import bar_list, column_chart, spark, world_map, shot, stage_pill, figures with context %}
 {% block title %}{{ name }}{% if page and page.parsed.brief %}: {{ page.parsed.brief[0].headline | truncate(70) }}{% endif %} - Culture Intelligence{% endblock %}
 {% block content %}
 {% set P = page.parsed %}

@@ -50,7 +50,7 @@
 {% if card and card.image %}
 <figure class="shot">
   <a href="/items/{{ card.id }}" class="ph {{ ratio }}" style="display:block"><img src="{{ card.image }}" alt="{{ card.title }}" loading="lazy" referrerpolicy="no-referrer"></a>
-  {% if caption %}<figcaption>{{ card.source }}{% if card.date %}, {{ card.date }}{% endif %}. <a href="/items/{{ card.id }}">{{ card.title | truncate(80) }}</a></figcaption>{% endif %}
+  {% if caption %}<figcaption>{{ "Monitored source" if user_role == "demo" else card.source }}{% if card.date %}, {{ card.date }}{% endif %}. <a href="/items/{{ card.id }}">{{ card.title | truncate(80) }}</a></figcaption>{% endif %}
 </figure>
 {% endif %}
 {%- endmacro %}

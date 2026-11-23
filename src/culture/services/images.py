@@ -114,6 +114,47 @@ def pending_image_items(session: Session, days: int = 60) -> list[tuple[int, str
     ]
 
 
+MAX_HEAD_BYTES = 400_000
+
+
+def _public_http_url(url: str) -> bool:
+    """Only http(s) to public addresses: feed links are outside input."""
+    import ipaddress
+    import socket
+    from urllib.parse import urlsplit
+
+    parts = urlsplit(url)
+    if parts.scheme not in ("http", "https") or not parts.hostname:
+        return False
+    try:
+        infos = socket.getaddrinfo(parts.hostname, None)
+    except OSError:
+        return False
+    return all(ipaddress.ip_address(info[4][0]).is_global for info in infos)
+
+
+def _read_head(client, url: str, max_hops: int = 5) -> tuple[str, str]:
+    """GET with every redirect hop checked, reading at most MAX_HEAD_BYTES of HTML."""
+    for _ in range(max_hops):
+        if not _public_http_url(url):
+            raise ValueError("refused non-public url")
+        with client.stream("GET", url, follow_redirects=False) as response:
+            if response.is_redirect:
+                url = str(response.url.join(response.headers["location"]))
+                continue
+            response.raise_for_status()
+            if "html" not in response.headers.get("content-type", "html"):
+                raise ValueError("not html")
+            data = bytearray()
+            for chunk in response.iter_bytes():
+                data.extend(chunk)
+                if len(data) >= MAX_HEAD_BYTES:
+                    break
+            text = data[:MAX_HEAD_BYTES].decode(response.encoding or "utf-8", "replace")
+            return text, str(response.url)
+    raise ValueError("too many redirects")
+
+
 def fetch_share_images(
     pairs: list[tuple[int, str]], workers: int = 8
 ) -> list[tuple[int, str | None, str | None]]:
@@ -124,9 +165,8 @@ def fetch_share_images(
         item_id, url = pair
         try:
             with create_client() as client:
-                response = client.get(url)
-                response.raise_for_status()
-                return item_id, og_image_from_html(response.text[:400_000], str(response.url)), None
+                body, final_url = _read_head(client, url)
+            return item_id, og_image_from_html(body, final_url), None
         except Exception as exc:  # one bad page never stops the run
             return item_id, None, f"{url}: {exc.__class__.__name__}"
 

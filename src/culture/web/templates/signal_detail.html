@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros.html" import score_meter, divergence with context %}
-{% from "_viz.html" import figures as figure_row, column_chart, bar_list, shot, stage_pill %}
+{% from "_viz.html" import figures as figure_row, column_chart, bar_list, shot, stage_pill with context %}
 {% from "_viz_pages.html" import evidence_card, signal_line with context %}
 {% block title %}{{ signal.name }} - Culture Intelligence{% endblock %}
 {% block content %}

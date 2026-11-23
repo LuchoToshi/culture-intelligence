@@ -17,7 +17,7 @@
 {{ figure_row(figures) }}
 
 <section class="db-lead">
-  {% if report_teaser %}
+  {% if report_teaser and user_role != "demo" %}
   <article class="db-report">
     <div class="kicker"><span class="acc">Latest weekly report</span><span>{{ report_teaser.name }}</span>{% if report_teaser.window %}<span>{{ report_teaser.window[0].strftime("%d-%m") }} to {{ report_teaser.window[1].strftime("%d-%m-%Y") }}</span>{% endif %}</div>
     <h2><a href="/reports/{{ report_teaser.name }}">{{ report_teaser.headline }}</a></h2>

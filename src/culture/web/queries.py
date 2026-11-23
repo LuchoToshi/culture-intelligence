@@ -126,19 +126,36 @@ def evidence_deltas(session: Session, signal_ids: list[int], days: int = 7) -> d
     return deltas
 
 
-def monthly_series(session: Session, signal_id: int, months: int = 12) -> list[int]:
-    """Evidence per calendar month for the trailing window, oldest first."""
-    items = [item for item, _ in evidence_items_for_signal(session, signal_id)]
+def monthly_series_bulk(
+    session: Session, signal_ids: list[int], months: int = 12
+) -> dict[int, list[int]]:
+    """Evidence per calendar month for many signals in one query, oldest month first.
+
+    Reads only the dates it needs; loading whole items per signal made the signal
+    index and dashboard run one heavy query per signal (~25 s on Neon)."""
     now = now_utc()
-    buckets = [0] * months
-    for item in items:
-        when = item_time(item)
-        if when is None:
+    series = {sid: [0] * months for sid in signal_ids}
+    if not signal_ids:
+        return series
+    rows = session.execute(
+        select(SignalEvidence.signal_id, ContentItem.published_at, ContentItem.discovered_at)
+        .join(ContentItem, ContentItem.id == SignalEvidence.content_item_id)
+        .where(SignalEvidence.signal_id.in_(signal_ids))
+    )
+    for signal_id, published, discovered in rows:
+        value = published or discovered
+        if value is None:
             continue
+        when = ensure_utc(value)
         age_months = (now.year - when.year) * 12 + (now.month - when.month)
         if 0 <= age_months < months:
-            buckets[months - 1 - age_months] += 1
-    return buckets
+            series[signal_id][months - 1 - age_months] += 1
+    return series
+
+
+def monthly_series(session: Session, signal_id: int, months: int = 12) -> list[int]:
+    """Evidence per calendar month for the trailing window, oldest first."""
+    return monthly_series_bulk(session, [signal_id], months)[signal_id]
 
 
 def sparkline_svg(series: list[int], width: int = 96, height: int = 20) -> str:
@@ -197,11 +214,12 @@ def signal_rows(
         ]
     deltas = evidence_deltas(session, [s.id for s in signals])
     related = co_occurrence_counts(session)
+    series = monthly_series_bulk(session, [s.id for s in signals])
     rows = [
         SignalRow(
             signal=s,
             delta_7d=deltas.get(s.id, 0),
-            spark=sparkline_svg(monthly_series(session, s.id)),
+            spark=sparkline_svg(series[s.id]),
             related_count=related.get(s.id, 0),
         )
         for s in signals
