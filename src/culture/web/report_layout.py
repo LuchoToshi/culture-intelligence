@@ -253,7 +253,7 @@ def _escape_html(text: str) -> str:
 
 
 _URL_ATTR = re.compile(r'\s(href|src)="([^"]*)"', re.IGNORECASE)
-_SAFE_URL = re.compile(r"^(https?://|mailto:|/|#)", re.IGNORECASE)
+_SAFE_URL = re.compile(r"^(https?://|mailto:|/(?!/)|#)", re.IGNORECASE)
 
 
 def render_markdown(text: str) -> str:
