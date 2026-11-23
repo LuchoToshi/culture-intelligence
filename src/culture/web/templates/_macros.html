@@ -40,8 +40,8 @@
    including the dashboard's embedded ones. interactive=True additionally
    renders the pin/watch/peek control column and expando row -- the
    registry-only, compare-panel-feeding surface (signals.html). -#}
-<div class="table-scroll">
-<table class="index">
+<div class="table-scroll tablewrap">
+<table class="index sigtable">
   {% if caption %}<caption class="skip-link">{{ caption }}</caption>{% endif %}
   <thead><tr>
     {% if interactive %}<th scope="col"><span class="skip-link">Actions</span></th>{% endif %}
@@ -73,15 +73,15 @@
         <a href="/signals/{{ row.signal.id }}">{{ row.signal.name }}</a>{{ divergence(row.signal) }}
         {% if row.related_count %}<span class="desc">Connected to {{ row.related_count }} other signal{{ "s" if row.related_count != 1 }}</span>{% endif %}
       </td>
-      <td>{{ stage_chip(row.signal.lifecycle_stage) }}</td>
-      <td>{{ row.spark | safe }}</td>
-      <td class="num">{{ row.signal.evidence_count }}</td>
-      <td class="num">{{ row.signal.source_count }}</td>
-      <td class="num">{% if row.delta_7d %}<span class="delta-up">+{{ row.delta_7d }}</span>{% else %}<span class="muted">-</span>{% endif %}</td>
-      <td class="mono muted">{% for city in row.signal.cities[:2] %}<span data-city="{{ city }}" tabindex="0">{{ city }}</span>{{ ", " if not loop.last }}{% endfor %}</td>
-      <td>{{ score_meter(row.signal.editorial_momentum_score, show_numeral=False) }}</td>
-      <td>{{ score_meter(row.signal.urban_adoption_score, show_numeral=False) }}</td>
-      <td>{{ score_meter(row.signal.saturation_risk_score, accent=True, show_numeral=False) }}</td>
+      <td class="c-stage">{{ stage_chip(row.signal.lifecycle_stage) }}</td>
+      <td class="c-ledger">{{ row.spark | safe }}</td>
+      <td class="num c-items" data-label="Items">{{ row.signal.evidence_count }}</td>
+      <td class="num c-src" data-label="Sources">{{ row.signal.source_count }}</td>
+      <td class="num c-new" data-label="New">{% if row.delta_7d %}<span class="delta-up">+{{ row.delta_7d }}</span>{% else %}<span class="muted">-</span>{% endif %}</td>
+      <td class="mono muted c-city">{% for city in row.signal.cities[:2] %}<span data-city="{{ city }}" tabindex="0">{{ city }}</span>{{ ", " if not loop.last }}{% endfor %}</td>
+      <td class="c-score" data-label="Edit.">{{ score_meter(row.signal.editorial_momentum_score, show_numeral=False) }}</td>
+      <td class="c-score" data-label="Adopt.">{{ score_meter(row.signal.urban_adoption_score, show_numeral=False) }}</td>
+      <td class="c-score" data-label="Sat.">{{ score_meter(row.signal.saturation_risk_score, accent=True, show_numeral=False) }}</td>
     </tr>
     {% if interactive %}<tr class="peek-row" hidden data-peek-for="{{ row.signal.id }}"><td colspan="11"></td></tr>{% endif %}
   {% else %}

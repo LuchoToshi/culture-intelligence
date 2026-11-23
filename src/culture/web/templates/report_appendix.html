@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}{{ name }} appendix - Culture Intelligence{% endblock %}
+{% block content %}
+<p class="kicker"><a href="/reports">Reports</a><span aria-hidden="true">/</span><a href="/reports/{{ name }}">{{ name }}</a><span aria-hidden="true">/</span><span>Appendix</span></p>
+<h1 style="font-size:clamp(32px,4vw,48px)">Research appendix</h1>
+<p class="lede">Every monitored source's items for {{ name }}, in full. The report itself is the synthesis; this is what it was built from.</p>
+<div class="prose">{{ content | safe }}</div>
+{% endblock %}

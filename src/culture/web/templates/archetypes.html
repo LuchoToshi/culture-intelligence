@@ -1,9 +1,20 @@
 {% extends "base.html" %}
 {% block title %}Archetypes - Culture Intelligence{% endblock %}
+{% from "_viz.html" import figures as figure_row %}
 {% block content %}
-<p class="eyebrow">Archetypes</p>
-<h1>Archetype observations</h1>
-<p class="lede">Identity descriptions observed in the evidence: who is combining which signals, where. These are observations, not established personas: an archetype earns standing only by recurring across <em>independent</em> sources, and the page is grouped by exactly how far each one has gotten.</p>
+<div class="app-page">
+<header class="pg-head">
+  <div class="kicker"><span class="acc">Archetypes</span>{% if summary.newest %}<span>{{ summary.oldest | dmy("?") }} to {{ summary.newest | dmy("?") }}</span>{% endif %}</div>
+  <h1>Archetype observations</h1>
+  <p class="standfirst">Identity descriptions observed in the evidence: who is combining which signals, where. These are observations, not established personas: an archetype earns standing only by recurring across <em>independent</em> sources, and the page is grouped by exactly how far each one has gotten.</p>
+</header>
+
+{{ figure_row([
+  {"value": summary.recurring, "label": "Recurring", "note": "independent sources agree"},
+  {"value": summary.repeated, "label": "Repeated", "note": "one observer, more than once"},
+  {"value": summary.single, "label": "Single sighting", "note": "not yet corroborated"},
+  {"value": summary.cities, "label": "Cities", "note": "named in the observations"},
+]) }}
 
 {# Sticky summary + filters: the numbers a reader needs while scrolling. #}
 <div class="stickybar">
@@ -41,6 +52,7 @@
     <span class="eyebrow" style="display:inline">{{ label }}</span>
     <span class="mono muted"> · {{ groups | length }}</span>
   </summary>
+  <div class="arch-grid">
   {% for g in groups %}
   <article class="record" id="a-{{ key }}-{{ loop.index }}">
     <div class="provenance">
@@ -62,6 +74,7 @@
     {% endif %}
   </article>
   {% endfor %}
+  </div>
 </details>
 {% endif %}
 {% endfor %}
@@ -69,4 +82,5 @@
 {% if total_shown > 8 %}
 <p><a class="mono" href="#top" onclick="window.scrollTo({top:0,behavior:'smooth'});return false">↑ Back to top</a></p>
 {% endif %}
+</div>
 {% endblock %}

@@ -1,18 +1,54 @@
 {% extends "base.html" %}
-{% from "_macros.html" import stat_block %}
+{% from "_viz.html" import figures as figure_row, world_map, bar_list %}
 {% block title %}City Intelligence - Culture Intelligence{% endblock %}
 {% block content %}
-<p class="eyebrow">Cities <a href="/cities/compare">Compare two cities →</a></p>
-<h1>City Intelligence</h1>
-<p class="lede">Cities ranked by evidence concentration: how often each place appears in analyzed content, what has taken hold there, and where coverage falls short of the activity. Place counts reflect what monitored sources cover, so an under-covered city may simply be under-observed.</p>
+<div class="app-page">
+<header class="pg-head">
+  <div class="kicker"><span class="acc">Cities</span><a href="/cities/compare">Compare two cities →</a></div>
+  <h1>City Intelligence</h1>
+  <p class="standfirst">Cities ranked by evidence concentration: how often each place appears in analyzed content, what has taken hold there, and where coverage falls short of the activity. Place counts reflect what monitored sources cover, so an under-covered city may simply be under-observed.</p>
+</header>
 
-<div class="statline">
-  {{ stat_block(ci.summary.cities, "Cities") }}
-  {{ stat_block(ci.summary.origin_cities, "Origin cities") }}
-  {{ stat_block(ci.summary.coverage_gaps, "Coverage gaps", accent=(ci.summary.coverage_gaps > 0)) }}
+{{ figure_row([
+  {"value": ci.summary.cities, "label": "Cities", "note": "with two or more evidence items"},
+  {"value": ci.summary.origin_cities, "label": "Origin cities", "note": "where a signal was first observed"},
+  {"value": ci.summary.coverage_gaps, "label": "Coverage gaps", "note": "activity without enough local sources"},
+]) }}
+
+{% if map_points %}
+<div class="rp-grid section-gap">
+  <div class="span-8 ct-map">
+    <h2 class="panel-title">The map <span>circle size follows evidence items</span></h2>
+    {{ world_map(map_points, label="Cities named in analyzed evidence") }}
+  </div>
+  <div class="span-4">
+    <h2 class="panel-title">Most cited <span>evidence items</span></h2>
+    {{ bar_list(city_bars, hot_first=True) }}
+  </div>
 </div>
+{% endif %}
 
-<div class="table-scroll">
+{% if ci.gaps %}
+<div class="chapter-head">
+  <div><div class="kicker acc">Coverage gaps</div><h2>Where the monitored universe falls short</h2></div>
+  <p class="note">Rules are listed under Method below.</p>
+</div>
+<div class="gapgrid">
+  {% for g in ci.gaps[:3] %}
+  <div class="gapcard">
+    <div class="gl">{{ ci.gap_labels[g.gap] }}</div>
+    <h3><a href="/cities/{{ g.name | urlencode }}">{{ g.name }}</a></h3>
+    <p>{{ g.assessment }}</p>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="chapter-head">
+  <div><div class="kicker">Index</div><h2>Every city</h2></div>
+  <p class="note">Sorted by evidence items. Hover a city to highlight it across the page.</p>
+</div>
+<div class="table-scroll tablewrap">
 <table class="index">
   <caption class="skip-link">Cities ranked by evidence concentration</caption>
   <thead><tr>
@@ -44,20 +80,7 @@
 </table>
 </div>
 
-{% if ci.gaps %}
-<h2 class="section heavy">Coverage gaps <span class="note">where the monitored universe falls short of the activity</span></h2>
-<div class="gapgrid">
-  {% for g in ci.gaps[:3] %}
-  <div class="gapcard">
-    <div class="gl">{{ ci.gap_labels[g.gap] }}</div>
-    <h3><a href="/cities/{{ g.name | urlencode }}">{{ g.name }}</a></h3>
-    <p>{{ g.assessment }}</p>
-  </div>
-  {% endfor %}
-</div>
-{% endif %}
-
-<h2 class="section">Method</h2>
+<h2 class="panel-title section-gap">Method</h2>
 <p class="finetext">
   Adopted: urban adoption score of 3 or more. Editorial-only: editorial momentum outruns
   adoption by two points or more (the † rule). Origin: the city named by a signal's
@@ -68,4 +91,5 @@
 <p class="mono muted">
   {% if latest_report %}Week {{ latest_report.split("-W")[-1] }}{% endif %}{% if freshness and freshness.last_check %} · Compiled {{ freshness.last_check | dmy }}{% endif %}
 </p>
+</div>
 {% endblock %}

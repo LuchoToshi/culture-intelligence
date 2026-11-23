@@ -5,6 +5,7 @@ Auth is opt-in via require_auth= (see culture.web.auth) — off for local/test
 use, on for the hosted deployment.
 """
 
+import re
 from collections import Counter
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -29,6 +30,8 @@ from culture.models.source import Source
 from culture.utils import citypolicy
 from culture.utils.dates import ensure_utc, now_utc
 from culture.web import queries
+
+_MEDIA_NAME = re.compile(r"[A-Za-z0-9_.-]{1,120}\.(?:jpg|jpeg|png|webp)")
 
 log = get_logger("culture.web.app")
 
@@ -301,6 +304,8 @@ def create_app(
     templates.env.globals["stage_labels"] = queries.STAGE_LABELS
     templates.env.globals["stage_glyphs"] = queries.STAGE_GLYPHS
     templates.env.globals["signal_diverges"] = queries.signal_diverges
+    templates.env.globals["item_image"] = _item_image
+    templates.env.globals["count_bars"] = queries.bars_from_counts
     templates.env.filters["dmy"] = _dmy
     templates.env.filters["public_city_first"] = citypolicy.first_public_city
     templates.env.filters["public_cities"] = citypolicy.public_cities
@@ -528,15 +533,38 @@ def create_app(
         for item in session.scalars(
             select(ContentItem)
             .order_by(func.coalesce(ContentItem.published_at, ContentItem.discovered_at).desc())
-            .limit(5)
+            .limit(6)
         ):
             latest_items.append(
                 {
                     "item": item,
                     "source_name": sources[item.source_id].name,
                     "when": queries.item_time(item),
+                    "card": queries.item_card(item, sources[item.source_id]),
                 }
             )
+        report_row = session.scalar(
+            select(WeeklyReport).order_by(WeeklyReport.generated_at.desc()).limit(1)
+        )
+        from culture.web.report_layout import report_summary
+
+        all_cities = queries.city_rows(session)
+        mover_ids = [r.signal.id for r in movers]
+        week_ago = now_utc() - timedelta(days=7)
+        items_this_week = session.scalar(
+            select(func.count(ContentItem.id)).where(ContentItem.discovered_at >= week_ago)
+        )
+        moving_count = sum(1 for r in rows if r.delta_7d > 0)
+        figures = [
+            {"value": len(rows), "label": "signals tracked",
+             "note": f"across {sum(1 for s in sources.values() if s.active)} sources"},
+            {"value": moving_count, "label": "moving this week",
+             "note": f"+{sum(r.delta_7d for r in rows)} evidence links"},
+            {"value": items_this_week or 0, "label": "items collected", "note": "last 7 days"},
+        ]
+        if all_cities:
+            figures.append({"value": all_cities[0].name, "label": "most cited city",
+                            "note": f"{all_cities[0].item_count} items"})
         return render(
             request,
             session,
@@ -546,15 +574,18 @@ def create_app(
                     "signals": len(rows),
                     "sources": sum(1 for s in sources.values() if s.active),
                 },
+                "figures": figures,
                 "movers": movers,
+                "mover_series": queries.weekly_series(session, mover_ids),
+                "mover_images": queries.signal_lead_images(session, mover_ids),
                 "newly_detected": newly,
                 "weak_signals": weak,
                 "approaching": approaching,
-                "top_cities": queries.city_rows(session)[:5],
+                "top_cities": all_cities[:5],
+                "map_points": queries.city_map_points(all_cities),
                 "latest_items": latest_items,
-                "latest_report": session.scalar(
-                    select(WeeklyReport.iso_week).order_by(WeeklyReport.generated_at.desc())
-                ),
+                "latest_report": report_row.iso_week if report_row else None,
+                "report_teaser": report_summary(report_row) if report_row else None,
                 "today": now_utc().strftime("%A %d %B %Y"),
                 "active_nav": "home",
             },
@@ -574,6 +605,9 @@ def create_app(
             "signals.html",
             {
                 "rows": rows,
+                "stage_counts": Counter(
+                    s.lifecycle_stage or "unknown" for s in queries.active_signals(session)
+                ),
                 "stage": stage,
                 "sort": sort,
                 "stage_order": queries.STAGE_ORDER,
@@ -629,6 +663,20 @@ def create_app(
                     )
         series = queries.monthly_series(session, signal.id)
         month_names = _trailing_month_labels(len(series))
+        month_peak = max(series or [0]) or 1
+        month_cols = [
+            {"label": datetime.strptime(m, "%Y-%m").strftime("%b"), "value": v,
+             "pct": round(100 * v / month_peak, 1)}
+            for m, v in zip(month_names, series, strict=True)
+        ] if any(series) else []
+        city_counts: Counter[str] = Counter()
+        for item, _ in pairs:
+            analysis = analyses.get(item.id)
+            named = (analysis.cities or []) if analysis else []
+            city_counts.update(c for c in {queries.canonical_city(c) for c in named} if c)
+        lead = next(
+            (queries.item_card(e.item, e.source) for e in evidence if _item_image(e.item)), None
+        )
         return render(
             request,
             session,
@@ -641,6 +689,9 @@ def create_app(
                 "archetype_observations": archetype_obs[:6],
                 "scores": [(label, getattr(signal, attr)) for label, attr in SCORE_LABELS],
                 "big_spark": queries.sparkline_svg(series, width=1000, height=46),
+                "month_cols": month_cols,
+                "city_bars": queries.bars_from_counts(list(city_counts.items()), limit=8),
+                "lead": lead,
                 "ledger_start": month_names[0],
                 "ledger_end": month_names[-1],
                 "diffusion_steps": diffusion_steps,
@@ -731,12 +782,17 @@ def create_app(
 
     @app.get("/cities", response_class=HTMLResponse)
     def cities(request: Request, session: Session = Depends(db)):
+        ci = queries.city_intelligence(session)
         return render(
             request,
             session,
             "cities.html",
             {
-                "ci": queries.city_intelligence(session),
+                "ci": ci,
+                "map_points": queries.city_map_points(ci["rows"]),
+                "city_bars": queries.bars_from_counts(
+                    [(r.name, r.item_count) for r in ci["rows"]], limit=10
+                ),
                 "latest_report": session.scalar(
                     select(WeeklyReport.iso_week).order_by(WeeklyReport.generated_at.desc())
                 ),
@@ -894,6 +950,7 @@ def create_app(
             "stream.html",
             {
                 "rows": rows,
+                "daily": queries.daily_item_counts(session),
                 "platforms": platforms,
                 "kinds": kinds,
                 "platform": platform,
@@ -925,44 +982,139 @@ def create_app(
 
     @app.get("/reports", response_class=HTMLResponse)
     def reports(request: Request, session: Session = Depends(db)):
-        weeks = list(
-            session.scalars(select(WeeklyReport.iso_week).order_by(WeeklyReport.iso_week.desc()))
-        )
+        from culture.web import report_layout
+
+        rows = list(session.scalars(select(WeeklyReport).order_by(WeeklyReport.iso_week.desc())))
+        summaries = [report_layout.report_summary(r) for r in rows]
+        cover = None
+        if rows:
+            # One report gets the full page model for its cover image; the rest stay cheap.
+            lead_page = _report_page(session, rows[0])
+            cover = lead_page.cover
         return render(
-            request, session, "reports.html", {"reports": weeks, "active_nav": "reports"}
+            request,
+            session,
+            "reports.html",
+            {
+                "reports": [r.iso_week for r in rows],
+                "summaries": summaries,
+                "cover": cover,
+                "active_nav": "reports",
+            },
         )
+
+    def _report_row(session: Session, name: str) -> WeeklyReport:
+        report_row = session.scalar(select(WeeklyReport).where(WeeklyReport.iso_week == name))
+        if report_row is None:
+            raise HTTPException(404, "No such report")
+        return report_row
+
+    _page_cache: dict[tuple, object] = {}
+
+    def _report_page(session: Session, report_row: WeeklyReport):
+        """Report page model, cached per report version for the life of the process."""
+        from culture.web import report_layout
+
+        key = (report_row.iso_week, report_row.generated_at, len(report_row.content_markdown))
+        if key not in _page_cache:
+            if len(_page_cache) > 24:
+                _page_cache.clear()
+            _page_cache[key] = report_layout.build_report_page(session, report_row)
+        return _page_cache[key]
 
     @app.get("/reports/{name}", response_class=HTMLResponse)
     def report_view(name: str, request: Request, session: Session = Depends(db)):
         import re as _re
 
-        report_row = session.scalar(select(WeeklyReport).where(WeeklyReport.iso_week == name))
-        if report_row is None:
-            raise HTTPException(404, "No such report")
-        # Reader-first split (reviewer §25): the cross-source synthesis
-        # (Part 2 onward) is the report; the exhaustive per-source roundup
-        # (Part 1) becomes a collapsed research appendix below it. Reports
-        # without the Part markers render whole, unchanged.
+        from culture.web import report_layout
+
+        report_row = _report_row(session, name)
+        # The synthesis (Part 2 onward) is the report; the per-source roundup (Part 1)
+        # is a research appendix, loaded on demand. Reports without Part markers
+        # render whole as written when they cannot be parsed into sections.
         markdown_text = report_row.content_markdown
         part2 = _re.search(r"^# Part 2.*?$", markdown_text, _re.MULTILINE)
         part1 = _re.search(r"^# Part 1.*?$", markdown_text, _re.MULTILINE)
         if part2 and part1 and part1.start() < part2.start():
             reader_md = markdown_text[: part1.start()] + markdown_text[part2.start() :]
-            appendix_md = markdown_text[part1.start() : part2.start()]
+            appendix_available = True
         else:
-            reader_md, appendix_md = markdown_text, None
+            reader_md, appendix_available = markdown_text, False
         content = _demote_report_headings(md.markdown(reader_md, extensions=["tables"]))
-        appendix = (
-            _demote_report_headings(md.markdown(appendix_md, extensions=["tables"]))
-            if appendix_md
-            else None
-        )
+        page = _report_page(session, report_row)
         return render(
             request,
             session,
             "report_view.html",
-            {"name": name, "content": content, "appendix": appendix, "active_nav": "reports"},
+            {
+                "name": name,
+                "page": page,
+                "content": content,
+                "appendix_available": appendix_available,
+                "stage_labels": queries.STAGE_LABELS,
+                "trend_sections": report_layout.TREND_SECTIONS,
+                "strategic_sections": report_layout.STRATEGIC_SECTIONS,
+                "active_nav": "reports",
+            },
         )
+
+    @app.get("/reports/{name}/appendix", response_class=HTMLResponse)
+    def report_appendix(
+        name: str, request: Request, fragment: int = 0, session: Session = Depends(db)
+    ):
+        from culture.web import report_layout
+
+        report_row = _report_row(session, name)
+        appendix_md = report_layout.parse_report(report_row.content_markdown).appendix_md
+        if not appendix_md:
+            raise HTTPException(404, "This report has no appendix")
+        html = _demote_report_headings(md.markdown(appendix_md, extensions=["tables"]))
+        if fragment:
+            return HTMLResponse(html)
+        return render(
+            request,
+            session,
+            "report_appendix.html",
+            {"name": name, "content": html, "active_nav": "reports"},
+        )
+
+    @app.get("/reports/{name}/signals.csv", include_in_schema=False)
+    def report_signals_csv(name: str, session: Session = Depends(db)):
+        from fastapi.responses import Response
+
+        from culture.web import report_layout
+
+        page = _report_page(session, _report_row(session, name))
+        return Response(
+            report_layout.signals_csv(page),
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{name}-signals.csv"'},
+        )
+
+    @app.get("/reports/{name}/items.csv", include_in_schema=False)
+    def report_items_csv(name: str, session: Session = Depends(db)):
+        from fastapi.responses import Response
+
+        from culture.web import report_layout
+
+        page = _report_page(session, _report_row(session, name))
+        return Response(
+            report_layout.items_csv(session, page),
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{name}-items.csv"'},
+        )
+
+    @app.get("/media/{filename}", include_in_schema=False)
+    def media_file(filename: str):
+        """Instagram photos the local pipeline stored. Absent on the hosted viewer."""
+        from fastapi.responses import FileResponse
+
+        if not _MEDIA_NAME.fullmatch(filename):
+            raise HTTPException(404, "Not found")
+        path = Path(__file__).resolve().parents[3] / "media" / "items" / filename
+        if not path.is_file():
+            raise HTTPException(404, "Not found")
+        return FileResponse(path, headers={"Cache-Control": "public, max-age=604800"})
 
     @app.get("/brief", response_class=HTMLResponse)
     def public_brief(request: Request, session: Session = Depends(db)):
@@ -1098,6 +1250,12 @@ def _is_preview_deployment() -> bool:
     import os
 
     return os.environ.get("VERCEL_ENV", "") not in ("", "production")
+
+
+def _item_image(item: ContentItem | None) -> str | None:
+    from culture.services.images import image_url
+
+    return image_url(item) if item is not None else None
 
 
 def _trailing_month_labels(months: int) -> list[str]:

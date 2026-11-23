@@ -1,0 +1,65 @@
+{# Components for the logged-in overview pages. Built on _app.css and _viz.html.
+   Images only ever come from item_image() (services.images.image_url). #}
+{% from "_viz.html" import spark, stage_pill %}
+
+{# A signal as a magazine line: lead image when the evidence has one, name,
+   facts, and this week's movement with twelve weeks of evidence. #}
+{% macro mover_list(rows, series, images) -%}
+<div class="sig-list">
+  {% for row in rows %}
+  {% set s = row.signal %}
+  {% set img = images.get(s.id) %}
+  <div class="sig" data-row-id="{{ s.id }}" data-name="{{ s.name }}">
+    {% if img %}
+    <a class="thumb" href="/signals/{{ s.id }}" tabindex="-1" aria-hidden="true"><img src="{{ img.image }}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('blank');this.remove()"></a>
+    {% else %}
+    <span class="thumb blank" aria-hidden="true">{{ loop.index }}</span>
+    {% endif %}
+    <a class="name" href="/signals/{{ s.id }}">{{ s.name }}</a>
+    <div class="facts">
+      {{ stage_pill(s.lifecycle_stage or "unknown", stage_labels) }}
+      <span>{{ s.evidence_count }} items</span>
+      <span>{{ s.source_count }} source{{ "s" if s.source_count != 1 }}</span>
+      {% for city in s.cities[:2] %}<span data-city="{{ city }}">{{ city }}</span>{% endfor %}
+      {% if signal_diverges(s) %}<span class="dagger" title="Editorial attention exceeds adoption: hype risk, verify before acting">† hype risk</span>{% endif %}
+    </div>
+    <div class="delta">
+      {% if row.delta_7d %}<b>+{{ row.delta_7d }}</b><span>new this week</span>{% else %}<b class="flat">0</b><span>new this week</span>{% endif %}
+      {% if series.get(s.id) %}{{ spark(series[s.id]) }}{% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{%- endmacro %}
+
+{# Compact signal line for side columns and lists. #}
+{% macro signal_line(signal, meta="") -%}
+<div class="sline">
+  <a class="sline-name" href="/signals/{{ signal.id }}">{{ signal.name }}</a>
+  <div class="sline-meta">{{ stage_pill(signal.lifecycle_stage or "unknown", stage_labels) }}{% if meta %}<span>{{ meta }}</span>{% endif %}</div>
+</div>
+{%- endmacro %}
+
+{# Evidence record with the item's own image when it has one. Same content and
+   provenance labels as _macros.evidence_record. #}
+{% macro evidence_card(item, source, summary=None, note=None, when=None, limitations=None, show_link=True) -%}
+{% set img = item_image(item) %}
+<article class="record ev{% if img %} has-img{% endif %}">
+  <div class="ev-body">
+    <div class="provenance">
+      <span class="kind kind-observed"></span>
+      <span>{{ ("Monitored source" if user_role == "demo" else source.name) if source else "?" }}</span>
+      <span>{{ item.content_type }}</span>
+      <span>{{ when | dmy("date unknown") }}</span>
+    </div>
+    <div class="headline"><a href="/items/{{ item.id }}">{{ item.title or "(untitled)" }}</a></div>
+    {% if limitations %}{% for l in limitations %}<div class="limitation">{{ l }}</div>{% endfor %}{% endif %}
+    {% if summary %}<p>{{ summary }}</p>{% endif %}
+    {% if note %}<div class="curator"><span class="mono muted">WHY IT'S EVIDENCE</span>: {{ note }}</div>{% endif %}
+    {% if show_link and item.url %}<p class="mono"><a href="{{ item.url }}" rel="noopener">Open original ↗</a></p>{% endif %}
+  </div>
+  {% if img %}
+  <a class="ev-img" href="/items/{{ item.id }}" tabindex="-1" aria-hidden="true"><img src="{{ img }}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('.record').classList.remove('has-img');this.parentNode.remove()"></a>
+  {% endif %}
+</article>
+{%- endmacro %}

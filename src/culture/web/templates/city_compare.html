@@ -1,59 +1,63 @@
 {% extends "base.html" %}
-{% from "_macros.html" import stage_chip %}
+{% from "_viz_pages.html" import signal_line with context %}
 {% block title %}Compare cities - Culture Intelligence{% endblock %}
 {% block content %}
-<p class="eyebrow"><a href="/cities">Cities</a> <span aria-hidden="true">/</span> <span>Compare</span></p>
-<h1>Compare two cities</h1>
-<p class="lede">Which signals two cities share, and which are (so far) local to one of them. Presence reflects where evidence names the city: an absent signal may be under-observed rather than absent from the culture.</p>
+<div class="app-page">
+<header class="pg-head">
+  <p class="eyebrow"><a href="/cities">Cities</a> <span aria-hidden="true">/</span> <span>Compare</span></p>
+  <h1>Compare two cities</h1>
+  <p class="standfirst">Which signals two cities share, and which are (so far) local to one of them. Presence reflects where evidence names the city: an absent signal may be under-observed rather than absent from the culture.</p>
+</header>
 
-<form class="filterbar" method="get" action="/cities/compare">
-  <span class="label">Cities</span>
-  <select name="a" class="plain">
+<form class="cmp-form" method="get" action="/cities/compare">
+  <span class="kicker">Cities</span>
+  <select name="a" class="plain" aria-label="First city">
     {% for c in all_cities %}<option value="{{ c }}" {% if c == a %}selected{% endif %}>{{ c }}</option>{% endfor %}
   </select>
   <span class="muted">vs</span>
-  <select name="b" class="plain">
+  <select name="b" class="plain" aria-label="Second city">
     {% for c in all_cities %}<option value="{{ c }}" {% if c == b %}selected{% endif %}>{{ c }}</option>{% endfor %}
   </select>
   <button type="submit">Compare</button>
 </form>
 
 {% if comparison %}
-<h2 class="section">Shared signals <span class="note">evidence names both cities</span></h2>
-{% if comparison.shared %}
-<div class="evidence-list">
-  {% for s in comparison.shared %}
-  <div class="card">
-    <div class="meta">{{ stage_chip(s.lifecycle_stage) }} · {{ s.evidence_count }} items · {{ s.source_count }} sources</div>
-    <h3><a href="/signals/{{ s.id }}">{{ s.name }}</a></h3>
+<div class="cmp">
+  <div class="cmp-col">
+    <div class="kicker">Only in</div>
+    <h3><a href="/cities/{{ a | urlencode }}">{{ a }}</a></h3>
+    <div class="n">{{ comparison.only_a | length }}</div>
+    <div class="kicker" style="margin:6px 0 14px">signals exclusive so far{% if comparison.only_a | length == 10 %}, top 10{% endif %}</div>
+    {% for s in comparison.only_a %}
+      {{ signal_line(s, s.evidence_count ~ " items") }}
+    {% else %}<div class="empty">Nothing exclusive to {{ a }} right now.</div>{% endfor %}
   </div>
+  <div class="cmp-col">
+    <div class="kicker">Only in</div>
+    <h3><a href="/cities/{{ b | urlencode }}">{{ b }}</a></h3>
+    <div class="n">{{ comparison.only_b | length }}</div>
+    <div class="kicker" style="margin:6px 0 14px">signals exclusive so far{% if comparison.only_b | length == 10 %}, top 10{% endif %}</div>
+    {% for s in comparison.only_b %}
+      {{ signal_line(s, s.evidence_count ~ " items") }}
+    {% else %}<div class="empty">Nothing exclusive to {{ b }} right now.</div>{% endfor %}
+  </div>
+</div>
+
+<div class="chapter-head">
+  <div><div class="kicker acc">Common ground</div><h2>Shared signals: {{ comparison.shared | length }}</h2></div>
+  <p class="note">Evidence names both cities.</p>
+</div>
+{% if comparison.shared %}
+<div class="rp-grid" style="row-gap:0">
+  {% for s in comparison.shared %}
+  <div class="span-6">{{ signal_line(s, s.evidence_count ~ " items · " ~ s.source_count ~ " sources") }}</div>
   {% endfor %}
 </div>
 {% else %}
 <div class="empty">No signal currently has evidence naming both {{ a }} and {{ b }}.</div>
 {% endif %}
-
-<div class="grid-2 mt-section">
-  <div>
-    <h2 class="section mt-0">Only in {{ a }}</h2>
-    {% for s in comparison.only_a %}
-    <div class="card">
-      <div class="meta">{{ stage_chip(s.lifecycle_stage) }} · {{ s.evidence_count }} items</div>
-      <h3><a href="/signals/{{ s.id }}">{{ s.name }}</a></h3>
-    </div>
-    {% else %}<div class="empty">Nothing exclusive to {{ a }} right now.</div>{% endfor %}
-  </div>
-  <div>
-    <h2 class="section mt-0">Only in {{ b }}</h2>
-    {% for s in comparison.only_b %}
-    <div class="card">
-      <div class="meta">{{ stage_chip(s.lifecycle_stage) }} · {{ s.evidence_count }} items</div>
-      <h3><a href="/signals/{{ s.id }}">{{ s.name }}</a></h3>
-    </div>
-    {% else %}<div class="empty">Nothing exclusive to {{ b }} right now.</div>{% endfor %}
-  </div>
-</div>
 {% else %}
 <div class="empty"><b>Pick two cities above.</b> Try London vs Paris, or Tokyo vs New York.</div>
 {% endif %}
+</div>
 {% endblock %}
