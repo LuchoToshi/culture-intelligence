@@ -245,11 +245,23 @@ def _slug(text: str) -> str:
 
 def _md(text: str) -> str:
     # Report text quotes scraped titles; raw HTML in it must not render.
-    return md.markdown(_escape_html(text.strip()), extensions=["tables"])
+    return render_markdown(text.strip())
 
 
 def _escape_html(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+_URL_ATTR = re.compile(r'\s(href|src)="([^"]*)"', re.IGNORECASE)
+_SAFE_URL = re.compile(r"^(https?://|mailto:|/|#)", re.IGNORECASE)
+
+
+def render_markdown(text: str) -> str:
+    """Markdown to HTML for text built from scraped pages: raw HTML is escaped, and
+    links or images with any scheme other than http(s), mailto or a local path are
+    dropped (Markdown itself would happily emit javascript: links)."""
+    html = md.markdown(_escape_html(text), extensions=["tables"])
+    return _URL_ATTR.sub(lambda m: m.group(0) if _SAFE_URL.match(m.group(2).strip()) else "", html)
 
 
 def _plain(text: str) -> str:

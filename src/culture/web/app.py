@@ -30,9 +30,7 @@ from culture.models.source import Source
 from culture.utils import citypolicy
 from culture.utils.dates import ensure_utc, now_utc
 from culture.web import queries
-from culture.web.report_layout import _escape_html
-
-_MD_EXT = ["tables"]
+from culture.web.report_layout import render_markdown
 
 _MEDIA_NAME = re.compile(r"[A-Za-z0-9_.-]{1,120}\.(?:jpg|jpeg|png|webp)")
 
@@ -1043,7 +1041,7 @@ def create_app(
             appendix_available = True
         else:
             reader_md, appendix_available = markdown_text, False
-        content = _demote_report_headings(md.markdown(_escape_html(reader_md), extensions=_MD_EXT))
+        content = _demote_report_headings(render_markdown(reader_md))
         page = _report_page(session, report_row)
         return render(
             request,
@@ -1071,7 +1069,7 @@ def create_app(
         appendix_md = report_layout.parse_report(report_row.content_markdown).appendix_md
         if not appendix_md:
             raise HTTPException(404, "This report has no appendix")
-        html = _demote_report_headings(md.markdown(_escape_html(appendix_md), extensions=_MD_EXT))
+        html = _demote_report_headings(render_markdown(appendix_md))
         if fragment:
             return HTMLResponse(html)
         return render(

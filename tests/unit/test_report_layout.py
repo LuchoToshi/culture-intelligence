@@ -1,5 +1,5 @@
 from culture.services.images import og_image_from_html, youtube_thumbnail
-from culture.web.report_layout import _match_image, parse_report
+from culture.web.report_layout import _match_image, parse_report, render_markdown
 
 REPORT = """# Cultural Intelligence Report: 2026-W47
 
@@ -95,3 +95,9 @@ def test_image_helpers():
         )
         is None
     )
+
+
+def test_markdown_drops_unsafe_links_and_html():
+    html = render_markdown("[a](javascript:alert(1)) [b](https://ok.example) <script>x</script>")
+    assert "javascript:" not in html and "<script>" not in html
+    assert 'href="https://ok.example"' in html
