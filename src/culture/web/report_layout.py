@@ -257,14 +257,14 @@ def _escape_html(text: str) -> str:
 
 
 def _safe_url(value: str) -> bool:
-    """http(s), mailto, or a same-site path. Normalised the way browsers read it."""
+    """Fail-closed allowlist: http(s), mailto, '#anchor' or a same-site '/path'.
+    Control characters and spaces are stripped first, as browsers do."""
     from urllib.parse import urlsplit
 
-    url = re.sub(r"[\t\r\n]", "", value.strip()).replace("\\", "/")
-    parts = urlsplit(url)
-    if parts.scheme:
-        return parts.scheme.lower() in {"http", "https", "mailto"}
-    return not parts.netloc and not url.startswith("//")
+    url = re.sub(r"[\x00-\x20]", "", value).replace("\\", "/")
+    if url.startswith("#") or (url.startswith("/") and not url.startswith("//")):
+        return True
+    return urlsplit(url).scheme.lower() in {"http", "https", "mailto"}
 
 
 class _SafeLinks(Treeprocessor):
