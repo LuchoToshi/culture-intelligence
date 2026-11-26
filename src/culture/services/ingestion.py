@@ -265,6 +265,8 @@ class IngestionService:
             .order_by(ContentItem.published_at.desc())
             .all()
         )
+        # Close the read transaction before the first transcript fetch (see _store_item).
+        self.session.commit()
         consecutive_failures = 0
         for item in failed_items:
             if not item.external_id:
@@ -308,6 +310,11 @@ class IngestionService:
             stats.duplicates += 1
             log.debug("duplicate skipped: %s", normalized)
             return
+        # End the read transaction before the network work below (page fetch, video
+        # enrichment, image download). An open transaction keeps the Neon compute awake:
+        # a Mac that slept mid-fetch once held one open for 12 hours and drained the free
+        # compute quota. Nothing is pending here, so this commit writes nothing.
+        self.session.commit()
 
         item = ContentItem(
             source_id=source.id,

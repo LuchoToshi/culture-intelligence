@@ -85,6 +85,25 @@ def test_ingestion_stores_new_article_with_extraction(session):
     assert source.last_successful_check_at is not None
 
 
+def test_page_fetch_runs_outside_a_database_transaction(session):
+    # An open transaction during a slow fetch keeps the Neon compute awake (and billed).
+    session.expire_on_commit = False  # as in production (database.get_session_factory)
+    make_web_source(session)
+    seen = []
+
+    def fetch_page(url):
+        seen.append(session.in_transaction())
+        return ARTICLE_HTML
+
+    service = IngestionService(
+        session, collectors={"web": FakeCollector([make_raw()])}, page_fetcher=fetch_page
+    )
+    service.ingest()
+
+    assert seen == [False]
+    assert session.query(ContentItem).count() == 1
+
+
 def test_second_ingestion_creates_zero_duplicates(session):
     make_web_source(session)
     collector = FakeCollector([make_raw()])
