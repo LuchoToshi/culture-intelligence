@@ -446,3 +446,14 @@ def test_city_compare_page(client):
     assert both.status_code == 200
     # Fixture signal names both London and Tokyo -> shared
     assert "Japanese workwear in London menswear" in both.text
+
+
+def test_icons_answer_without_database_and_public_pages_are_cdn_cached(client):
+    for path in ("/favicon.ico", "/apple-touch-icon.png"):
+        r = client.get(path)
+        assert r.status_code == 204
+        assert "s-maxage" in r.headers["cache-control"]
+    r = client.get("/intelligence")
+    assert r.status_code == 200
+    assert "s-maxage" in r.headers.get("cache-control", "")
+    assert "s-maxage" not in client.get("/").headers.get("cache-control", "")
