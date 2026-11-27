@@ -470,3 +470,14 @@ def test_report_view_has_chapters_and_print_export(client):
 def test_media_route_rejects_unsafe_names(client):
     assert client.get("/media/..%2F.env").status_code == 404
     assert client.get("/media/notthere.jpg").status_code == 404
+
+
+def test_icons_answer_without_database_and_public_pages_are_cdn_cached(client):
+    for path in ("/favicon.ico", "/apple-touch-icon.png"):
+        r = client.get(path)
+        assert r.status_code == 204
+        assert "s-maxage" in r.headers["cache-control"]
+    r = client.get("/intelligence")
+    assert r.status_code == 200
+    assert "s-maxage" in r.headers.get("cache-control", "")
+    assert "s-maxage" not in client.get("/").headers.get("cache-control", "")

@@ -14,7 +14,7 @@ from pathlib import Path
 
 import markdown as md
 from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
@@ -38,6 +38,13 @@ log = get_logger("culture.web.app")
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 STATIC_DIR = Path(__file__).parent / "static"
+# "/" is left out on purpose: it reads the session cookie to redirect
+# logged-in visitors, so a shared cached copy would be wrong for them.
+CDN_CACHED_PATHS = {
+    "/intelligence", "/brief", "/methodology", "/about", "/the-brief",
+    "/robots.txt", "/sitemap.xml",
+}
+CDN_CACHE = "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400"
 
 SCORE_LABELS = [
     ("Cultural origin", "cultural_origin_score"),
@@ -1211,11 +1218,28 @@ def create_app(
         )
         return RawResponse(content=xml, media_type="application/xml")
 
+    @app.get("/favicon.ico", include_in_schema=False)
+    @app.get("/apple-touch-icon.png", include_in_schema=False)
+    @app.get("/apple-touch-icon-precomposed.png", include_in_schema=False)
+    def _no_icon():
+        # No icon exists yet. Answer without touching the database, and let
+        # the CDN cache the answer so repeat fetches never reach the function.
+        return Response(status_code=204, headers={"Cache-Control": CDN_CACHE})
+
     @app.middleware("http")
     async def _noindex_previews(request: Request, call_next):
         response = await call_next(request)
         if _is_preview_deployment():
             response.headers["X-Robots-Tag"] = "noindex"
+        elif (
+            request.method == "GET"
+            and request.url.path in CDN_CACHED_PATHS
+            and response.status_code == 200
+        ):
+            # Public pages render the same for everyone (the auth gate skips
+            # them, so no user state reaches the template). Serving them from
+            # Vercel's CDN keeps crawler traffic off Neon's compute quota.
+            response.headers["Cache-Control"] = CDN_CACHE
         return response
 
     def _error_page(request: Request, status_code: int, message: str):

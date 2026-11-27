@@ -69,6 +69,11 @@ ROLE_MEMBER = "member"
 ROLE_DEMO = "demo"
 
 # Route-level enforcement. Hiding a nav link is not access control.
+# Browsers and bots fetch these on their own. In supabase mode the session
+# check reads the profiles row, so letting them through the gate would wake
+# Neon (and burn free-plan compute) for a file that needs no login.
+DB_FREE_PREFIXES = ("/static", "/favicon", "/apple-touch-icon")
+
 ADMIN_ONLY_PREFIXES = ("/sources", "/admin")
 DEMO_BLOCKED_PREFIXES = ("/sources", "/admin", "/stream", "/search", "/items", "/reports", "/media")
 
@@ -200,7 +205,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
     """Gates every route except the login flow behind a valid session cookie."""
 
     async def dispatch(self, request: Request, call_next):
-        if request.url.path in PUBLIC_PATHS or request.url.path.startswith("/static"):
+        if request.url.path in PUBLIC_PATHS or request.url.path.startswith(DB_FREE_PREFIXES):
             return await call_next(request)
 
         settings = get_settings()
